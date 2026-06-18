@@ -30,3 +30,10 @@ release/*
 doc/_build/*
 static/docs/*
 .vscode/
+
+# Playwright / test + tooling artifacts
+playwright-report/
+test-results/
+.playwright-mcp/
+*.png
+!doc/**/*.png

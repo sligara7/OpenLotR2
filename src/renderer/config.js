@@ -151,7 +151,7 @@ export const plugins = {
   ],
 
   scene: [
-    scenes.Boot,
+    // (Phaser scene *plugins*, not game scenes — left empty.)
     // scenes.Menu,
     // CustomGame,
     // scenes.Campaign,
@@ -188,6 +188,7 @@ export const version = __APP_VERSION__;
 export const homepage = __APP_HOMEPAGE__;
 
 /**
- *  Export created game scenes.
+ *  Active game scenes. For now only the API-driven Game scene is wired up;
+ *  the legacy scenes (Boot/Loader/menus) remain in ./scenes for later reuse.
  */
-export const scene = Object.values(scenes);
+export const scene = [scenes.Game];

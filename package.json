@@ -8,6 +8,7 @@
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
     "dev": "vite",
+    "dev:web": "VITE_NO_ELECTRON=1 vite",
     "build": "vite build",
     "preview": "vite preview",
     "electron": "electron .",
@@ -20,6 +21,7 @@
     "sim": "tsx src/game/demo.ts",
     "test:sim": "tsx src/game/tests/run.ts",
     "test:api": "tsx src/server/tests/run.mts",
+    "test:e2e": "playwright test",
     "api": "tsx src/server/index.ts",
     "api:dev": "tsx watch src/server/index.ts"
   },
@@ -50,6 +52,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "@types/express": "^4.17.25",
     "@types/node": "^22.19.21",
     "@types/swagger-ui-express": "^4.1.8",

@@ -4,6 +4,7 @@
  *
  *  Declares all present game scenes.
  */
+export { default as Game } from './game';
 export { default as Boot } from './boot';
 // export {default as Intro} from './intro';
 export { default as Loader } from './loader';
