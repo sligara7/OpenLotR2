@@ -37,3 +37,7 @@ test-results/
 .playwright-mcp/
 *.png
 !doc/**/*.png
+
+# Extracted ORIGINAL game data (copyrighted) — analysis only, never commit.
+extracted/
+*.pgm
