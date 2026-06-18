@@ -1,0 +1,56 @@
+/*
+ * In-memory game store.
+ *
+ * Holds each live game's authoritative GameState plus the seed and RNG used to
+ * advance it deterministically. One process, one Map — fine for development and
+ * single-host play.
+ *
+ * FUTURE: persist to disk (nedb is already a dependency) and add per-game
+ * concurrency control once multiple clients hit the same game.
+ */
+
+import { createDemoWorld } from '../game/index.ts';
+import { createRng } from '../game/rng.ts';
+import type { GameState } from '../game/types/realm.ts';
+import type { Rng } from '../game/rng.ts';
+import type { TurnReport } from '../game/engine.ts';
+
+export interface Game {
+  id: string;
+  seed: number;
+  state: GameState;
+  rng: Rng;
+  /** Per-turn reports accumulated as the game advances (one per EndTurn). */
+  reports: TurnReport[];
+}
+
+export class GameStore {
+  private games = new Map<string, Game>();
+  private counter = 0;
+
+  /** Deterministic id generator (no Date.now/Math.random in the core path). */
+  private nextId(): string {
+    this.counter += 1;
+    return `g${this.counter}`;
+  }
+
+  create(seed: number): Game {
+    const game: Game = {
+      id: this.nextId(),
+      seed,
+      state: createDemoWorld(),
+      rng: createRng(seed),
+      reports: [],
+    };
+    this.games.set(game.id, game);
+    return game;
+  }
+
+  get(id: string): Game | undefined {
+    return this.games.get(id);
+  }
+
+  has(id: string): boolean {
+    return this.games.has(id);
+  }
+}

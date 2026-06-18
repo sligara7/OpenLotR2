@@ -10,12 +10,12 @@
 
 interface Case {
   name: string;
-  fn: () => void;
+  fn: () => void | Promise<void>;
 }
 
 const cases: Case[] = [];
 
-export function test(name: string, fn: () => void): void {
+export function test(name: string, fn: () => void | Promise<void>): void {
   cases.push({ name, fn });
 }
 
@@ -47,13 +47,14 @@ export function assertLess(actual: number, threshold: number, msg?: string): voi
   }
 }
 
-/** Run all registered cases, print a summary, set exit code. Returns failures. */
-export function run(): number {
+/** Run all registered cases, print a summary, set exit code. Returns failures.
+ *  Supports both sync and async test functions. */
+export async function run(): Promise<number> {
   let passed = 0;
   const failures: { name: string; err: unknown }[] = [];
   for (const c of cases) {
     try {
-      c.fn();
+      await c.fn();
       passed += 1;
       console.log(`  ✓ ${c.name}`);
     } catch (err) {

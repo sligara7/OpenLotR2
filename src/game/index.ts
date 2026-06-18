@@ -18,6 +18,7 @@ export { createRealm, adjustTreasury } from './state/realm.ts';
 export type { RealmInit } from './state/realm.ts';
 export { createWorld, neighboursOf, countiesOfRealm } from './state/world.ts';
 export type { WorldInit } from './state/world.ts';
+export { createDemoWorld } from './scenarios.ts';
 
 // Engine
 export { advanceSeason } from './engine.ts';

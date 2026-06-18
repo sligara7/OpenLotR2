@@ -7,55 +7,12 @@
  * (or via the npm "sim" script / tsx).
  */
 
-import { createCounty } from './state/county.ts';
-import { createRealm } from './state/realm.ts';
-import { createWorld } from './state/world.ts';
 import { createRng } from './rng.ts';
 import { advanceSeason } from './engine.ts';
-import { FieldStatus, Season } from './types/enums.ts';
-import type { County } from './types/county.ts';
+import { createDemoWorld } from './scenarios.ts';
 
-/** Put a working farm in place: assign fields to grain/cattle and lean labour
- *  toward agriculture, so the county can actually feed itself from turn one. */
-function farm(county: County, grainFields: number, cattleFields: number): County {
-  let i = 0;
-  for (; i < grainFields && i < county.fields.length; i++) {
-    county.fields[i].status = FieldStatus.Grain;
-    county.fields[i].sacksPlanted = 5; // already in the ground (pre-harvest)
-    county.fields[i].grainGrowth = 1;
-  }
-  for (let j = 0; j < cattleFields && i < county.fields.length; j++, i++) {
-    county.fields[i].status = FieldStatus.Cattle;
-  }
-  county.labour.industryShare = 0.35; // most hands on the land
-  return county;
-}
-
-const player = createRealm({ id: 'p1', name: 'You', isHuman: true, gold: 200 });
-const rival = createRealm({ id: 'p2', name: 'Baron de Vere' });
-
-const counties = [
-  farm(createCounty({
-    id: 'york', name: 'York', ownerId: 'p1', population: 320, happiness: 70,
-    taxRate: 15, grainSacks: 1500, cows: 60, fieldCount: 8,
-    industries: { Lumber: true, Quarry: true },
-  }), 4, 4),
-  farm(createCounty({
-    id: 'lancaster', name: 'Lancaster', ownerId: 'p1', population: 240, happiness: 60,
-    taxRate: 18, grainSacks: 1200, cows: 40, fieldCount: 6, industries: { IronMine: true },
-  }), 3, 3),
-  farm(createCounty({
-    id: 'kent', name: 'Kent', ownerId: 'p2', population: 300, happiness: 35,
-    taxRate: 55, grainSacks: 1000, cows: 30, fieldCount: 6,
-  }), 3, 3),
-];
-
-const world = createWorld({
-  realms: [player, rival],
-  counties,
-  edges: [['york', 'lancaster'], ['lancaster', 'kent']],
-  season: Season.Spring,
-});
+const world = createDemoWorld();
+const player = world.realms.p1;
 
 const rng = createRng(20260618);
 

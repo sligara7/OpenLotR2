@@ -33,13 +33,15 @@ export default tseslint.config(
     ignores: ['node_modules/**', 'dist/**', 'release/**', 'doc/**', 'static/**', '**/*.map'],
   },
 
-  // --- Simulation core (NEW): strict ----------------------------------------
+  // --- Simulation core + server (NEW): strict -------------------------------
   {
-    files: ['src/game/**/*.ts'],
+    files: ['src/game/**/*.ts', 'src/server/**/*.ts', 'src/server/**/*.mts'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: { globals: { ...globals.node } },
     rules: {
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // Tests intentionally read loosely-typed JSON response bodies.
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 
