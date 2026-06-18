@@ -1,10 +1,6 @@
-import { app, BrowserWindow, remote, shell, screen } from "electron";
+import { app, BrowserWindow, shell, screen } from "electron";
 import { statSync } from "fs";
 import * as path from "path";
-const serve = require("electron-serve");
-
-const loadURL = serve({ directory: "renderer" });
-declare const __static: string;
 
 interface LicenseEntry {
   type: string;
@@ -160,8 +156,8 @@ export default function openHelpWindow(
     return window;
   }
 
-  const base_path = path.join(__static, "docs");
-  // const loadURL = serve({ directory: "static/docs" });
+  // Built docs are copied next to the renderer output (dist/renderer/docs).
+  const base_path = path.join(__dirname, "..", "renderer", "docs");
   const index_html = "file://" + path.join(base_path, "index.html");
   const electronScreen = screen;
   const size = electronScreen.getPrimaryDisplay().workAreaSize;
@@ -183,8 +179,7 @@ export default function openHelpWindow(
     info.win_options || {}
   );
 
-  window = new (BrowserWindow || remote.BrowserWindow)(options);
-  loadURL(window);
+  window = new BrowserWindow(options);
   window.webContents.openDevTools();
   window.once("closed", () => {
     window = null;
@@ -195,9 +190,10 @@ export default function openHelpWindow(
     e.preventDefault();
     shell.openExternal(url);
   });
-  window.webContents.on("new-window", (e, url) => {
-    e.preventDefault();
+  // 'new-window' was removed in Electron 22; use the modern handler.
+  window.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
+    return { action: "deny" };
   });
 
   //   window.webContents.once("dom-ready", () => {

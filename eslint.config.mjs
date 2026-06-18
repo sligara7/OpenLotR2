@@ -60,7 +60,15 @@ export default tseslint.config(
     languageOptions: {
       ecmaVersion: 2021,
       sourceType: 'module',
-      globals: { ...globals.browser, ...globals.node, Phaser: 'readonly' },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        Phaser: 'readonly',
+        // Build-time constants injected by Vite define (see vite.config.ts).
+        __APP_TITLE__: 'readonly',
+        __APP_VERSION__: 'readonly',
+        __APP_HOMEPAGE__: 'readonly',
+      },
     },
     rules: LEGACY_JS_RELAX,
   },

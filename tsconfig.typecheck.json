@@ -1,5 +1,5 @@
 {
-  "// purpose": "Type-checks the headless simulation core under modern TypeScript, decoupled from the (legacy) electron-webpack build's tsconfig.json. The core uses explicit .ts import extensions, which require bundler module resolution.",
+  "// purpose": "Type-checks the headless simulation core and server under modern TypeScript, decoupled from the Vite renderer build's tsconfig.json. They use explicit .ts import extensions, which require bundler module resolution.",
   "compilerOptions": {
     "target": "ES2020",
     "module": "ESNext",

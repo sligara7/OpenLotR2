@@ -3,8 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <title>Open Lords of the Realm 2</title>
-    <script src="/socket.io/socket.io.js"></script>
     <script>
+      // Legacy global consumed by several scenes (armoury, menus). Kept until
+      // those scenes are migrated to read player state from the API.
       var Player = {
         sheild: "purple",
         armory: {
@@ -17,10 +18,9 @@
         }
       };
     </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.15.1/dist/phaser-arcade-physics.min.js"></script>
-    <!-- <script src="phaser-arcade-physics.min.js"></script> -->
-    <script src="openlotr2.bundle.js"></script>
   </head>
-  <body></body>
+  <body>
+    <!-- Vite entry. Phaser is bundled from npm (see phaser-global.ts). -->
+    <script type="module" src="./index.ts"></script>
+  </body>
 </html>

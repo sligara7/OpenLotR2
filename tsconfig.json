@@ -13,6 +13,6 @@
     "lib": ["es2017", "es2016", "es2015", "dom"]
   },
   "include": ["src/**/*"],
-  "comment:exclude": "src/game is the headless sim core: it uses .ts import extensions (bundler resolution) and is type-checked via tsconfig.typecheck.json and run via tsx, so it is excluded from the legacy electron-webpack build until the bundler is modernised.",
-  "exclude": ["node_modules", "**/*.tsx", "src/game"]
+  "comment:exclude": "src/game (sim core) and src/server use .ts import extensions (bundler resolution); they are type-checked via tsconfig.typecheck.json and run via tsx, so they are excluded from this config (used by the Vite renderer build / editor).",
+  "exclude": ["node_modules", "**/*.tsx", "src/game", "src/server"]
 }

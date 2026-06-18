@@ -4,7 +4,6 @@
  *
  *  The game instance settings.
  */
-const path = require('path');
 //  Import created game scenes.
 import * as scenes from './scenes';
 
@@ -110,8 +109,9 @@ export const physics = {
  *  Global parameters of the asset manager.
  */
 export const loader = {
-  //  HINT: Put all your game assets in the `app/static/assets/` directory.
-  path: path.join(__static)
+  //  Assets live in /static, exposed at the web root via Vite's publicDir,
+  //  so scene asset keys (e.g. 'themes/classic/...') resolve from '/'.
+  path: ''
 };
 
 /**
@@ -181,7 +181,11 @@ export const plugins = {
  *  (`scene.sys.game.config`), under the keys `gameTitle`, `gameVersion` and
  *  `gameURL`, respectively.
  */
-export { title, version, homepage } from '@../../../package.json';
+// Injected at build time by Vite `define` (see vite.config.ts), sourced from
+// package.json. Avoids importing JSON from outside the renderer root.
+export const title = __APP_TITLE__;
+export const version = __APP_VERSION__;
+export const homepage = __APP_HOMEPAGE__;
 
 /**
  *  Export created game scenes.

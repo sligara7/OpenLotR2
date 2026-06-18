@@ -1,146 +1,100 @@
-import {
-  app,
-  BrowserWindow,
-  screen,
-  net,
-  protocol,
-  Menu,
-  MenuItem
-} from "electron";
+/*
+ * Electron main process.
+ *
+ * Migrated from electron-webpack to Vite + vite-plugin-electron:
+ *   - In dev, the plugin sets VITE_DEV_SERVER_URL; we load that.
+ *   - In production we load the built renderer (dist/renderer/index.html),
+ *     which sits next to this file's output at dist/main/index.js.
+ */
+
+import { app, BrowserWindow, screen, Menu, MenuItem, shell } from "electron";
 import * as path from "path";
-import * as url from "url";
-const pkg = require("@/../../package.json");
-const settings = require("electron-settings");
-const server = require("electron-serve");
-const openAboutWindow = require("about-window").default;
-const openHelpWindow = require("./help").default;
-declare const __static: string;
+import openAboutWindow from "about-window";
+import openHelpWindow from "./help";
+import pkg from "../../package.json";
 
-let window, serve;
-const args = process.argv.slice(1);
-serve = args.some(val => val === "--serve");
+const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 
-serve = process.env.hasOwnProperty("ELECTRON_WEBPACK_WDS_PORT");
+let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
-  const electronScreen = screen;
-  const size = electronScreen.getPrimaryDisplay().workAreaSize;
+  // Reference the primary display size (kept for parity with the original).
+  screen.getPrimaryDisplay();
 
-  // const net = require("net");
-  // Create the browser window.
-  window = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     x: 0,
     y: 0,
     width: 1000,
     height: 570,
     webPreferences: {
-      nodeIntegration: true,
-      webSecurity: false
-    }
+      // The renderer is a bundled browser app (Phaser) and needs no Node;
+      // webSecurity is relaxed so file:// asset loads aren't blocked.
+      webSecurity: false,
+    },
   });
 
-  const menu = Menu.getApplicationMenu();
+  customizeMenu();
 
-  // menu.append(
-  //   new MenuItem({
-  //     label: "MenuItem1",
-  //     click() {
-  //       console.log("item 1 clicked");
-  //     }
-  //   })
-  // );
-
-  // console.log(menu["commandsMap"][31]["submenu"]["commandsMap"]);
-
-  menu["commandsMap"][31]["submenu"]["commandsMap"][28].click = () => {
-    openHelpWindow({
-      icon_path: "path/to/icon.png",
-      homepage: pkg.homepage,
-      bug_page: pkg.homepage + "/issues"
-    });
-  };
-
-  menu["commandsMap"][31]["submenu"]["commandsMap"][30].click = async () => {
-    const { shell } = require("electron");
-    await shell.openExternal("https://github.com/s-ayers/OpenLotR2/issues");
-  };
-
-  menu["commandsMap"][31]["submenu"].append(
-    new MenuItem({ type: "separator" })
-  );
-
-  menu["commandsMap"][31]["submenu"].append(
-    new MenuItem({
-      label: "About OpenLotR2",
-      click() {
-        openAboutWindow({
-          icon_path: "path/to/icon.png",
-          homepage: pkg.homepage,
-          bug_page: pkg.homepage + "/issues"
-        });
-      }
-    })
-  );
-
-  Menu.setApplicationMenu(menu);
-
-  // protocol.interceptFileProtocol(
-  //   "file",
-  //   (request, callback) => {
-  //     const url = request.url.substr(7); /* all urls start with 'file://' */
-  //     callback(path.normalize(`${__dirname}/${url}`));
-  //   },
-  //   err => {
-  //     if (err) console.error("Failed to register protocol");
-  //   }
-  // );
-
-  // console.log(process.env.ELECTRON_WEBPACK_WDS_PORT);
-
-  if (serve) {
-    window.loadURL(`http://localhost:${process.env.ELECTRON_WEBPACK_WDS_PORT}`);
+  if (devServerUrl) {
+    mainWindow.loadURL(devServerUrl);
+    mainWindow.webContents.openDevTools();
   } else {
-    window.loadURL("file://" + __dirname + "/index.html");
+    mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 
-  if (serve) {
-    window.webContents.openDevTools();
-  }
-
-  // Emitted when the window is closed.
-  window.on("closed", () => {
-    // Dereference the window object, usually you would store window
-    // in an array if your app supports multi windows, this is the time
-    // when you should delete the corresponding element.
-    window = null;
+  mainWindow.on("closed", () => {
+    mainWindow = null;
   });
 }
 
-try {
-  // This method will be called when Electron has finished
-  // initialization and is ready to create browser windows.
-  // Some APIs can only be used after this event occurs.
-  app.on("ready", () => {
+/**
+ * Best-effort additions to the default application menu (About / docs / issues).
+ * The default menu's structure varies by Electron version and platform, so the
+ * whole thing is guarded — failure here must never block app launch.
+ */
+function customizeMenu() {
+  try {
+    const menu = Menu.getApplicationMenu();
+    const helpSubmenu = menu?.items.find((item) => item.role === "help")?.submenu;
+    if (!menu || !helpSubmenu) return;
+
+    const icon = path.join(__dirname, "../renderer/favicon.ico");
+    helpSubmenu.append(new MenuItem({ type: "separator" }));
+    helpSubmenu.append(
+      new MenuItem({
+        label: "Documentation",
+        click: () => openHelpWindow({ icon_path: icon, homepage: pkg.homepage }),
+      }),
+    );
+    helpSubmenu.append(
+      new MenuItem({
+        label: "Report an Issue",
+        click: () => shell.openExternal(pkg.homepage + "/issues"),
+      }),
+    );
+    helpSubmenu.append(
+      new MenuItem({
+        label: "About OpenLotR2",
+        click: () => openAboutWindow({ icon_path: icon, homepage: pkg.homepage }),
+      }),
+    );
+    Menu.setApplicationMenu(menu);
+  } catch {
+    // Menu customization is non-essential; ignore failures.
+  }
+}
+
+app.on("ready", createWindow);
+
+app.on("window-all-closed", () => {
+  // On macOS apps typically stay active until the user quits explicitly.
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
+
+app.on("activate", () => {
+  if (mainWindow === null) {
     createWindow();
-  });
-
-  // Quit when all windows are closed.
-  app.on("window-all-closed", () => {
-    // On OS X it is common for applications and their menu bar
-    // to stay active until the user quits explicitly with Cmd + Q
-    if (process.platform !== "darwin") {
-      app.quit();
-    }
-  });
-
-  app.on("activate", () => {
-    // On OS X it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (window === null) {
-      createWindow();
-    }
-  });
-} catch (e) {
-  // Catch Error
-  // throw e;
-}
+  }
+});
