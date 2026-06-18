@@ -18,8 +18,8 @@ export const CreateGameRequestSchema = z
   .object({
     /** Optional deterministic seed; the server picks one if omitted. */
     seed: z.number().int().optional(),
-    /** Named scenario to load (only 'demo' for now). */
-    scenario: z.enum(['demo']).optional().default('demo'),
+    /** Named scenario to load. */
+    scenario: z.enum(['demo', 'britain']).optional().default('demo'),
   })
   .openapi('CreateGameRequest');
 

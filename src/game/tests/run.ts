@@ -17,6 +17,7 @@ import './taxes.test.ts';
 import './revolt.test.ts';
 import './engine.test.ts';
 import './commands.test.ts';
+import './maps.test.ts';
 
 import { run } from '../testing/harness.ts';
 

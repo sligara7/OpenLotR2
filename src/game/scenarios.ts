@@ -7,7 +7,8 @@
 import { createCounty } from './state/county.ts';
 import { createRealm } from './state/realm.ts';
 import { createWorld } from './state/world.ts';
-import { FieldStatus, Season } from './types/enums.ts';
+import { FieldStatus, NoblePersonality, Season } from './types/enums.ts';
+import { BRITAIN, mapEdges } from './maps/index.ts';
 import type { County } from './types/county.ts';
 import type { GameState } from './types/realm.ts';
 
@@ -56,6 +57,46 @@ export function createDemoWorld(): GameState {
     realms: [player, rival],
     counties,
     edges: [['york', 'lancaster'], ['lancaster', 'kent']],
+    season: Season.Spring,
+  });
+}
+
+/**
+ * Great Britain: every historic county on the BRITAIN map. The human player and
+ * two AI rivals each begin with a small home cluster; the rest start neutral
+ * (unowned), to be won by conquest. Adjacency comes from the map graph.
+ */
+export function createBritainWorld(): GameState {
+  const player = createRealm({ id: 'p1', name: 'You', isHuman: true, gold: 200 });
+  const scots = createRealm({ id: 'p2', name: 'The Bruce', personality: NoblePersonality.Baron });
+  const welsh = createRealm({ id: 'p3', name: 'Llywelyn', personality: NoblePersonality.Knight });
+
+  const starts: Record<string, string> = {};
+  for (const id of ['hampshire', 'berkshire', 'wiltshire']) starts[id] = 'p1';
+  for (const id of ['midlothian', 'lanarkshire', 'fife']) starts[id] = 'p2';
+  for (const id of ['glamorgan', 'carmarthenshire', 'breconshire']) starts[id] = 'p3';
+
+  const counties = BRITAIN.regions.map((region) => {
+    const ownerId = starts[region.id] ?? null;
+    const county = createCounty({
+      id: region.id,
+      name: region.name,
+      ownerId,
+      population: ownerId ? 300 : 200,
+      happiness: ownerId ? 60 : 50,
+      taxRate: 18,
+      grainSacks: 800,
+      cows: 30,
+      fieldCount: 6,
+    });
+    if (ownerId) farm(county, 3, 3);
+    return county;
+  });
+
+  return createWorld({
+    realms: [player, scots, welsh],
+    counties,
+    edges: mapEdges(BRITAIN),
     season: Season.Spring,
   });
 }

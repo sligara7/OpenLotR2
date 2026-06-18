@@ -18,7 +18,11 @@ export { createRealm, adjustTreasury } from './state/realm.ts';
 export type { RealmInit } from './state/realm.ts';
 export { createWorld, neighboursOf, countiesOfRealm } from './state/world.ts';
 export type { WorldInit } from './state/world.ts';
-export { createDemoWorld } from './scenarios.ts';
+export { createDemoWorld, createBritainWorld } from './scenarios.ts';
+
+// Maps
+export { BRITAIN, MAPS, mapEdges, regionIds } from './maps/index.ts';
+export type { GameMap, MapRegion, Country } from './maps/index.ts';
 
 // Engine
 export { advanceSeason } from './engine.ts';

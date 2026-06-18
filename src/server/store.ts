@@ -9,7 +9,7 @@
  * concurrency control once multiple clients hit the same game.
  */
 
-import { createDemoWorld } from '../game/index.ts';
+import { createDemoWorld, createBritainWorld } from '../game/index.ts';
 import { createRng } from '../game/rng.ts';
 import type { GameState } from '../game/types/realm.ts';
 import type { Rng } from '../game/rng.ts';
@@ -34,11 +34,12 @@ export class GameStore {
     return `g${this.counter}`;
   }
 
-  create(seed: number): Game {
+  create(seed: number, scenario: 'demo' | 'britain' = 'demo'): Game {
+    const state = scenario === 'britain' ? createBritainWorld() : createDemoWorld();
     const game: Game = {
       id: this.nextId(),
       seed,
-      state: createDemoWorld(),
+      state,
       rng: createRng(seed),
       reports: [],
     };
