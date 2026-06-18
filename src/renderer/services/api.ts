@@ -24,11 +24,11 @@ export interface CreatedGame {
 }
 
 export const api = {
-  createGame: (seed?: number): Promise<CreatedGame> =>
+  createGame: (seed?: number, scenario: 'demo' | 'britain' = 'demo'): Promise<CreatedGame> =>
     http('/games', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ seed }),
+      body: JSON.stringify({ seed, scenario }),
     }),
 
   getState: (id: string): Promise<GameState> => http(`/games/${id}/state`),
