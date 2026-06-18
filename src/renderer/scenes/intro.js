@@ -69,7 +69,7 @@ export default class Intro extends Phaser.Scene {
 
         // this.scene.time.delayedCall(2, function(){this.scene.start('Loader');}, null, this);  // delay in ms
 
-        this.scene.start('Loader');},
+        this.scene.start('Loader');
     });
     
     // for (var i = 0; i < 5000; i++) {

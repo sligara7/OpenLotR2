@@ -6,10 +6,10 @@ import type { AssignField, CommandContext, CommandResult } from '../types.ts';
 import type { GameState } from '../../types/realm.ts';
 import { findOwnedCounty } from './util.ts';
 
-const ASSIGNABLE = [FieldStatus.Fallow, FieldStatus.Grain, FieldStatus.Cattle];
+const ASSIGNABLE: readonly FieldStatus[] = [FieldStatus.Fallow, FieldStatus.Grain, FieldStatus.Cattle];
 // A field can only be re-tasked while it is in a usable state; weather-damaged
 // or barren fields must recover/be reclaimed first (Manual Part-3 "Field Usage").
-const USABLE = [FieldStatus.Fallow, FieldStatus.Grain, FieldStatus.Cattle];
+const USABLE: readonly FieldStatus[] = [FieldStatus.Fallow, FieldStatus.Grain, FieldStatus.Cattle];
 
 export function assignField(state: GameState, cmd: AssignField, ctx: CommandContext): CommandResult {
   const { county, error } = findOwnedCounty(state, cmd.countyId, ctx.actorRealmId);

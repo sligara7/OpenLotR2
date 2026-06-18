@@ -160,7 +160,7 @@ export default function openHelpWindow(
     return window;
   }
 
-  let base_path = path.join(__static, "docs");
+  const base_path = path.join(__static, "docs");
   // const loadURL = serve({ directory: "static/docs" });
   const index_html = "file://" + path.join(base_path, "index.html");
   const electronScreen = screen;

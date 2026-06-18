@@ -13,7 +13,7 @@ import * as config from "./config";
 
 //  Boot the game.
 export function boot() {
-  let game = new Phaser.Game(config);
+  const game = new Phaser.Game(config);
 
   return game;
 }

@@ -78,6 +78,8 @@ then:        calendar tick (Spring→Summer→Fall→Winter, year++ after Winter
 npm install        # one-time (see note below if you skipped native rebuild)
 npm run sim        # watch a 4-year headless run
 npm run test:sim   # run all tests
+npm run typecheck  # type-check the sim core (TS 5.9, strict)
+npm run lint       # ESLint 9 (strict on src/game, lenient on legacy code)
 ```
 
 Both scripts use [`tsx`](https://github.com/privatenumber/tsx) (a devDependency)

@@ -1,0 +1,16 @@
+{
+  "// purpose": "Type-checks the headless simulation core under modern TypeScript, decoupled from the (legacy) electron-webpack build's tsconfig.json. The core uses explicit .ts import extensions, which require bundler module resolution.",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": ["ES2020"],
+    "types": ["node"]
+  },
+  "include": ["src/game/**/*.ts"]
+}
