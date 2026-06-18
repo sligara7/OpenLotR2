@@ -8,7 +8,7 @@
 
 import { api } from './services/api.ts';
 import { Hud } from './ui/hud.ts';
-import { MapSvg } from './ui/map-svg.ts';
+import { MapTilesSvg } from './ui/map-tiles-svg.ts';
 import { stateBus } from './state-bus.ts';
 import type { Command } from '../game/commands/types.ts';
 import type { GameState } from '../game/types/realm.ts';
@@ -51,7 +51,7 @@ export async function startGameUI(): Promise<void> {
     onEndTurn: () => void act({ type: 'EndTurn' }),
     onAdjustTax: (countyId, delta) => void adjustTax(countyId, delta),
   });
-  new MapSvg().mount(); // SVG county map; subscribes to the state bus itself
+  new MapTilesSvg().mount(); // SVG hex-tile map; subscribes to the state bus itself
   hud.mount();
   hud.setStatus('Creating game…');
 

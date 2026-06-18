@@ -18,6 +18,7 @@ import './revolt.test.ts';
 import './engine.test.ts';
 import './commands.test.ts';
 import './maps.test.ts';
+import './tiles.test.ts';
 
 import { run } from '../testing/harness.ts';
 

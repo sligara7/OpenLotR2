@@ -20,15 +20,15 @@ test('loads live county state from the API (Britain scenario)', async ({ page })
   await expect(page.getByTestId('county-yorkshire-info')).toContainText('Yorkshire');
 });
 
-test('renders the SVG county map (clickable, DOM-testable)', async ({ page }) => {
+test('renders the SVG hex-tile map (clickable, DOM-testable)', async ({ page }) => {
   await page.goto('/');
 
-  // The SVG map and its county tiles are real DOM, so they are queryable.
+  // The SVG map and county labels are real DOM, so they are queryable.
   await expect(page.getByTestId('map-svg')).toBeVisible();
-  const kent = page.getByTestId('county-kent-tile');
+  const kent = page.getByTestId('county-kent-label');
   await expect(kent).toBeVisible();
 
-  // Clicking a county tile shows its details in the HUD status.
+  // Clicking a county shows its details in the HUD status.
   await kent.click();
   await expect(page.getByTestId('status')).toContainText('Kent');
 });
