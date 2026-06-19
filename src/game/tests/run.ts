@@ -19,6 +19,8 @@ import './engine.test.ts';
 import './commands.test.ts';
 import './maps.test.ts';
 import './tiles.test.ts';
+import './hex.test.ts';
+import './movement.test.ts';
 
 import { run } from '../testing/harness.ts';
 
