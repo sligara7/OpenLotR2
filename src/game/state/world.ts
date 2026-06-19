@@ -3,12 +3,14 @@
 import { Season } from '../types/enums.ts';
 import type { Adjacency, GameState, Realm } from '../types/realm.ts';
 import type { County } from '../types/county.ts';
+import type { Army } from '../types/army.ts';
 
 export interface WorldInit {
   realms: Realm[];
   counties: County[];
   /** Undirected edges between county ids; normalised to a symmetric map. */
   edges?: [string, string][];
+  armies?: Army[];
   year?: number;
   season?: Season;
 }
@@ -27,6 +29,9 @@ export function createWorld(init: WorldInit): GameState {
     if (!adjacency[b].includes(a)) adjacency[b].push(a);
   }
 
+  const armies: Record<string, Army> = {};
+  for (const a of init.armies ?? []) armies[a.id] = a;
+
   return {
     year: init.year ?? 1,
     season: init.season ?? Season.Spring,
@@ -34,6 +39,7 @@ export function createWorld(init: WorldInit): GameState {
     realms,
     counties,
     adjacency,
+    armies,
   };
 }
 

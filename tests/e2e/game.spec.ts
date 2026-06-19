@@ -35,6 +35,12 @@ test('renders the SVG hex-tile map (clickable, DOM-testable)', async ({ page }) 
   // Rivers are rendered along hex edges.
   expect(await page.getByTestId('rivers').locator('line').count()).toBeGreaterThan(0);
 
+  // Armies and castles render; an army can be selected.
+  await expect(page.getByTestId('army-p1-army')).toBeVisible();
+  expect(await page.getByTestId('castles').locator('g').count()).toBeGreaterThan(0);
+  await page.getByTestId('army-p1-army').click();
+  await expect(page.getByTestId('status')).toContainText('Army selected');
+
   // The map zooms (viewport transform scales up).
   await page.getByTestId('map-zoom-in').click();
   const transform = await page.getByTestId('map-viewport').getAttribute('transform');

@@ -117,6 +117,33 @@ export function countyProfiles(map: TileMap): Map<string, ResourceCounts> {
   return profiles;
 }
 
+/** The "county town" tile for each county: the passable tile nearest the
+ *  county's centroid (where its castle and starting army sit). */
+export function countyTowns(map: TileMap): Map<string, { col: number; row: number }> {
+  const groups = new Map<string, HexTile[]>();
+  for (const tile of map.tiles) {
+    if (tile.countyId === null) continue;
+    const list = groups.get(tile.countyId) ?? [];
+    list.push(tile);
+    groups.set(tile.countyId, list);
+  }
+  const towns = new Map<string, { col: number; row: number }>();
+  for (const [id, tiles] of groups) {
+    const aCol = tiles.reduce((s, t) => s + t.col, 0) / tiles.length;
+    const aRow = tiles.reduce((s, t) => s + t.row, 0) / tiles.length;
+    const pool = tiles.filter((t) => isPassable(t.terrain));
+    const candidates = pool.length ? pool : tiles;
+    let best = candidates[0];
+    let bestD = Infinity;
+    for (const t of candidates) {
+      const d = (t.col - aCol) ** 2 + (t.row - aRow) ** 2;
+      if (d < bestD) { bestD = d; best = t; }
+    }
+    towns.set(id, { col: best.col, row: best.row });
+  }
+  return towns;
+}
+
 /** Odd-r offset neighbours of a hex (the six adjacent cells). */
 export function hexNeighbours(col: number, row: number): [number, number][] {
   const odd = row & 1;

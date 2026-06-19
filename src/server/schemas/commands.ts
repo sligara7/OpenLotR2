@@ -55,6 +55,13 @@ export const SendSuppliesSchema = z.object({
 
 export const BuyAleSchema = z.object({ type: z.literal('BuyAle'), countyId });
 
+export const MoveArmySchema = z.object({
+  type: z.literal('MoveArmy'),
+  armyId: z.string(),
+  col: z.number().int().nonnegative(),
+  row: z.number().int().nonnegative(),
+});
+
 export const EndTurnSchema = z.object({ type: z.literal('EndTurn') });
 
 export const CommandSchema = z
@@ -66,6 +73,7 @@ export const CommandSchema = z
     BuildCastleSchema,
     SendSuppliesSchema,
     BuyAleSchema,
+    MoveArmySchema,
     EndTurnSchema,
   ])
   .openapi('Command');

@@ -42,6 +42,8 @@ export interface SendSupplies {
   cows?: number;
 }
 export interface BuyAle { type: 'BuyAle'; countyId: string; }
+/** Move one of your armies to a destination tile (must be reachable). */
+export interface MoveArmy { type: 'MoveArmy'; armyId: string; col: number; row: number; }
 export interface EndTurn { type: 'EndTurn'; }
 
 /** The full set of commands a client may send. */
@@ -53,6 +55,7 @@ export type Command =
   | BuildCastle
   | SendSupplies
   | BuyAle
+  | MoveArmy
   | EndTurn;
 
 /** Context the server supplies when dispatching: who is acting + the RNG used

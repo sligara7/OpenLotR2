@@ -7,11 +7,12 @@
 import { createCounty } from './state/county.ts';
 import { createRealm } from './state/realm.ts';
 import { createWorld } from './state/world.ts';
-import { FieldStatus, NoblePersonality, Season } from './types/enums.ts';
-import { BRITAIN, mapEdges, buildBritainTileMap, countyProfiles } from './maps/index.ts';
+import { CastleType, FieldStatus, NoblePersonality, Season } from './types/enums.ts';
+import { BRITAIN, mapEdges, buildBritainTileMap, countyProfiles, countyTowns } from './maps/index.ts';
 import { WOOD_PER_TILE, STONE_PER_TILE, IRON_PER_TILE } from './constants.ts';
 import type { County } from './types/county.ts';
 import type { GameState } from './types/realm.ts';
+import type { Army } from './types/army.ts';
 
 /** Put a working farm in place: assign fields to grain/cattle and lean labour
  *  toward agriculture, so the county can feed itself from turn one. */
@@ -72,13 +73,18 @@ export function createBritainWorld(): GameState {
   const scots = createRealm({ id: 'p2', name: 'The Bruce', personality: NoblePersonality.Baron });
   const welsh = createRealm({ id: 'p3', name: 'Llywelyn', personality: NoblePersonality.Knight });
 
+  const clusters: Record<string, string[]> = {
+    p1: ['hampshire', 'berkshire', 'wiltshire'],
+    p2: ['midlothian', 'lanarkshire', 'fife'],
+    p3: ['glamorgan', 'carmarthenshire', 'breconshire'],
+  };
   const starts: Record<string, string> = {};
-  for (const id of ['hampshire', 'berkshire', 'wiltshire']) starts[id] = 'p1';
-  for (const id of ['midlothian', 'lanarkshire', 'fife']) starts[id] = 'p2';
-  for (const id of ['glamorgan', 'carmarthenshire', 'breconshire']) starts[id] = 'p3';
+  for (const [realm, ids] of Object.entries(clusters)) for (const id of ids) starts[id] = realm;
 
   // Each county's economy is derived from the tiles it owns.
-  const profiles = countyProfiles(buildBritainTileMap());
+  const tileMap = buildBritainTileMap();
+  const profiles = countyProfiles(tileMap);
+  const towns = countyTowns(tileMap);
 
   const counties = BRITAIN.regions.map((region) => {
     const ownerId = starts[region.id] ?? null;
@@ -102,6 +108,8 @@ export function createBritainWorld(): GameState {
         Quarry: (p?.stone ?? 0) > 0,
         IronMine: (p?.iron ?? 0) > 0,
       },
+      // Each starting county already holds a modest castle.
+      castle: ownerId ? CastleType.MotteAndBailey : undefined,
     });
 
     // Tile-derived production ceilings.
@@ -113,9 +121,17 @@ export function createBritainWorld(): GameState {
     return county;
   });
 
+  // Each realm fields one army at its capital county's town.
+  const armies: Army[] = [];
+  for (const [realm, ids] of Object.entries(clusters)) {
+    const town = towns.get(ids[0]);
+    if (town) armies.push({ id: `${realm}-army`, ownerId: realm, col: town.col, row: town.row, soldiers: 40 });
+  }
+
   return createWorld({
     realms: [player, scots, welsh],
     counties,
+    armies,
     edges: mapEdges(BRITAIN),
     season: Season.Spring,
   });

@@ -15,9 +15,10 @@
 import { buildBritainTileMap } from '../../game/maps/britain-tiles.ts';
 import { BRITAIN } from '../../game/maps/britain.ts';
 import { Terrain, TileResource, hexCentre, hexNeighbours, isPassable, type HexTile } from '../../game/maps/tiles.ts';
+import { findTilePath } from '../../game/maps/movement.ts';
 import { stateBus } from '../state-bus.ts';
-import { selectCounty } from '../game-controller.ts';
-import { FieldStatus } from '../../game/types/enums.ts';
+import { selectCounty, tileClicked, armyClicked } from '../game-controller.ts';
+import { CastleType, FieldStatus } from '../../game/types/enums.ts';
 import type { County } from '../../game/types/county.ts';
 import type { GameState } from '../../game/types/realm.ts';
 
@@ -128,6 +129,34 @@ function house(cx: number, cy: number): SVGElement {
   return g;
 }
 
+/** A keep with battlements and an owner-coloured flag. */
+function castleIcon(cx: number, cy: number, colour: string): SVGElement {
+  const g = document.createElementNS(SVGNS, 'g');
+  g.setAttribute('pointer-events', 'none');
+  g.appendChild(el('rect', { x: cx - 4, y: cy - 3, width: 8, height: 6, fill: '#9a9286', stroke: '#2e2a22', 'stroke-width': 0.5 }));
+  // battlements
+  for (let i = -4; i < 4; i += 2) {
+    g.appendChild(el('rect', { x: cx + i, y: cy - 4.5, width: 1.2, height: 1.6, fill: '#9a9286', stroke: '#2e2a22', 'stroke-width': 0.3 }));
+  }
+  // flag pole + owner flag
+  g.appendChild(el('line', { x1: cx, y1: cy - 4.5, x2: cx, y2: cy - 8, stroke: '#2e2a22', 'stroke-width': 0.5 }));
+  g.appendChild(el('polygon', { points: `${cx},${cy - 8} ${cx + 4},${cy - 7} ${cx},${cy - 6}`, fill: colour, stroke: '#2e2a22', 'stroke-width': 0.3 }));
+  return g;
+}
+
+/** An army banner in the owner's colour; ringed when selected. */
+function armyIcon(cx: number, cy: number, colour: string, selected: boolean): SVGGElement {
+  const g = document.createElementNS(SVGNS, 'g') as SVGGElement;
+  if (selected) g.appendChild(el('circle', { cx, cy, r: 6, fill: 'none', stroke: '#ffe9a8', 'stroke-width': 1.2 }));
+  // shield
+  g.appendChild(el('path', {
+    d: `M${cx - 3.5},${cy - 3.5} L${cx + 3.5},${cy - 3.5} L${cx + 3.5},${cy + 0.5} Q${cx},${cy + 5} ${cx - 3.5},${cy + 0.5} Z`,
+    fill: colour, stroke: '#15110a', 'stroke-width': 0.6,
+  }));
+  g.appendChild(el('line', { x1: cx, y1: cy - 3, x2: cx, y2: cy + 2.5, stroke: 'rgba(255,255,255,0.6)', 'stroke-width': 0.5 }));
+  return g;
+}
+
 function dist2(a: Pt, b: Pt): number {
   return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2;
 }
@@ -139,12 +168,17 @@ export class MapTilesSvg {
   private counties = new Map<string, CountyView>();
   private farms: SVGGElement;
   private settle: SVGGElement;
+  private castles: SVGGElement;
+  private units: SVGGElement;
+  private paths: SVGGElement;
   /** Pan/zoom is applied to this group (all layers live inside it). */
   private viewport: SVGGElement;
   private z = 1;
   private tx = 0;
   private ty = 0;
   private centre: Pt = [0, 0];
+  private lastState: GameState | null = null;
+  private selectedArmyId: string | null = null;
 
   constructor() {
     this.root = document.createElement('div');
@@ -161,6 +195,12 @@ export class MapTilesSvg {
     this.farms.setAttribute('data-testid', 'farms');
     this.settle = document.createElementNS(SVGNS, 'g');
     this.settle.setAttribute('data-testid', 'settlements');
+    this.castles = document.createElementNS(SVGNS, 'g');
+    this.castles.setAttribute('data-testid', 'castles');
+    this.units = document.createElementNS(SVGNS, 'g');
+    this.units.setAttribute('data-testid', 'units');
+    this.paths = document.createElementNS(SVGNS, 'g');
+    this.paths.setAttribute('data-testid', 'paths');
 
     this.build();
     this.svg.appendChild(this.viewport);
@@ -191,10 +231,9 @@ export class MapTilesSvg {
 
       const base = TERRAIN_FILL[tile.terrain];
       const poly = el('polygon', { points: hexPoints(cx, cy), fill: base, stroke: '#10151c', 'stroke-width': 0.4 }) as SVGPolygonElement;
-      if (tile.countyId) {
-        poly.style.cursor = 'pointer';
-        poly.addEventListener('click', () => selectCounty(tile.countyId as string));
-      }
+      if (tile.countyId) poly.style.cursor = 'pointer';
+      const { col, row, countyId } = tile;
+      poly.addEventListener('click', () => tileClicked(countyId, col, row));
       terrainLayer.appendChild(poly);
       this.tiles.set(`${tile.col},${tile.row}`, { poly, base, countyId: tile.countyId });
 
@@ -238,8 +277,12 @@ export class MapTilesSvg {
     // Rivers run along hex edges (Unciv-style), drawn from the generated edges.
     const riversLayer = this.buildRivers(map.rivers);
 
-    // Paint order: terrain → borders → rivers → farms → industry → labels → settlements.
-    this.viewport.append(terrainLayer, bordersLayer, riversLayer, this.farms, industryLayer, labelLayer, this.settle);
+    // Paint order: terrain → borders → rivers → farms → industry → castles →
+    // settlements → labels → paths → units (units & paths on top).
+    this.viewport.append(
+      terrainLayer, bordersLayer, riversLayer, this.farms, industryLayer,
+      this.castles, this.settle, labelLayer, this.paths, this.units,
+    );
 
     const pad = 6;
     const vbW = maxX - minX + 2 * pad;
@@ -344,6 +387,54 @@ export class MapTilesSvg {
         this.settle.appendChild(house(x, y));
       }
     }
+
+    this.lastState = state;
+    this.drawCastles(state);
+    this.drawUnits(state);
+    while (this.paths.firstChild) this.paths.removeChild(this.paths.firstChild); // clear stale move preview
+  }
+
+  /** Castles sit on the county town tile (the centre-most passable tile). */
+  private drawCastles(state: GameState): void {
+    while (this.castles.firstChild) this.castles.removeChild(this.castles.firstChild);
+    for (const [countyId, view] of this.counties) {
+      const county = state.counties[countyId];
+      if (!county || county.castle.type === CastleType.None || view.spots.length === 0) continue;
+      const owner = county.ownerId;
+      const colour = owner && OWNER_COLOR[owner] ? OWNER_COLOR[owner] : '#888';
+      this.castles.appendChild(castleIcon(view.spots[0][0], view.spots[0][1], colour));
+    }
+  }
+
+  private drawUnits(state: GameState): void {
+    while (this.units.firstChild) this.units.removeChild(this.units.firstChild);
+    for (const army of Object.values(state.armies)) {
+      const [ux, uy] = hexCentre(army.col, army.row);
+      const colour = OWNER_COLOR[army.ownerId] ?? '#888';
+      const g = armyIcon(ux * S, uy * S, colour, army.id === this.selectedArmyId);
+      g.setAttribute('data-testid', `army-${army.id}`);
+      (g as SVGElement).style.cursor = 'pointer';
+      g.addEventListener('click', (e) => { e.stopPropagation(); armyClicked(army.id); });
+      this.units.appendChild(g);
+    }
+  }
+
+  /** Highlight the selected army and (optionally) preview its route to a tile. */
+  setSelectedArmy(armyId: string | null): void {
+    this.selectedArmyId = armyId;
+    if (this.lastState) this.drawUnits(this.lastState);
+  }
+
+  /** Draw the path an army would take to (col,row), as a route preview. */
+  previewPath(fromCol: number, fromRow: number, toCol: number, toRow: number): void {
+    while (this.paths.firstChild) this.paths.removeChild(this.paths.firstChild);
+    const path = findTilePath(buildBritainTileMap(), { col: fromCol, row: fromRow }, { col: toCol, row: toRow });
+    if (!path) return;
+    const pts = path.tiles.map((t) => { const [x, y] = hexCentre(t.col, t.row); return `${(x * S).toFixed(1)},${(y * S).toFixed(1)}`; });
+    this.paths.appendChild(el('polyline', {
+      points: pts.join(' '), fill: 'none', stroke: '#ffe9a8', 'stroke-width': 1.6,
+      'stroke-dasharray': '3 2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'pointer-events': 'none',
+    }));
   }
 
   // --- pan / zoom -------------------------------------------------------

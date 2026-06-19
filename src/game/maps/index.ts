@@ -3,7 +3,7 @@
 export type { GameMap, MapRegion, Country } from './types.ts';
 export { mapEdges, regionIds } from './types.ts';
 export { BRITAIN } from './britain.ts';
-export { Terrain, TileResource, isPassable, hexCentre, hexNeighbours, edgeKey, countyProfiles } from './tiles.ts';
+export { Terrain, TileResource, isPassable, hexCentre, hexNeighbours, edgeKey, countyProfiles, countyTowns } from './tiles.ts';
 export type { HexTile, TileMap, ResourceCounts } from './tiles.ts';
 export { buildBritainTileMap } from './britain-tiles.ts';
 export { offsetToCube, cubeToOffset, hexDistance, hexLine, findPath } from './hex.ts';

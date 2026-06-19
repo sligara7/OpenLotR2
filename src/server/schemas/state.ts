@@ -93,6 +93,17 @@ export const RealmSchema = z
   })
   .openapi('Realm');
 
+// --- Army -----------------------------------------------------------------
+export const ArmySchema = z
+  .object({
+    id: z.string(),
+    ownerId: z.string(),
+    col: z.number(),
+    row: z.number(),
+    soldiers: z.number(),
+  })
+  .openapi('Army');
+
 // --- GameState ------------------------------------------------------------
 export const GameStateSchema = z
   .object({
@@ -102,6 +113,7 @@ export const GameStateSchema = z
     realms: z.record(z.string(), RealmSchema),
     counties: z.record(z.string(), CountySchema),
     adjacency: z.record(z.string(), z.array(z.string())),
+    armies: z.record(z.string(), ArmySchema),
   })
   .openapi('GameState');
 

@@ -17,7 +17,9 @@ import type { GameState } from '../game/types/realm.ts';
 
 let gameId = '';
 let hud: Hud;
+let mapView: MapTilesSvg;
 let selectedId: string | null = null;
+let selectedArmyId: string | null = null;
 let meId = 'p1';
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -44,6 +46,27 @@ export function selectCounty(countyId: string): void {
   refreshSelected();
   const county = stateBus.current?.counties[countyId];
   if (county) hud.setStatus(`Selected ${county.name}.`);
+}
+
+/** Select/deselect an army (clicked on the map). */
+export function armyClicked(armyId: string): void {
+  selectedArmyId = selectedArmyId === armyId ? null : armyId;
+  mapView.setSelectedArmy(selectedArmyId);
+  const army = selectedArmyId ? stateBus.current?.armies[armyId] : null;
+  hud.setStatus(army ? `Army selected (${army.soldiers} men) — click a tile to march.` : 'Army deselected.');
+}
+
+/** A tile was clicked: march the selected army there, else select the county. */
+export function tileClicked(countyId: string | null, col: number, row: number): void {
+  if (selectedArmyId) {
+    const army = stateBus.current?.armies[selectedArmyId];
+    if (army) {
+      mapView.previewPath(army.col, army.row, col, row);
+      void act({ type: 'MoveArmy', armyId: selectedArmyId, col, row });
+    }
+    return;
+  }
+  if (countyId) selectCounty(countyId);
 }
 
 /** Translate a UI control nudge into a command for a county. */
@@ -92,7 +115,8 @@ export async function startGameUI(): Promise<void> {
       void actMany(owned.map((c) => buildCommand(c, kind, delta)), `All ${kind}`);
     },
   });
-  new MapTilesSvg().mount(); // canvas-free SVG map; subscribes to the state bus
+  mapView = new MapTilesSvg(); // canvas-free SVG map; subscribes to the state bus
+  mapView.mount();
   hud.mount();
   hud.setStatus('Creating game…');
 

@@ -41,4 +41,6 @@ export interface GameState {
   realms: Record<string, Realm>;
   counties: Record<string, County>;
   adjacency: Adjacency;
+  /** Armies on the map, keyed by id. */
+  armies: Record<string, import('./army.ts').Army>;
 }
