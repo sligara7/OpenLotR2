@@ -103,6 +103,33 @@ function industryIcon(resource: TileResource, cx: number, cy: number): SVGElemen
   }
 }
 
+/** Background terrain relief for a tile (forest/hills/mountains/moor). */
+function terrainFeature(terrain: Terrain, cx: number, cy: number): SVGElement | null {
+  const g = document.createElementNS(SVGNS, 'g');
+  g.setAttribute('pointer-events', 'none');
+  const tree = (x: number, y: number, s: number) => {
+    g.appendChild(el('polygon', { points: `${x},${y - s} ${x - s * 0.7},${y + s * 0.4} ${x + s * 0.7},${y + s * 0.4}`, fill: '#244a20' }));
+    g.appendChild(el('rect', { x: x - 0.4, y: y + s * 0.4, width: 0.8, height: s * 0.5, fill: '#2e2114' }));
+  };
+  switch (terrain) {
+    case Terrain.Forest:
+      tree(cx - 3, cy + 1, 3); tree(cx + 3, cy + 1.5, 2.6); tree(cx, cy - 2.5, 3.2);
+      return g;
+    case Terrain.Hills:
+      g.appendChild(el('path', { d: `M${cx - 5},${cy + 3} q3,-5 5,0 q2,-4 5,0`, fill: '#8a7440', stroke: '#5e4e2a', 'stroke-width': 0.4 }));
+      return g;
+    case Terrain.Mountains:
+      g.appendChild(el('polygon', { points: `${cx - 5},${cy + 3.5} ${cx - 1},${cy - 4} ${cx + 1.5},${cy + 0.5} ${cx + 3},${cy - 2.5} ${cx + 5.5},${cy + 3.5}`, fill: '#5e5e64', stroke: '#33333a', 'stroke-width': 0.4 }));
+      g.appendChild(el('polygon', { points: `${cx - 1.8},${cy - 2.4} ${cx - 1},${cy - 4} ${cx - 0.2},${cy - 2.4}`, fill: '#eef0f4' }));
+      return g;
+    case Terrain.Moor:
+      for (let i = -1; i <= 1; i++) g.appendChild(el('circle', { cx: cx + i * 3, cy: cy + 1.5, r: 1, fill: '#9a6fa0' }));
+      return g;
+    default:
+      return null;
+  }
+}
+
 function cropPatch(cx: number, cy: number, fill: string): SVGElement {
   const g = document.createElementNS(SVGNS, 'g');
   g.setAttribute('pointer-events', 'none');
@@ -221,6 +248,7 @@ export class MapTilesSvg {
     const names = new Map(BRITAIN.regions.map((r) => [r.id, r.name]));
     const grouped = new Map<string, HexTile[]>();
     const terrainLayer = document.createElementNS(SVGNS, 'g');
+    const featuresLayer = document.createElementNS(SVGNS, 'g');
     const industryLayer = document.createElementNS(SVGNS, 'g');
     const labelLayer = document.createElementNS(SVGNS, 'g');
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -239,6 +267,9 @@ export class MapTilesSvg {
       poly.addEventListener('click', () => tileClicked(countyId, col, row));
       terrainLayer.appendChild(poly);
       this.tiles.set(`${tile.col},${tile.row}`, { poly, base, countyId: tile.countyId });
+
+      const feature = terrainFeature(tile.terrain, cx, cy);
+      if (feature) featuresLayer.appendChild(feature);
 
       const icon = industryIcon(tile.resource, cx, cy);
       if (icon) industryLayer.appendChild(icon);
@@ -281,7 +312,7 @@ export class MapTilesSvg {
     // settlements → labels → paths → units. Borders are dynamic (owner-aware,
     // redrawn from state); they sit above the land but below structures/units.
     this.viewport.append(
-      terrainLayer, riversLayer, this.farms, industryLayer, this.borders,
+      terrainLayer, featuresLayer, riversLayer, this.farms, industryLayer, this.borders,
       this.castles, this.settle, labelLayer, this.paths, this.units,
     );
 
