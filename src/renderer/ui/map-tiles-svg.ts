@@ -14,7 +14,7 @@
 
 import { buildBritainTileMap } from '../../game/maps/britain-tiles.ts';
 import { BRITAIN } from '../../game/maps/britain.ts';
-import { Terrain, TileResource, hexCentre, hexNeighbours, isPassable, type HexTile } from '../../game/maps/tiles.ts';
+import { Terrain, TileResource, edgeKey, hexCentre, hexNeighbours, isPassable, type HexTile } from '../../game/maps/tiles.ts';
 import { findTilePath } from '../../game/maps/movement.ts';
 import { stateBus } from '../state-bus.ts';
 import { selectCounty, tileClicked, armyClicked } from '../game-controller.ts';
@@ -168,6 +168,7 @@ export class MapTilesSvg {
   private counties = new Map<string, CountyView>();
   private farms: SVGGElement;
   private settle: SVGGElement;
+  private borders: SVGGElement;
   private castles: SVGGElement;
   private units: SVGGElement;
   private paths: SVGGElement;
@@ -195,6 +196,8 @@ export class MapTilesSvg {
     this.farms.setAttribute('data-testid', 'farms');
     this.settle = document.createElementNS(SVGNS, 'g');
     this.settle.setAttribute('data-testid', 'settlements');
+    this.borders = document.createElementNS(SVGNS, 'g');
+    this.borders.setAttribute('data-testid', 'borders');
     this.castles = document.createElementNS(SVGNS, 'g');
     this.castles.setAttribute('data-testid', 'castles');
     this.units = document.createElementNS(SVGNS, 'g');
@@ -271,16 +274,14 @@ export class MapTilesSvg {
       labelLayer.appendChild(label);
     }
 
-    // County boundaries (Unciv-style borders layer): draw the shared edge
-    // between any two adjacent tiles in different counties.
-    const bordersLayer = this.buildBorders(map.tiles);
     // Rivers run along hex edges (Unciv-style), drawn from the generated edges.
     const riversLayer = this.buildRivers(map.rivers);
 
-    // Paint order: terrain → borders → rivers → farms → industry → castles →
-    // settlements → labels → paths → units (units & paths on top).
+    // Paint order: terrain → rivers → farms → industry → borders → castles →
+    // settlements → labels → paths → units. Borders are dynamic (owner-aware,
+    // redrawn from state); they sit above the land but below structures/units.
     this.viewport.append(
-      terrainLayer, bordersLayer, riversLayer, this.farms, industryLayer,
+      terrainLayer, riversLayer, this.farms, industryLayer, this.borders,
       this.castles, this.settle, labelLayer, this.paths, this.units,
     );
 
@@ -291,38 +292,50 @@ export class MapTilesSvg {
     this.centre = [minX - pad + vbW / 2, minY - pad + vbH / 2];
   }
 
-  /** Outline counties by drawing the shared edge between differing neighbours. */
-  private buildBorders(tiles: HexTile[]): SVGGElement {
-    const layer = document.createElementNS(SVGNS, 'g');
-    const byKey = new Map(tiles.map((t) => [`${t.col},${t.row}`, t]));
+  /**
+   * Owner-aware borders (Unciv-style territory outlines), redrawn from state:
+   *  - thin OWNER-coloured line between two counties of the same realm
+   *  - THICK OWNER-coloured line on a realm's outer boundary (vs another owner,
+   *    unowned land, or sea)
+   *  - thin neutral line between two different unowned counties
+   * so each player's territory reads as a bold coloured region.
+   */
+  private drawBorders(state: GameState): void {
+    while (this.borders.firstChild) this.borders.removeChild(this.borders.firstChild);
     const seen = new Set<string>();
-    for (const tile of tiles) {
-      if (tile.countyId === null) continue;
-      const [ux, uy] = hexCentre(tile.col, tile.row);
-      const c1: Pt = [ux * S, uy * S];
-      for (const [nc, nr] of hexNeighbours(tile.col, tile.row)) {
-        const n = byKey.get(`${nc},${nr}`);
-        if (!n || n.countyId === null || n.countyId === tile.countyId) continue; // only county↔county
-        const key = [`${tile.col},${tile.row}`, `${nc},${nr}`].sort().join('|');
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const [nux, nuy] = hexCentre(nc, nr);
-        const c2: Pt = [nux * S, nuy * S];
-        const mx = (c1[0] + c2[0]) / 2;
-        const my = (c1[1] + c2[1]) / 2;
-        const dx = c2[0] - c1[0];
-        const dy = c2[1] - c1[1];
-        const len = Math.hypot(dx, dy) || 1;
-        const px = (-dy / len) * (S / 2);
-        const py = (dx / len) * (S / 2);
-        const [p1, p2] = this.sharedEdge(c1, c2);
-        layer.appendChild(el('line', {
+    const ownerOf = (countyId: string | null) => (countyId ? state.counties[countyId]?.ownerId ?? null : null);
+
+    for (const [key, entry] of this.tiles) {
+      if (entry.countyId === null) continue;
+      const [col, row] = key.split(',').map(Number);
+      const ownerA = ownerOf(entry.countyId);
+      for (const [nc, nr] of hexNeighbours(col, row)) {
+        const n = this.tiles.get(`${nc},${nr}`);
+        if (!n || n.countyId === entry.countyId) continue; // interior of a county
+        const ownerB = ownerOf(n.countyId);
+        const seaSide = n.countyId === null;
+
+        let stroke: string | null = null;
+        let width = 1;
+        let dkey = '';
+        if (ownerA) {
+          if (ownerB === ownerA) { stroke = OWNER_COLOR[ownerA]; width = 0.9; dkey = `${edgeKey(col, row, nc, nr)}|s`; }
+          else { stroke = OWNER_COLOR[ownerA]; width = 2.8; dkey = `${edgeKey(col, row, nc, nr)}|o${ownerA}`; }
+        } else if (!seaSide && ownerB === null) {
+          stroke = '#241a0c'; width = 0.8; dkey = `${edgeKey(col, row, nc, nr)}|n`;
+        }
+        if (!stroke || seen.has(dkey)) continue;
+        seen.add(dkey);
+
+        const [acx, acy] = hexCentre(col, row);
+        const [bcx, bcy] = hexCentre(nc, nr);
+        const [p1, p2] = this.sharedEdge([acx * S, acy * S], [bcx * S, bcy * S]);
+        this.borders.appendChild(el('line', {
           x1: p1[0].toFixed(1), y1: p1[1].toFixed(1), x2: p2[0].toFixed(1), y2: p2[1].toFixed(1),
-          stroke: '#241a0c', 'stroke-width': 1.1, 'stroke-linecap': 'round',
+          stroke, 'stroke-width': width, 'stroke-linecap': 'round',
         }));
       }
     }
-    return layer;
   }
 
   /** Endpoints of the hex edge shared by two adjacent tile centres. */
@@ -389,6 +402,7 @@ export class MapTilesSvg {
     }
 
     this.lastState = state;
+    this.drawBorders(state);
     this.drawCastles(state);
     this.drawUnits(state);
     while (this.paths.firstChild) this.paths.removeChild(this.paths.firstChild); // clear stale move preview
