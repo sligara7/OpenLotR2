@@ -51,12 +51,25 @@ test('End Turn advances the simulation', async ({ page }) => {
   await expect(page.getByTestId('status')).toContainText('Applied EndTurn');
 });
 
-test('raising a player county tax sends a command and updates state', async ({ page }) => {
+test('selecting a county exposes tax/ration/labour controls that send commands', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByTestId('county-hampshire-info')).toContainText('tax 18%');
 
-  await page.getByTestId('county-hampshire-tax-up').click();
+  // Select the player's county (on the map) → its control panel populates.
+  await page.getByTestId('county-hampshire-label').click();
+  await expect(page.getByTestId('sel-name')).toContainText('Hampshire');
+  await expect(page.getByTestId('sel-tax')).toContainText('18%');
 
+  // Tax control.
+  await page.getByTestId('sel-tax-up').click();
   await expect(page.getByTestId('status')).toContainText('Applied SetTaxRate');
-  await expect(page.getByTestId('county-hampshire-info')).toContainText('tax 23%');
+  await expect(page.getByTestId('sel-tax')).toContainText('23%');
+
+  // Rations control (Normal → Double).
+  await page.getByTestId('sel-ration-up').click();
+  await expect(page.getByTestId('status')).toContainText('Applied SetRation');
+  await expect(page.getByTestId('sel-ration')).toContainText('Double');
+
+  // Labour split control.
+  await page.getByTestId('sel-ind-up').click();
+  await expect(page.getByTestId('status')).toContainText('Applied SetLabourPolicy');
 });

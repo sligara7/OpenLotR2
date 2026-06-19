@@ -1,25 +1,44 @@
 /*
- * Game controller — owns the API-driven control loop and the DOM HUD.
+ * Game controller — owns the API loop, the current selection, and the DOM HUD.
  *
- * Deliberately independent of Phaser: the HUD mounts and the game runs even if
- * the canvas renderer is unavailable (e.g. headless browsers in CI). Phaser
- * handles visuals; this handles state + player actions.
+ * Player actions (tax, rations, labour split, diet, end turn) flow through the
+ * command protocol to the authoritative server, then the refreshed state is
+ * published to every view (HUD + canvas map). Decoupled from Phaser so the UI
+ * works even when the canvas renderer can't initialize.
  */
 
 import { api } from './services/api.ts';
-import { Hud } from './ui/hud.ts';
+import { Hud, cycleRation } from './ui/hud.ts';
 import { MapTilesSvg } from './ui/map-tiles-svg.ts';
 import { stateBus } from './state-bus.ts';
 import type { Command } from '../game/commands/types.ts';
+import type { County } from '../game/types/county.ts';
 import type { GameState } from '../game/types/realm.ts';
 
 let gameId = '';
 let hud: Hud;
+let selectedId: string | null = null;
 
-/** Push new state to both the HUD and any subscribed views (the canvas map). */
+const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+
+function refreshSelected(): void {
+  const state = stateBus.current;
+  hud.showSelected(selectedId && state ? state.counties[selectedId] ?? null : null);
+}
+
+/** Push new state to the HUD, the views (map), and the selected-county panel. */
 function publish(state: GameState): void {
   hud.render(state);
   stateBus.publish(state);
+  refreshSelected();
+}
+
+/** Select a county (from the map or the HUD list) and show its controls. */
+export function selectCounty(countyId: string): void {
+  selectedId = countyId;
+  refreshSelected();
+  const county = stateBus.current?.counties[countyId];
+  if (county) hud.setStatus(`Selected ${county.name}.`);
 }
 
 async function act(command: Command): Promise<void> {
@@ -28,30 +47,30 @@ async function act(command: Command): Promise<void> {
   publish(await api.getState(gameId));
 }
 
-async function adjustTax(countyId: string, delta: number): Promise<void> {
-  const state = await api.getState(gameId);
-  const current = state.counties[countyId]?.taxRate ?? 0;
-  const rate = Math.max(0, Math.min(100, current + delta));
-  await act({ type: 'SetTaxRate', countyId, rate });
-}
-
-/** Show a county's details in the HUD status (used by the map's click handler). */
-export function selectCounty(countyId: string): void {
+/** Build and dispatch a command for the currently-selected county. */
+function withSelected(build: (county: County) => Command | null): void {
   const state = stateBus.current;
-  const county = state?.counties[countyId];
-  if (!county) return;
-  hud.setStatus(
-    `${county.name} — ${county.ownerId ?? 'unowned'} · pop ${county.population} · ` +
-    `happy ${Math.round(county.happiness)} · ${county.healthLabel} · tax ${county.taxRate}%`,
-  );
+  const county = selectedId && state ? state.counties[selectedId] : null;
+  if (!county) {
+    hud.setStatus('Select a county first.');
+    return;
+  }
+  const command = build(county);
+  if (command) void act(command);
 }
 
 export async function startGameUI(): Promise<void> {
   hud = new Hud({
     onEndTurn: () => void act({ type: 'EndTurn' }),
-    onAdjustTax: (countyId, delta) => void adjustTax(countyId, delta),
+    onSelect: (id) => selectCounty(id),
+    onTax: (d) => withSelected((c) => ({ type: 'SetTaxRate', countyId: c.id, rate: clamp(c.taxRate + d, 0, 100) })),
+    onRation: (d) => withSelected((c) => ({ type: 'SetRation', countyId: c.id, level: cycleRation(c.wantedRation, d) })),
+    onIndustry: (d) =>
+      withSelected((c) => ({ type: 'SetLabourPolicy', countyId: c.id, industryShare: clamp(c.labour.industryShare + d, 0, 1) })),
+    onDiet: (d) =>
+      withSelected((c) => ({ type: 'SetLabourPolicy', countyId: c.id, grainBeefBalance: clamp(c.labour.grainBeefBalance + d, 0, 1) })),
   });
-  new MapTilesSvg().mount(); // SVG hex-tile map; subscribes to the state bus itself
+  new MapTilesSvg().mount(); // canvas-free SVG map; subscribes to the state bus
   hud.mount();
   hud.setStatus('Creating game…');
 
