@@ -1,11 +1,13 @@
 /*
  * SVG hex-tile map — a "living county" view.
  *
- *  - Terrain hexes, tinted toward the owning realm (terrain stays visible).
- *  - A resource-SITE icon on each commodity tile (forest, quarry, mine, wheat,
- *    pasture, fishery) — the land's potential.
- *  - A settlement layer that grows with population: villages appear and spread
- *    across a county's tiles as its people multiply.
+ * Layers (painted back to front):
+ *   terrain  — hexes, tinted toward the owning realm
+ *   farms    — DYNAMIC: crop patches on worked wheat tiles (coloured by the
+ *              grain growth stage) and livestock on pasture tiles with cattle
+ *   industry — STATIC icons on extractive tiles (forest, quarry, mine, fishery)
+ *   labels   — clickable county names
+ *   settle   — DYNAMIC: villages that appear/spread as population grows
  *
  * Pure SVG/DOM: crisp at any scale and Playwright-inspectable.
  */
@@ -15,29 +17,31 @@ import { BRITAIN } from '../../game/maps/britain.ts';
 import { Terrain, TileResource, hexCentre, isPassable, type HexTile } from '../../game/maps/tiles.ts';
 import { stateBus } from '../state-bus.ts';
 import { selectCounty } from '../game-controller.ts';
+import { FieldStatus } from '../../game/types/enums.ts';
+import type { County } from '../../game/types/county.ts';
 import type { GameState } from '../../game/types/realm.ts';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
-const S = 10; // hex radius in px
+const S = 10;
+const POP_PER_VILLAGE = 250;
 
 const TERRAIN_FILL: Record<Terrain, string> = {
-  Plains: '#6f8f3f',
-  Forest: '#2f5a2a',
-  Hills: '#9c8a52',
-  Mountains: '#6f6f6f',
-  Moor: '#7d6f8a',
-  Coast: '#c9b87f',
-  Water: '#27496b',
+  Plains: '#6f8f3f', Forest: '#2f5a2a', Hills: '#9c8a52', Mountains: '#6f6f6f',
+  Moor: '#7d6f8a', Coast: '#c9b87f', Water: '#27496b',
 };
 const OWNER_COLOR: Record<string, string> = { p1: '#3a6ea5', p2: '#a53a3a', p3: '#3aa55a' };
 
-/** People per village; counties sprout more villages as they grow. */
-const POP_PER_VILLAGE = 250;
+// Crop patch colours by grain stage.
+const CROP_BARE = '#6e4a2a';     // ploughed / harvested
+const CROP_GROWING = '#7fa83e';  // green, growing
+const CROP_RIPE = '#d8b53c';     // golden, ready
+
+type Pt = [number, number];
 
 interface CountyView {
-  centre: [number, number];
-  /** Passable tiles, nearest-to-centre first (where villages settle). */
-  spots: { tile: HexTile; px: [number, number] }[];
+  spots: Pt[];     // passable inland tiles, nearest-to-centre first (villages)
+  wheat: Pt[];     // wheat tiles (cultivated crop patches)
+  pasture: Pt[];   // pasture tiles (livestock)
 }
 
 function el(name: string, attrs: Record<string, string | number>): SVGElement {
@@ -66,41 +70,57 @@ function mix(hexA: string, hexB: string, t: number): string {
   return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
 }
 
-/** A small icon marking the commodity a tile yields (centred at cx,cy). */
-function resourceIcon(resource: TileResource, cx: number, cy: number): SVGElement | null {
+/** Colour for a county's wheat fields, reflecting where it is in the cycle. */
+function grainColour(county: County): string {
+  const grain = county.fields.filter((f) => f.status === FieldStatus.Grain);
+  const sown = grain.filter((f) => f.sacksPlanted > 0);
+  if (sown.length === 0) return CROP_BARE; // fallow or just harvested
+  const growth = Math.max(...sown.map((f) => f.grainGrowth));
+  return growth >= 0.66 ? CROP_RIPE : CROP_GROWING;
+}
+
+/** STATIC icon for extractive/fishery tiles (agriculture handled dynamically). */
+function industryIcon(resource: TileResource, cx: number, cy: number): SVGElement | null {
   const g = document.createElementNS(SVGNS, 'g');
   g.setAttribute('pointer-events', 'none');
   switch (resource) {
-    case TileResource.Wood: // a little tree
+    case TileResource.Wood:
       g.appendChild(el('polygon', { points: `${cx},${cy - 4} ${cx - 3},${cy + 1} ${cx + 3},${cy + 1}`, fill: '#1f3d1c' }));
       g.appendChild(el('rect', { x: cx - 0.7, y: cy + 1, width: 1.4, height: 2.5, fill: '#3a2c18' }));
-      break;
-    case TileResource.Stone: // a quarried block (diamond)
+      return g;
+    case TileResource.Stone:
       g.appendChild(el('polygon', { points: `${cx},${cy - 3.5} ${cx + 3},${cy} ${cx},${cy + 3.5} ${cx - 3},${cy}`, fill: '#cfcabd', stroke: '#555', 'stroke-width': 0.4 }));
-      break;
-    case TileResource.Iron: // a mine wedge
+      return g;
+    case TileResource.Iron:
       g.appendChild(el('polygon', { points: `${cx - 3},${cy + 3} ${cx + 3},${cy + 3} ${cx},${cy - 3}`, fill: '#3b3b44', stroke: '#9aa', 'stroke-width': 0.4 }));
-      break;
-    case TileResource.Wheat: // three stalks
-      for (let i = -1; i <= 1; i++) {
-        g.appendChild(el('line', { x1: cx + i * 2, y1: cy + 3, x2: cx + i * 2, y2: cy - 3, stroke: '#e8c84a', 'stroke-width': 1 }));
-      }
-      break;
-    case TileResource.Pasture: // tufts of grass
-      g.appendChild(el('circle', { cx: cx - 2, cy: cy + 1, r: 1.4, fill: '#cfe39a' }));
-      g.appendChild(el('circle', { cx: cx + 2, cy: cy + 1, r: 1.4, fill: '#cfe39a' }));
-      break;
-    case TileResource.Fish: // a ripple
+      return g;
+    case TileResource.Fish:
       g.appendChild(el('path', { d: `M${cx - 3},${cy} q1.5,-2 3,0 q1.5,2 3,0`, fill: 'none', stroke: '#9fd6e8', 'stroke-width': 0.9 }));
-      break;
+      return g;
     default:
       return null;
+  }
+}
+
+function cropPatch(cx: number, cy: number, fill: string): SVGElement {
+  const g = document.createElementNS(SVGNS, 'g');
+  g.setAttribute('pointer-events', 'none');
+  g.appendChild(el('rect', { x: cx - 4.5, y: cy - 3.5, width: 9, height: 7, rx: 1, fill, stroke: '#2c1d0f', 'stroke-width': 0.3 }));
+  for (let i = -1; i <= 1; i++) {
+    g.appendChild(el('line', { x1: cx - 4, y1: cy + i * 2, x2: cx + 4, y2: cy + i * 2, stroke: 'rgba(0,0,0,0.25)', 'stroke-width': 0.3 }));
   }
   return g;
 }
 
-/** A tiny house glyph for a settlement. */
-function houseIcon(cx: number, cy: number): SVGElement {
+function livestock(cx: number, cy: number): SVGElement {
+  const g = document.createElementNS(SVGNS, 'g');
+  g.setAttribute('pointer-events', 'none');
+  g.appendChild(el('rect', { x: cx - 4.5, y: cy - 3.5, width: 9, height: 7, rx: 1, fill: '#7fae4e', stroke: '#3a4a22', 'stroke-width': 0.3 }));
+  g.appendChild(el('circle', { cx, cy, r: 1, fill: '#efe6d2' }));
+  return g;
+}
+
+function house(cx: number, cy: number): SVGElement {
   const g = document.createElementNS(SVGNS, 'g');
   g.setAttribute('pointer-events', 'none');
   g.appendChild(el('rect', { x: cx - 1.6, y: cy - 0.4, width: 3.2, height: 2.6, fill: '#f0e2c2', stroke: '#3a2c18', 'stroke-width': 0.3 }));
@@ -108,12 +128,17 @@ function houseIcon(cx: number, cy: number): SVGElement {
   return g;
 }
 
+function dist2(a: Pt, b: Pt): number {
+  return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2;
+}
+
 export class MapTilesSvg {
   private root: HTMLDivElement;
   private svg: SVGSVGElement;
   private tiles = new Map<string, { poly: SVGPolygonElement; base: string; countyId: string | null }>();
   private counties = new Map<string, CountyView>();
-  private settlements: SVGGElement;
+  private farms: SVGGElement;
+  private settle: SVGGElement;
 
   constructor() {
     this.root = document.createElement('div');
@@ -121,11 +146,13 @@ export class MapTilesSvg {
     this.root.style.cssText =
       'position:fixed;left:0;top:0;bottom:0;width:calc(100% - 380px);' +
       'background:#0b1420;display:flex;align-items:center;justify-content:center;z-index:5;';
-    this.svg = document.createElementNS(SVGNS, 'svg');
+    this.svg = document.createElementNS(SVGNS, 'svg') as SVGSVGElement;
     this.svg.setAttribute('data-testid', 'map-svg');
     this.svg.style.cssText = 'height:97%;max-width:97%;';
-    this.settlements = document.createElementNS(SVGNS, 'g');
-    this.settlements.setAttribute('data-testid', 'settlements');
+    this.farms = document.createElementNS(SVGNS, 'g');
+    this.farms.setAttribute('data-testid', 'farms');
+    this.settle = document.createElementNS(SVGNS, 'g');
+    this.settle.setAttribute('data-testid', 'settlements');
 
     this.build();
     this.root.appendChild(this.svg);
@@ -140,9 +167,11 @@ export class MapTilesSvg {
     const map = buildBritainTileMap();
     const names = new Map(BRITAIN.regions.map((r) => [r.id, r.name]));
     const grouped = new Map<string, HexTile[]>();
+    const terrainLayer = document.createElementNS(SVGNS, 'g');
+    const industryLayer = document.createElementNS(SVGNS, 'g');
+    const labelLayer = document.createElementNS(SVGNS, 'g');
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-    // Terrain hexes + resource icons.
     for (const tile of map.tiles) {
       const [ux, uy] = hexCentre(tile.col, tile.row);
       const cx = ux * S;
@@ -156,11 +185,11 @@ export class MapTilesSvg {
         poly.style.cursor = 'pointer';
         poly.addEventListener('click', () => selectCounty(tile.countyId as string));
       }
-      this.svg.appendChild(poly);
+      terrainLayer.appendChild(poly);
       this.tiles.set(`${tile.col},${tile.row}`, { poly, base, countyId: tile.countyId });
 
-      const icon = resourceIcon(tile.resource, cx, cy);
-      if (icon) this.svg.appendChild(icon);
+      const icon = industryIcon(tile.resource, cx, cy);
+      if (icon) industryLayer.appendChild(icon);
 
       if (tile.countyId) {
         const list = grouped.get(tile.countyId) ?? [];
@@ -169,18 +198,18 @@ export class MapTilesSvg {
       }
     }
 
-    // Per-county view: centroid + the passable tiles where villages can settle.
     for (const [countyId, list] of grouped) {
       const cx = (list.reduce((s, t) => s + hexCentre(t.col, t.row)[0], 0) / list.length) * S;
       const cy = (list.reduce((s, t) => s + hexCentre(t.col, t.row)[1], 0) / list.length) * S;
-      const spots = list
-        .filter((t) => isPassable(t.terrain) && t.terrain !== Terrain.Coast)
-        .map((tile) => {
-          const [ux, uy] = hexCentre(tile.col, tile.row);
-          return { tile, px: [ux * S, uy * S] as [number, number] };
-        })
-        .sort((a, b) => dist2(a.px, [cx, cy]) - dist2(b.px, [cx, cy]));
-      this.counties.set(countyId, { centre: [cx, cy], spots });
+      const toPt = (t: HexTile): Pt => { const [ux, uy] = hexCentre(t.col, t.row); return [ux * S, uy * S]; };
+      this.counties.set(countyId, {
+        wheat: list.filter((t) => t.resource === TileResource.Wheat).map(toPt),
+        pasture: list.filter((t) => t.resource === TileResource.Pasture).map(toPt),
+        spots: list
+          .filter((t) => isPassable(t.terrain) && t.terrain !== Terrain.Coast)
+          .map(toPt)
+          .sort((a, b) => dist2(a, [cx, cy]) - dist2(b, [cx, cy])),
+      });
 
       const label = el('text', {
         'data-testid': `county-${countyId}-label`,
@@ -190,10 +219,11 @@ export class MapTilesSvg {
       (label as SVGElement).style.cursor = 'pointer';
       label.textContent = (names.get(countyId) ?? countyId).slice(0, 5);
       label.addEventListener('click', () => selectCounty(countyId));
-      this.svg.appendChild(label);
+      labelLayer.appendChild(label);
     }
 
-    this.svg.appendChild(this.settlements);
+    // Paint order: terrain → farms → industry → labels → settlements.
+    this.svg.append(terrainLayer, this.farms, industryLayer, labelLayer, this.settle);
     const pad = 6;
     this.svg.setAttribute('viewBox', `${minX - pad} ${minY - pad} ${maxX - minX + 2 * pad} ${maxY - minY + 2 * pad}`);
   }
@@ -205,22 +235,29 @@ export class MapTilesSvg {
       poly.setAttribute('fill', owner && OWNER_COLOR[owner] ? mix(base, OWNER_COLOR[owner], 0.45) : base);
     }
 
-    // Settlements grow with population.
-    while (this.settlements.firstChild) this.settlements.removeChild(this.settlements.firstChild);
+    // Farms (worked crop/pasture tiles) + settlements, rebuilt from state.
+    while (this.farms.firstChild) this.farms.removeChild(this.farms.firstChild);
+    while (this.settle.firstChild) this.settle.removeChild(this.settle.firstChild);
+
     for (const [countyId, view] of this.counties) {
       const county = state.counties[countyId];
       if (!county) continue;
+
+      const hasGrain = county.fields.some((f) => f.status === FieldStatus.Grain);
+      if (hasGrain) {
+        const colour = grainColour(county);
+        for (const [x, y] of view.wheat) this.farms.appendChild(cropPatch(x, y, colour));
+      }
+      const hasCattle = county.fields.some((f) => f.status === FieldStatus.Cattle) && county.food.cows > 0;
+      if (hasCattle) {
+        for (const [x, y] of view.pasture) this.farms.appendChild(livestock(x, y));
+      }
+
       const villages = Math.min(view.spots.length, Math.floor(county.population / POP_PER_VILLAGE));
       for (let i = 0; i < villages; i++) {
-        const [x, y] = view.spots[i].px;
-        this.settlements.appendChild(houseIcon(x, y));
+        const [x, y] = view.spots[i];
+        this.settle.appendChild(house(x, y));
       }
     }
   }
-}
-
-function dist2(a: [number, number], b: [number, number]): number {
-  const dx = a[0] - b[0];
-  const dy = a[1] - b[1];
-  return dx * dx + dy * dy;
 }

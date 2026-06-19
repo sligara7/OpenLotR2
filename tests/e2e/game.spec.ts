@@ -35,6 +35,10 @@ test('renders the SVG hex-tile map (clickable, DOM-testable)', async ({ page }) 
   // Settlements (villages) are rendered from population.
   const villages = await page.getByTestId('settlements').locator('g').count();
   expect(villages).toBeGreaterThan(0);
+
+  // Farms (worked crop/pasture tiles) are rendered from the counties' fields.
+  const farms = await page.getByTestId('farms').locator('g').count();
+  expect(farms).toBeGreaterThan(0);
 });
 
 test('End Turn advances the simulation', async ({ page }) => {
