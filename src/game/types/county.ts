@@ -31,6 +31,9 @@ export interface CountyFood {
 export interface IndustrySite {
   present: boolean;
   operational: boolean;
+  /** Max output per season this site can sustain (from the county's resource
+   *  tiles). Undefined = unbounded (labour-limited only). */
+  capacity?: number;
 }
 
 /** Castle state for the county (only one castle per county, per the manual). */

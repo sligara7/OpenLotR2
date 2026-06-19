@@ -23,7 +23,11 @@ const FieldSchema = z.object({
   reclaim: z.number(),
 });
 
-const IndustrySiteSchema = z.object({ present: z.boolean(), operational: z.boolean() });
+const IndustrySiteSchema = z.object({
+  present: z.boolean(),
+  operational: z.boolean(),
+  capacity: z.number().optional(),
+});
 
 const IndustriesSchema = z.object({
   Lumber: IndustrySiteSchema,

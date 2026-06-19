@@ -1,7 +1,7 @@
 /* Map graph validity + the Britain scenario. */
 
 import { test, assert, assertEqual, assertGreater } from '../testing/harness.ts';
-import { BRITAIN, mapEdges, regionIds } from '../maps/index.ts';
+import { BRITAIN, mapEdges, regionIds, buildBritainTileMap, countyProfiles } from '../maps/index.ts';
 import { createBritainWorld } from '../scenarios.ts';
 import { createRng } from '../rng.ts';
 import { advanceSeason } from '../engine.ts';
@@ -73,4 +73,25 @@ test('britain scenario: builds a world that simulates without error', () => {
       assert(c.population >= 0, `population non-negative for ${c.countyId}`);
     }
   }
+});
+
+test('britain scenario: county industries are driven by their tiles', () => {
+  const world = createBritainWorld();
+  const profiles = countyProfiles(buildBritainTileMap());
+  let withWood = 0;
+  let without = 0;
+  for (const region of BRITAIN.regions) {
+    const county = world.counties[region.id];
+    const wood = profiles.get(region.id)?.wood ?? 0;
+    if (wood > 0) {
+      assert(county.industries.Lumber.present, `${region.id} should have a lumber mill`);
+      assert((county.industries.Lumber.capacity ?? 0) > 0, `${region.id} lumber has tile capacity`);
+      withWood += 1;
+    } else {
+      assert(!county.industries.Lumber.present, `${region.id} should have no lumber mill`);
+      without += 1;
+    }
+  }
+  assertGreater(withWood, 0, 'some counties can cut wood');
+  assertGreater(without, 0, 'some counties cannot (no forest tiles)');
 });

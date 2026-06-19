@@ -28,6 +28,14 @@ test('production: grain is sown in Winter, consuming stored sacks', () => {
   assertClose(c.fields[0].sacksPlanted, 5, 0.001, 'field planted with 5 sacks');
 });
 
+test('production: industry output is capped by tile-derived capacity', () => {
+  const c = createCounty({ id: 'cap', name: 'Cap', population: 1000, industries: { Lumber: true } });
+  c.industries.Lumber.capacity = 10; // land sustains only 10 wood/season
+  c.labour.industryShare = 1; // pile on workers anyway
+  const s = runProduction(c, allocateLabour(c), treasury(), Season.Spring);
+  assertClose(s.wood, 10, 0.001, 'capped by the land, not the labour');
+});
+
 test('production: grain is harvested in Fall at the yield multiplier', () => {
   const c = createCounty({ id: 'c', name: 'C', population: 100, fieldCount: 1, grainSacks: 0 });
   c.fields[0].status = FieldStatus.Grain;

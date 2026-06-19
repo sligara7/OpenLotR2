@@ -67,6 +67,46 @@ export function hexCentre(col: number, row: number): [number, number] {
   return [SQRT3 * (col + 0.5 * (row & 1)), 1.5 * row];
 }
 
+/** Resource (and land) tile counts for one county — its production potential. */
+export interface ResourceCounts {
+  wheat: number;
+  pasture: number;
+  wood: number;
+  stone: number;
+  iron: number;
+  fish: number;
+  /** Total land tiles owned (any terrain). */
+  land: number;
+  /** Land tiles an army could occupy (excludes mountains). */
+  passable: number;
+}
+
+function emptyCounts(): ResourceCounts {
+  return { wheat: 0, pasture: 0, wood: 0, stone: 0, iron: 0, fish: 0, land: 0, passable: 0 };
+}
+
+/** Tally each county's resource tiles → its production profile. */
+export function countyProfiles(map: TileMap): Map<string, ResourceCounts> {
+  const profiles = new Map<string, ResourceCounts>();
+  for (const tile of map.tiles) {
+    if (tile.countyId === null) continue;
+    let p = profiles.get(tile.countyId);
+    if (!p) { p = emptyCounts(); profiles.set(tile.countyId, p); }
+    p.land += 1;
+    if (isPassable(tile.terrain)) p.passable += 1;
+    switch (tile.resource) {
+      case TileResource.Wheat: p.wheat += 1; break;
+      case TileResource.Pasture: p.pasture += 1; break;
+      case TileResource.Wood: p.wood += 1; break;
+      case TileResource.Stone: p.stone += 1; break;
+      case TileResource.Iron: p.iron += 1; break;
+      case TileResource.Fish: p.fish += 1; break;
+      default: break;
+    }
+  }
+  return profiles;
+}
+
 /** Odd-r offset neighbours of a hex (the six adjacent cells). */
 export function hexNeighbours(col: number, row: number): [number, number][] {
   const odd = row & 1;

@@ -38,6 +38,13 @@ export const IRON_PER_WORKER = 0.8;
 /** Minimum recommended crew used for the "time to build" estimate. */
 export const MIN_INDUSTRY_CREW = 5;
 
+// Per-tile production ceilings (Manual: a county can only produce what its land
+// holds). One resource tile sustains this much output per season regardless of
+// how many extra workers pile on — so geography caps industry, not just labour.
+export const WOOD_PER_TILE = 8;
+export const STONE_PER_TILE = 6;
+export const IRON_PER_TILE = 5;
+
 // --- Castles (Manual Part-3 "Castle Building") ----------------------------
 /** Material cost & garrison capacity per design. workUnits = total labour-
  *  seasons to build from scratch (progress accrues at builders/workUnits). */

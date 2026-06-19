@@ -8,7 +8,8 @@ import { createCounty } from './state/county.ts';
 import { createRealm } from './state/realm.ts';
 import { createWorld } from './state/world.ts';
 import { FieldStatus, NoblePersonality, Season } from './types/enums.ts';
-import { BRITAIN, mapEdges } from './maps/index.ts';
+import { BRITAIN, mapEdges, buildBritainTileMap, countyProfiles } from './maps/index.ts';
+import { WOOD_PER_TILE, STONE_PER_TILE, IRON_PER_TILE } from './constants.ts';
 import type { County } from './types/county.ts';
 import type { GameState } from './types/realm.ts';
 
@@ -76,20 +77,39 @@ export function createBritainWorld(): GameState {
   for (const id of ['midlothian', 'lanarkshire', 'fife']) starts[id] = 'p2';
   for (const id of ['glamorgan', 'carmarthenshire', 'breconshire']) starts[id] = 'p3';
 
+  // Each county's economy is derived from the tiles it owns.
+  const profiles = countyProfiles(buildBritainTileMap());
+
   const counties = BRITAIN.regions.map((region) => {
     const ownerId = starts[region.id] ?? null;
+    const p = profiles.get(region.id);
+    const grainFields = Math.max(1, p?.wheat ?? 0); // every county can grow some grain
+    const cattleFields = p?.pasture ?? 0;
+
     const county = createCounty({
       id: region.id,
       name: region.name,
       ownerId,
-      population: ownerId ? 300 : 200,
+      // Bigger (more habitable) counties carry more people.
+      population: Math.round(80 + (p?.passable ?? 0) * 30 + (ownerId ? 60 : 0)),
       happiness: ownerId ? 60 : 50,
       taxRate: 18,
-      grainSacks: 800,
-      cows: 30,
-      fieldCount: 6,
+      grainSacks: grainFields * 180,
+      cows: cattleFields * 8,
+      fieldCount: grainFields + cattleFields + 1,
+      industries: {
+        Lumber: (p?.wood ?? 0) > 0,
+        Quarry: (p?.stone ?? 0) > 0,
+        IronMine: (p?.iron ?? 0) > 0,
+      },
     });
-    if (ownerId) farm(county, 3, 3);
+
+    // Tile-derived production ceilings.
+    if (p && p.wood > 0) county.industries.Lumber.capacity = p.wood * WOOD_PER_TILE;
+    if (p && p.stone > 0) county.industries.Quarry.capacity = p.stone * STONE_PER_TILE;
+    if (p && p.iron > 0) county.industries.IronMine.capacity = p.iron * IRON_PER_TILE;
+
+    farm(county, grainFields, cattleFields);
     return county;
   });
 

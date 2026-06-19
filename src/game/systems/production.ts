@@ -115,16 +115,18 @@ function runIndustry(
   treasury: Treasury,
   summary: ProductionSummary,
 ): void {
+  // Output is the lesser of what the labour can make and what the land (tile
+  // capacity) can sustain. capacity undefined => labour-limited only.
   if (county.industries.Lumber.operational) {
-    summary.wood = alloc.lumber * WOOD_PER_WORKER;
+    summary.wood = Math.min(alloc.lumber * WOOD_PER_WORKER, county.industries.Lumber.capacity ?? Infinity);
     treasury.wood += summary.wood;
   }
   if (county.industries.Quarry.operational) {
-    summary.stone = alloc.quarry * STONE_PER_WORKER;
+    summary.stone = Math.min(alloc.quarry * STONE_PER_WORKER, county.industries.Quarry.capacity ?? Infinity);
     treasury.stone += summary.stone;
   }
   if (county.industries.IronMine.operational) {
-    summary.iron = alloc.ironMine * IRON_PER_WORKER;
+    summary.iron = Math.min(alloc.ironMine * IRON_PER_WORKER, county.industries.IronMine.capacity ?? Infinity);
     treasury.iron += summary.iron;
   }
   // FUTURE: blacksmith consumes wood+iron -> weapons (alloc.blacksmith).
