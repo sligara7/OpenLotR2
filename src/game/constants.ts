@@ -60,6 +60,18 @@ export const CASTLE_SPEC: Record<
   [CastleType.RoyalCastle]: { wood: 100, stone: 480, workUnits: 720, garrison: 240, taxBonus: 0.8 },
 };
 
+// --- Armies & foraging (armies live off the land they occupy) -------------
+// An army feeds itself from the county it stands on: each season it forages
+// grain then beef from that county's local stores, drawing them down — so an
+// occupying force weakens the land it sits on, friendly or foe. When the
+// occupied county cannot meet the army's appetite (barren land, enemy ground
+// stripped bare, or no county at all) the shortfall starves a fraction of the
+// unfed soldiers. Supply convoys — feeding armies from the treasury across
+// friendly tiles, and intercepting an enemy's — are a future system; until
+// then, occupation is the only supply line.
+export const ARMY_FORAGE_PORTIONS_PER_SOLDIER = 1; // a soldier eats like a peasant
+export const ARMY_STARVE_FRACTION = 0.25; // share of unfed soldiers lost/season
+
 // --- Taxes (Manual Part-3 "Taxes", "Castles and Tax Revenues") ------------
 export const TAX_GOLD_PER_PERSON = 0.05; // crowns per person at 100% rate
 /** Tax rate (0..100) the populace tolerates before happiness suffers. */

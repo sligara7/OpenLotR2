@@ -7,6 +7,7 @@
  *   labour -> production -> food -> health -> happiness -> taxes -> population
  *   -> revolt          (per county)
  *   -> immigration     (world)
+ *   -> foraging        (world: armies eat the county they occupy, or starve)
  *   -> calendar tick
  *
  * Taxes are collected before population changes (Manual Part-3 "Taxes"); ration
@@ -30,6 +31,8 @@ import { updatePopulation } from './systems/population.ts';
 import { updateRevolt } from './systems/revolt.ts';
 import { runImmigration } from './systems/immigration.ts';
 import type { MigrationLedger } from './systems/immigration.ts';
+import { forageArmies } from './systems/foraging.ts';
+import type { ForageLedger } from './systems/foraging.ts';
 
 export interface CountyTurnReport {
   countyId: string;
@@ -52,6 +55,7 @@ export interface TurnReport {
   season: Season;
   counties: CountyTurnReport[];
   migration: MigrationLedger;
+  forage: ForageLedger;
 }
 
 const scratchTreasury = (): Treasury => ({ gold: 0, wood: 0, stone: 0, iron: 0, weapons: {} });
@@ -104,6 +108,10 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
     reports.push(processCounty(state, county, rng));
   }
   const migration = runImmigration(state);
+  // Armies forage last: counties have already fed their own people, so an army
+  // draws down whatever the occupied county has left in store (and starves if
+  // that is not enough).
+  const forage = forageArmies(state);
 
   const report: TurnReport = {
     turn: state.turn,
@@ -111,6 +119,7 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
     season: state.season,
     counties: reports,
     migration,
+    forage,
   };
   nextCalendar(state);
   return report;

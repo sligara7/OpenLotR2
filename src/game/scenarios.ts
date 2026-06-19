@@ -55,9 +55,15 @@ export function createDemoWorld(): GameState {
     }), 3, 3),
   ];
 
+  // A player army has marched into the rival's Kent and lives off its land —
+  // foraging drains Kent's stores each season (demo world has no tile grid, so
+  // the army's col/row are nominal; foraging keys off countyId).
+  const invader: Army = { id: 'p1-army', ownerId: 'p1', col: 0, row: 0, countyId: 'kent', soldiers: 80 };
+
   return createWorld({
     realms: [player, rival],
     counties,
+    armies: [invader],
     edges: [['york', 'lancaster'], ['lancaster', 'kent']],
     season: Season.Spring,
   });
@@ -125,7 +131,7 @@ export function createBritainWorld(): GameState {
   const armies: Army[] = [];
   for (const [realm, ids] of Object.entries(clusters)) {
     const town = towns.get(ids[0]);
-    if (town) armies.push({ id: `${realm}-army`, ownerId: realm, col: town.col, row: town.row, soldiers: 40 });
+    if (town) armies.push({ id: `${realm}-army`, ownerId: realm, col: town.col, row: town.row, countyId: ids[0], soldiers: 40 });
   }
 
   return createWorld({

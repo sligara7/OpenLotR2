@@ -22,6 +22,7 @@ import './tiles.test.ts';
 import './hex.test.ts';
 import './movement.test.ts';
 import './army.test.ts';
+import './foraging.test.ts';
 
 import { run } from '../testing/harness.ts';
 

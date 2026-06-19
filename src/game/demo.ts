@@ -38,6 +38,13 @@ for (let i = 0; i < 16; i++) {
       `${c.achievedRation.padEnd(7)} ${pad(c.taxGold, 5)} ${notes.join(', ')}`,
     );
   }
+  for (const a of report.forage.armies) {
+    const where = a.countyId ? world.counties[a.countyId]?.name ?? a.countyId : 'open country';
+    const note = a.destroyed ? 'STARVED OUT' : a.starved > 0 ? `${a.starved} starved` : 'fed';
+    console.log(
+      `   army ${a.armyId} in ${where}: foraged ${Math.round(a.foraged)}/${Math.round(a.needed)} — ${note}`,
+    );
+  }
   console.log('');
 }
 

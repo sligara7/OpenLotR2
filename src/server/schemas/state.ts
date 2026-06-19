@@ -100,6 +100,7 @@ export const ArmySchema = z
     ownerId: z.string(),
     col: z.number(),
     row: z.number(),
+    countyId: z.string().nullable(),
     soldiers: z.number(),
   })
   .openapi('Army');
@@ -133,6 +134,19 @@ const CountyTurnReportSchema = z.object({
   castleCompleted: z.boolean(),
 });
 
+const ArmyForageResultSchema = z.object({
+  armyId: z.string(),
+  countyId: z.string().nullable(),
+  needed: z.number(),
+  foraged: z.number(),
+  starved: z.number(),
+  destroyed: z.boolean(),
+});
+
+const ForageLedgerSchema = z.object({
+  armies: z.array(ArmyForageResultSchema),
+});
+
 export const TurnReportSchema = z
   .object({
     turn: z.number(),
@@ -140,6 +154,7 @@ export const TurnReportSchema = z
     season: SeasonSchema,
     counties: z.array(CountyTurnReportSchema),
     migration: z.record(z.string(), z.number()),
+    forage: ForageLedgerSchema,
   })
   .openapi('TurnReport');
 

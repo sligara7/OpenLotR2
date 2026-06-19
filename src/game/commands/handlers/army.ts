@@ -17,7 +17,9 @@ export function moveArmy(state: GameState, cmd: MoveArmy, ctx: CommandContext): 
   const path = findTilePath(map, { col: army.col, row: army.row }, { col: cmd.col, row: cmd.row });
   if (!path) return err('No passable route to that tile');
 
+  const dest = path.tiles[path.tiles.length - 1];
   army.col = cmd.col;
   army.row = cmd.row;
+  army.countyId = dest.countyId; // forage from the county now occupied
   return ok();
 }

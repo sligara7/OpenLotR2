@@ -10,6 +10,7 @@
 export * from './types/enums.ts';
 export type { County, Field, CountyFood, Castle, LabourPolicy, HappinessDelta } from './types/county.ts';
 export type { Realm, Treasury, GameState, Adjacency } from './types/realm.ts';
+export type { Army } from './types/army.ts';
 
 // State construction
 export { createCounty, healthLevelFor } from './state/county.ts';
@@ -27,6 +28,8 @@ export type { GameMap, MapRegion, Country } from './maps/index.ts';
 // Engine
 export { advanceSeason } from './engine.ts';
 export type { TurnReport, CountyTurnReport } from './engine.ts';
+export { forageArmies } from './systems/foraging.ts';
+export type { ForageLedger, ArmyForageResult } from './systems/foraging.ts';
 
 // Command protocol (the client/server API boundary)
 export { dispatch } from './commands/index.ts';

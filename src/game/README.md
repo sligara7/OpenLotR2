@@ -51,6 +51,7 @@ src/game/
     immigration.ts    inter-county flow along the happiness gradient
     taxes.ts          revenue -> shared treasury (castle bonus)
     revolt.ts         unrest countdown -> losing the county
+    foraging.ts       armies eat the occupied county's food (or starve)
   testing/harness.ts  Minimal zero-dependency test runner
   tests/              One *.test.ts per feature + run.ts entry
 ```
@@ -68,9 +69,17 @@ happiness, taxes are collected before population changes):
 ```
 per county:  labour → production → food → health → happiness → taxes
              → population → revolt
-world:       immigration
+world:       immigration → foraging
 then:        calendar tick (Spring→Summer→Fall→Winter, year++ after Winter)
 ```
+
+**Foraging** (`systems/foraging.ts`) runs last, after counties have fed their own
+people: each army eats grain then beef from the county it occupies
+(`army.countyId`), drawing the stores down — so an occupying force weakens the
+land it sits on, friend or foe. A county that can't meet the army's appetite
+starves a fraction of its soldiers; an army at zero soldiers is destroyed. Supply
+convoys (feeding armies across friendly tiles, intercepting enemy convoys) are
+the queued next step — until then, occupation is the only supply line.
 
 ## Running it
 
