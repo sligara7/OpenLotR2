@@ -73,3 +73,23 @@ test('selecting a county exposes tax/ration/labour controls that send commands',
   await page.getByTestId('sel-ind-up').click();
   await expect(page.getByTestId('status')).toContainText('Applied SetLabourPolicy');
 });
+
+test('realm overview manages all owned counties (per-county + bulk)', async ({ page }) => {
+  await page.goto('/');
+
+  // Every owned county appears in the realm overview with its controls.
+  await expect(page.getByTestId('realm-hampshire')).toBeVisible();
+  await expect(page.getByTestId('realm-berkshire')).toBeVisible();
+  await expect(page.getByTestId('realm-hampshire-tax')).toContainText('18%');
+
+  // Per-county control directly in the overview (no need to select).
+  await page.getByTestId('realm-hampshire-tax-up').click();
+  await expect(page.getByTestId('realm-hampshire-tax')).toContainText('23%');
+
+  // Bulk: raise rations for EVERY owned county in one click.
+  await page.getByTestId('realm-bulk-ration-up').click();
+  await expect(page.getByTestId('status')).toContainText('counties');
+  await expect(page.getByTestId('realm-hampshire-ration')).toContainText('Double');
+  await expect(page.getByTestId('realm-berkshire-ration')).toContainText('Double');
+  await expect(page.getByTestId('realm-wiltshire-ration')).toContainText('Double');
+});
