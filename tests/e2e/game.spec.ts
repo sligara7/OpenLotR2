@@ -32,6 +32,9 @@ test('renders the SVG hex-tile map (clickable, DOM-testable)', async ({ page }) 
   await kent.click();
   await expect(page.getByTestId('status')).toContainText('Kent');
 
+  // Rivers are rendered along hex edges.
+  expect(await page.getByTestId('rivers').locator('line').count()).toBeGreaterThan(0);
+
   // The map zooms (viewport transform scales up).
   await page.getByTestId('map-zoom-in').click();
   const transform = await page.getByTestId('map-viewport').getAttribute('transform');

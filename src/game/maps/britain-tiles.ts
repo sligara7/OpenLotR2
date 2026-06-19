@@ -14,6 +14,7 @@ import { BRITAIN } from './britain.ts';
 import {
   Terrain,
   TileResource,
+  edgeKey,
   hexNeighbours,
   type HexTile,
   type TileMap,
@@ -122,6 +123,77 @@ export function buildBritainTileMap(): TileMap {
     tile.resource = resourceFor(tile.terrain, tile.col, tile.row);
   }
 
-  cached = { id: 'britain-tiles', name: 'Great Britain', cols, rows, tiles: [...byKey.values()] };
+  // Pass 4: rivers — flow downhill to the sea, carve the high-flux edges.
+  const rivers = carveRivers(byKey, key);
+
+  cached = { id: 'britain-tiles', name: 'Great Britain', cols, rows, tiles: [...byKey.values()], rivers };
   return cached;
+}
+
+const ELEVATION: Record<string, number> = {
+  Mountains: 1.0, Hills: 0.7, Moor: 0.55, Forest: 0.45, Plains: 0.4, Coast: 0.15, Water: 0,
+};
+const RIVER_FLUX_THRESHOLD = 8; // only major drainage shows as a river
+
+/**
+ * Rivers on hex EDGES (Unciv-style). Pseudo-elevation = terrain height + a
+ * bias by distance-to-sea (interior is higher) so water drains outward; each
+ * land tile flows to its lowest neighbour; flux accumulates downstream; edges
+ * carrying enough flux become rivers (rendered along the shared hex edge).
+ */
+function carveRivers(byKey: Map<string, HexTile>, key: (c: number, r: number) => string): string[] {
+  const tiles = [...byKey.values()];
+  const land = tiles.filter((t) => t.countyId !== null);
+
+  // Distance to sea (BFS from water) → interior bias.
+  const distToSea = new Map<string, number>();
+  const queue: HexTile[] = [];
+  for (const t of tiles) {
+    if (t.countyId === null) { distToSea.set(key(t.col, t.row), 0); queue.push(t); }
+  }
+  for (let i = 0; i < queue.length; i++) {
+    const t = queue[i];
+    const d = distToSea.get(key(t.col, t.row))!;
+    for (const [nc, nr] of hexNeighbours(t.col, t.row)) {
+      const n = byKey.get(key(nc, nr));
+      if (n && !distToSea.has(key(nc, nr))) { distToSea.set(key(nc, nr), d + 1); queue.push(n); }
+    }
+  }
+
+  const elev = (t: HexTile): number =>
+    (ELEVATION[t.terrain] ?? 0.4) + (distToSea.get(key(t.col, t.row)) ?? 0) * 0.03 + hashUnit(t.col, t.row, 3) * 0.08;
+
+  // Downhill neighbour (lowest elevation; sea counts as 0).
+  const downhill = new Map<string, HexTile>();
+  for (const t of land) {
+    let best: HexTile | null = null;
+    let bestE = elev(t);
+    for (const [nc, nr] of hexNeighbours(t.col, t.row)) {
+      const n = byKey.get(key(nc, nr));
+      if (!n) continue;
+      const e = n.countyId === null ? 0 : elev(n);
+      if (e < bestE) { bestE = e; best = n; }
+    }
+    if (best) downhill.set(key(t.col, t.row), best);
+  }
+
+  // Accumulate flux from high to low.
+  const flux = new Map<string, number>();
+  for (const t of land) flux.set(key(t.col, t.row), 1);
+  const ordered = [...land].sort((a, b) => elev(b) - elev(a));
+  for (const t of ordered) {
+    const d = downhill.get(key(t.col, t.row));
+    if (d && d.countyId !== null) {
+      flux.set(key(d.col, d.row), (flux.get(key(d.col, d.row)) ?? 0) + (flux.get(key(t.col, t.row)) ?? 0));
+    }
+  }
+
+  // High-flux drainage edges become rivers (deduped).
+  const rivers = new Set<string>();
+  for (const t of land) {
+    if ((flux.get(key(t.col, t.row)) ?? 0) < RIVER_FLUX_THRESHOLD) continue;
+    const d = downhill.get(key(t.col, t.row));
+    if (d) rivers.add(edgeKey(t.col, t.row, d.col, d.row));
+  }
+  return [...rivers];
 }

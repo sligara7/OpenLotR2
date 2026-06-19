@@ -53,6 +53,16 @@ export interface TileMap {
   cols: number;
   rows: number;
   tiles: HexTile[];
+  /** River segments, as canonical keys of the two tiles sharing the edge the
+   *  river runs along (see edgeKey). Rivers are on EDGES, not tiles. */
+  rivers: string[];
+}
+
+/** Canonical key for the undirected edge between two adjacent tiles. */
+export function edgeKey(aCol: number, aRow: number, bCol: number, bRow: number): string {
+  const a = `${aCol},${aRow}`;
+  const b = `${bCol},${bRow}`;
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
 
 const IMPASSABLE: ReadonlySet<Terrain> = new Set([Terrain.Mountains, Terrain.Water]);

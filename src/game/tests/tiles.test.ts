@@ -1,6 +1,6 @@
 /* Hex-tile map: generation validity, terrain/resource sanity, determinism. */
 
-import { test, assert, assertEqual, assertGreater } from '../testing/harness.ts';
+import { test, assert, assertEqual, assertGreater, assertLess } from '../testing/harness.ts';
 import { buildBritainTileMap } from '../maps/britain-tiles.ts';
 import { BRITAIN } from '../maps/britain.ts';
 import { Terrain, TileResource, isPassable, hexNeighbours } from '../maps/tiles.ts';
@@ -67,6 +67,24 @@ test('tiles: coastal land actually borders sea or the map edge', () => {
     });
     assert(bordersSea, `coast tile ${t.col},${t.row} borders sea/edge`);
   }
+});
+
+test('tiles: rivers exist, sit on real edges, and reach the sea', () => {
+  const map = buildBritainTileMap();
+  const byKey = new Map(map.tiles.map((t) => [`${t.col},${t.row}`, t]));
+  assertGreater(map.rivers.length, 0, 'has rivers');
+  assertLess(map.rivers.length, map.tiles.length, 'rivers are selective, not everywhere');
+
+  let reachesSea = 0;
+  for (const key of map.rivers) {
+    const [a, b] = key.split('|');
+    const ta = byKey.get(a);
+    const tb = byKey.get(b);
+    assert(!!ta && !!tb, `river edge ${key} connects two real tiles`);
+    assert(ta!.countyId !== null || tb!.countyId !== null, 'a river touches at least one land tile');
+    if (ta!.countyId === null || tb!.countyId === null) reachesSea += 1;
+  }
+  assertGreater(reachesSea, 0, 'at least one river reaches the sea (a mouth)');
 });
 
 test('tiles: generation is deterministic', () => {

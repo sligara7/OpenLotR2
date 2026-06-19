@@ -235,9 +235,11 @@ export class MapTilesSvg {
     // County boundaries (Unciv-style borders layer): draw the shared edge
     // between any two adjacent tiles in different counties.
     const bordersLayer = this.buildBorders(map.tiles);
+    // Rivers run along hex edges (Unciv-style), drawn from the generated edges.
+    const riversLayer = this.buildRivers(map.rivers);
 
-    // Paint order: terrain → borders → farms → industry → labels → settlements.
-    this.viewport.append(terrainLayer, bordersLayer, this.farms, industryLayer, labelLayer, this.settle);
+    // Paint order: terrain → borders → rivers → farms → industry → labels → settlements.
+    this.viewport.append(terrainLayer, bordersLayer, riversLayer, this.farms, industryLayer, labelLayer, this.settle);
 
     const pad = 6;
     const vbW = maxX - minX + 2 * pad;
@@ -270,12 +272,43 @@ export class MapTilesSvg {
         const len = Math.hypot(dx, dy) || 1;
         const px = (-dy / len) * (S / 2);
         const py = (dx / len) * (S / 2);
+        const [p1, p2] = this.sharedEdge(c1, c2);
         layer.appendChild(el('line', {
-          x1: (mx - px).toFixed(1), y1: (my - py).toFixed(1),
-          x2: (mx + px).toFixed(1), y2: (my + py).toFixed(1),
+          x1: p1[0].toFixed(1), y1: p1[1].toFixed(1), x2: p2[0].toFixed(1), y2: p2[1].toFixed(1),
           stroke: '#241a0c', 'stroke-width': 1.1, 'stroke-linecap': 'round',
         }));
       }
+    }
+    return layer;
+  }
+
+  /** Endpoints of the hex edge shared by two adjacent tile centres. */
+  private sharedEdge(c1: Pt, c2: Pt): [Pt, Pt] {
+    const mx = (c1[0] + c2[0]) / 2;
+    const my = (c1[1] + c2[1]) / 2;
+    const dx = c2[0] - c1[0];
+    const dy = c2[1] - c1[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const px = (-dy / len) * (S / 2);
+    const py = (dx / len) * (S / 2);
+    return [[mx - px, my - py], [mx + px, my + py]];
+  }
+
+  /** Rivers, drawn along the hex edge each river segment runs on. */
+  private buildRivers(rivers: string[]): SVGGElement {
+    const layer = document.createElementNS(SVGNS, 'g');
+    layer.setAttribute('data-testid', 'rivers');
+    for (const key of rivers) {
+      const [a, b] = key.split('|');
+      const [ac, ar] = a.split(',').map(Number);
+      const [bc, br] = b.split(',').map(Number);
+      const [aux, auy] = hexCentre(ac, ar);
+      const [bux, buy] = hexCentre(bc, br);
+      const [p1, p2] = this.sharedEdge([aux * S, auy * S], [bux * S, buy * S]);
+      layer.appendChild(el('line', {
+        x1: p1[0].toFixed(1), y1: p1[1].toFixed(1), x2: p2[0].toFixed(1), y2: p2[1].toFixed(1),
+        stroke: '#3f7fb0', 'stroke-width': 2, 'stroke-linecap': 'round',
+      }));
     }
     return layer;
   }
