@@ -32,6 +32,12 @@ test('renders the SVG hex-tile map (clickable, DOM-testable)', async ({ page }) 
   await kent.click();
   await expect(page.getByTestId('status')).toContainText('Kent');
 
+  // The map zooms (viewport transform scales up).
+  await page.getByTestId('map-zoom-in').click();
+  const transform = await page.getByTestId('map-viewport').getAttribute('transform');
+  const scale = Number(transform?.match(/scale\(([\d.]+)\)/)?.[1] ?? '1');
+  expect(scale).toBeGreaterThan(1);
+
   // Settlements (villages) are rendered from population.
   const villages = await page.getByTestId('settlements').locator('g').count();
   expect(villages).toBeGreaterThan(0);

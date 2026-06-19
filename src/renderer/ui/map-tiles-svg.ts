@@ -14,7 +14,7 @@
 
 import { buildBritainTileMap } from '../../game/maps/britain-tiles.ts';
 import { BRITAIN } from '../../game/maps/britain.ts';
-import { Terrain, TileResource, hexCentre, isPassable, type HexTile } from '../../game/maps/tiles.ts';
+import { Terrain, TileResource, hexCentre, hexNeighbours, isPassable, type HexTile } from '../../game/maps/tiles.ts';
 import { stateBus } from '../state-bus.ts';
 import { selectCounty } from '../game-controller.ts';
 import { FieldStatus } from '../../game/types/enums.ts';
@@ -139,23 +139,33 @@ export class MapTilesSvg {
   private counties = new Map<string, CountyView>();
   private farms: SVGGElement;
   private settle: SVGGElement;
+  /** Pan/zoom is applied to this group (all layers live inside it). */
+  private viewport: SVGGElement;
+  private z = 1;
+  private tx = 0;
+  private ty = 0;
+  private centre: Pt = [0, 0];
 
   constructor() {
     this.root = document.createElement('div');
     this.root.setAttribute('data-testid', 'map');
     this.root.style.cssText =
       'position:fixed;left:0;top:0;bottom:0;width:calc(100% - 380px);' +
-      'background:#0b1420;display:flex;align-items:center;justify-content:center;z-index:5;';
+      'background:#0b1420;display:flex;align-items:center;justify-content:center;z-index:5;overflow:hidden;';
     this.svg = document.createElementNS(SVGNS, 'svg') as SVGSVGElement;
     this.svg.setAttribute('data-testid', 'map-svg');
-    this.svg.style.cssText = 'height:97%;max-width:97%;';
+    this.svg.style.cssText = 'height:97%;max-width:97%;cursor:grab;';
+    this.viewport = document.createElementNS(SVGNS, 'g');
+    this.viewport.setAttribute('data-testid', 'map-viewport');
     this.farms = document.createElementNS(SVGNS, 'g');
     this.farms.setAttribute('data-testid', 'farms');
     this.settle = document.createElementNS(SVGNS, 'g');
     this.settle.setAttribute('data-testid', 'settlements');
 
     this.build();
-    this.root.appendChild(this.svg);
+    this.svg.appendChild(this.viewport);
+    this.root.append(this.zoomControls(), this.svg);
+    this.setupNavigation();
     stateBus.subscribe((state) => this.update(state));
   }
 
@@ -222,10 +232,52 @@ export class MapTilesSvg {
       labelLayer.appendChild(label);
     }
 
-    // Paint order: terrain → farms → industry → labels → settlements.
-    this.svg.append(terrainLayer, this.farms, industryLayer, labelLayer, this.settle);
+    // County boundaries (Unciv-style borders layer): draw the shared edge
+    // between any two adjacent tiles in different counties.
+    const bordersLayer = this.buildBorders(map.tiles);
+
+    // Paint order: terrain → borders → farms → industry → labels → settlements.
+    this.viewport.append(terrainLayer, bordersLayer, this.farms, industryLayer, labelLayer, this.settle);
+
     const pad = 6;
-    this.svg.setAttribute('viewBox', `${minX - pad} ${minY - pad} ${maxX - minX + 2 * pad} ${maxY - minY + 2 * pad}`);
+    const vbW = maxX - minX + 2 * pad;
+    const vbH = maxY - minY + 2 * pad;
+    this.svg.setAttribute('viewBox', `${minX - pad} ${minY - pad} ${vbW} ${vbH}`);
+    this.centre = [minX - pad + vbW / 2, minY - pad + vbH / 2];
+  }
+
+  /** Outline counties by drawing the shared edge between differing neighbours. */
+  private buildBorders(tiles: HexTile[]): SVGGElement {
+    const layer = document.createElementNS(SVGNS, 'g');
+    const byKey = new Map(tiles.map((t) => [`${t.col},${t.row}`, t]));
+    const seen = new Set<string>();
+    for (const tile of tiles) {
+      if (tile.countyId === null) continue;
+      const [ux, uy] = hexCentre(tile.col, tile.row);
+      const c1: Pt = [ux * S, uy * S];
+      for (const [nc, nr] of hexNeighbours(tile.col, tile.row)) {
+        const n = byKey.get(`${nc},${nr}`);
+        if (!n || n.countyId === null || n.countyId === tile.countyId) continue; // only county↔county
+        const key = [`${tile.col},${tile.row}`, `${nc},${nr}`].sort().join('|');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const [nux, nuy] = hexCentre(nc, nr);
+        const c2: Pt = [nux * S, nuy * S];
+        const mx = (c1[0] + c2[0]) / 2;
+        const my = (c1[1] + c2[1]) / 2;
+        const dx = c2[0] - c1[0];
+        const dy = c2[1] - c1[1];
+        const len = Math.hypot(dx, dy) || 1;
+        const px = (-dy / len) * (S / 2);
+        const py = (dx / len) * (S / 2);
+        layer.appendChild(el('line', {
+          x1: (mx - px).toFixed(1), y1: (my - py).toFixed(1),
+          x2: (mx + px).toFixed(1), y2: (my + py).toFixed(1),
+          stroke: '#241a0c', 'stroke-width': 1.1, 'stroke-linecap': 'round',
+        }));
+      }
+    }
+    return layer;
   }
 
   private update(state: GameState): void {
@@ -259,5 +311,79 @@ export class MapTilesSvg {
         this.settle.appendChild(house(x, y));
       }
     }
+  }
+
+  // --- pan / zoom -------------------------------------------------------
+
+  private applyView(): void {
+    this.viewport.setAttribute('transform', `translate(${this.tx.toFixed(2)} ${this.ty.toFixed(2)}) scale(${this.z.toFixed(3)})`);
+  }
+
+  /** Convert client (screen) coords into the SVG's user-space coords. */
+  private svgPoint(clientX: number, clientY: number): Pt {
+    const pt = this.svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const m = this.svg.getScreenCTM();
+    if (!m) return [clientX, clientY];
+    const p = pt.matrixTransform(m.inverse());
+    return [p.x, p.y];
+  }
+
+  /** Zoom by `factor` keeping the user-space point (sx,sy) fixed on screen. */
+  private zoomAround(sx: number, sy: number, factor: number): void {
+    const next = Math.max(1, Math.min(10, this.z * factor));
+    const f = next / this.z;
+    this.tx = sx - (sx - this.tx) * f;
+    this.ty = sy - (sy - this.ty) * f;
+    this.z = next;
+    if (this.z === 1) { this.tx = 0; this.ty = 0; } // snap back to full map
+    this.applyView();
+  }
+
+  private zoomControls(): HTMLElement {
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px;z-index:6;';
+    const mk = (testId: string, label: string, onClick: () => void) => {
+      const b = document.createElement('button');
+      b.setAttribute('data-testid', testId);
+      b.textContent = label;
+      b.style.cssText = 'width:28px;height:28px;cursor:pointer;font-weight:bold;';
+      b.onclick = onClick;
+      return b;
+    };
+    bar.append(
+      mk('map-zoom-in', '+', () => this.zoomAround(this.centre[0], this.centre[1], 1.3)),
+      mk('map-zoom-out', '−', () => this.zoomAround(this.centre[0], this.centre[1], 1 / 1.3)),
+      mk('map-zoom-reset', '⟳', () => { this.z = 1; this.tx = 0; this.ty = 0; this.applyView(); }),
+    );
+    return bar;
+  }
+
+  private setupNavigation(): void {
+    this.svg.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const [sx, sy] = this.svgPoint(e.clientX, e.clientY);
+      this.zoomAround(sx, sy, e.deltaY < 0 ? 1.15 : 1 / 1.15);
+    }, { passive: false });
+
+    let dragging = false;
+    let last: Pt = [0, 0];
+    this.svg.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      last = this.svgPoint(e.clientX, e.clientY);
+      this.svg.style.cursor = 'grabbing';
+    });
+    this.svg.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const p = this.svgPoint(e.clientX, e.clientY);
+      this.tx += p[0] - last[0];
+      this.ty += p[1] - last[1];
+      last = p;
+      this.applyView();
+    });
+    const end = () => { dragging = false; this.svg.style.cursor = 'grab'; };
+    this.svg.addEventListener('pointerup', end);
+    this.svg.addEventListener('pointerleave', end);
   }
 }
