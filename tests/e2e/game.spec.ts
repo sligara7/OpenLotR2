@@ -31,6 +31,10 @@ test('renders the SVG hex-tile map (clickable, DOM-testable)', async ({ page }) 
   // Clicking a county shows its details in the HUD status.
   await kent.click();
   await expect(page.getByTestId('status')).toContainText('Kent');
+
+  // Settlements (villages) are rendered from population.
+  const villages = await page.getByTestId('settlements').locator('g').count();
+  expect(villages).toBeGreaterThan(0);
 });
 
 test('End Turn advances the simulation', async ({ page }) => {
