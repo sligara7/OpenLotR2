@@ -41,3 +41,7 @@ test-results/
 # Extracted ORIGINAL game data (copyrighted) — analysis only, never commit.
 extracted/
 *.pgm
+
+# Copyrighted reference docs (local only)
+doc/manual.pdf
+*.pdf
