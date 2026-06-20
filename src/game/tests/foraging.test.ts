@@ -4,17 +4,17 @@ import { test, assert, assertEqual, assertGreater, assertLess } from '../testing
 import { createCounty } from '../state/county.ts';
 import { createRealm } from '../state/realm.ts';
 import { createWorld } from '../state/world.ts';
+import { createArmy } from '../state/army.ts';
 import { forageArmies } from '../systems/foraging.ts';
 import { createBritainWorld } from '../scenarios.ts';
 import { createRng } from '../rng.ts';
 import { advanceSeason } from '../engine.ts';
 import { ARMY_FORAGE_PORTIONS_PER_SOLDIER } from '../constants.ts';
-import type { Army } from '../types/army.ts';
 
 function worldWith(grainSacks: number, cows: number, soldiers: number) {
   const realm = createRealm({ id: 'p1', name: 'You', isHuman: true });
   const county = createCounty({ id: 'home', name: 'Home', ownerId: 'p1', grainSacks, cows });
-  const army: Army = { id: 'p1-army', ownerId: 'p1', col: 0, row: 0, countyId: 'home', soldiers };
+  const army = createArmy({ id: 'p1-army', ownerId: 'p1', col: 0, row: 0, countyId: 'home', soldiers });
   return createWorld({ realms: [realm], counties: [county], armies: [army] });
 }
 

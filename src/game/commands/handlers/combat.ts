@@ -9,6 +9,7 @@
 
 import { hexNeighbours } from '../../maps/index.ts';
 import { resolveBattle } from '../../systems/combat.ts';
+import { setUnits } from '../../state/army.ts';
 import { captureCounty, updateEliminations } from '../../systems/conquest.ts';
 import { ok, err } from '../types.ts';
 import type { AttackArmy, LaySiege, CommandContext, CommandResult } from '../types.ts';
@@ -32,9 +33,9 @@ export function attackArmy(state: GameState, cmd: AttackArmy, ctx: CommandContex
   if (target.ownerId === ctx.actorRealmId) return err('That army is yours');
   if (!inReach(army, target)) return err('Target army is out of reach');
 
-  const result = resolveBattle({ soldiers: army.soldiers }, { soldiers: target.soldiers }, ctx.rng);
-  army.soldiers = result.attackerSurvivors;
-  target.soldiers = result.defenderSurvivors;
+  const result = resolveBattle({ units: army.units }, { units: target.units }, ctx.rng);
+  setUnits(army, result.attacker.unitsAfter);
+  setUnits(target, result.defender.unitsAfter);
   if (result.attackerDestroyed) delete state.armies[army.id];
   if (result.defenderDestroyed) delete state.armies[target.id];
   updateEliminations(state);

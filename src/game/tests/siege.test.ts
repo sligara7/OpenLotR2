@@ -4,11 +4,11 @@ import { test, assert, assertEqual, assertGreater } from '../testing/harness.ts'
 import { createCounty } from '../state/county.ts';
 import { createRealm } from '../state/realm.ts';
 import { createWorld } from '../state/world.ts';
+import { createArmy } from '../state/army.ts';
 import { createRng } from '../rng.ts';
 import { dispatch } from '../commands/dispatch.ts';
 import { advanceSieges } from '../systems/siege.ts';
 import { CastleType } from '../types/enums.ts';
-import type { Army } from '../types/army.ts';
 import type { GameState } from '../types/realm.ts';
 
 /** A besieger (p1) occupying p2's garrisoned castle county. */
@@ -19,7 +19,7 @@ function siegeWorld(opts: { soldiers: number; garrison: number; grainSacks: numb
     id: 'castle', name: 'Castle', ownerId: 'p2', population: 100,
     castle: opts.castle ?? CastleType.MotteAndBailey, garrison: opts.garrison, grainSacks: opts.grainSacks,
   });
-  const army: Army = { id: 'a', ownerId: 'p1', col: 1, row: 1, countyId: 'castle', soldiers: opts.soldiers };
+  const army = createArmy({ id: 'a', ownerId: 'p1', col: 1, row: 1, countyId: 'castle', soldiers: opts.soldiers });
   return createWorld({ realms: [p1, p2], counties: [target], armies: [army] });
 }
 

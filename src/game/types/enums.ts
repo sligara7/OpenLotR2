@@ -89,6 +89,30 @@ export const CastleType = {
 } as const;
 export type CastleType = (typeof CastleType)[keyof typeof CastleType];
 
+/** Soldier types that make up an army. (Manual Part-4 "Armies".) Their attack/
+ *  defence and the rock-paper-scissors matchups live in constants.ts. */
+export const UnitType = {
+  Peasant: 'Peasant',
+  Maceman: 'Maceman',
+  Pikeman: 'Pikeman',
+  Archer: 'Archer',
+  Crossbowman: 'Crossbowman',
+  Swordsman: 'Swordsman',
+  Knight: 'Knight',
+} as const;
+export type UnitType = (typeof UnitType)[keyof typeof UnitType];
+
+/** Every unit type in a stable order (display, iteration, serialisation). */
+export const UNIT_TYPES: readonly UnitType[] = [
+  UnitType.Peasant,
+  UnitType.Maceman,
+  UnitType.Pikeman,
+  UnitType.Archer,
+  UnitType.Crossbowman,
+  UnitType.Swordsman,
+  UnitType.Knight,
+];
+
 /** Computer-ruler personalities. (Manual Part-7 "The Players".) */
 export const NoblePersonality = {
   Knight: 'Knight',

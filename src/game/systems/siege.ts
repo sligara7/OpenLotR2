@@ -25,7 +25,8 @@ import {
   CASTLE_SPEC,
   SIEGE,
 } from '../constants.ts';
-import { resolveBattle } from './combat.ts';
+import { resolveBattle, garrisonComposition } from './combat.ts';
+import { setUnits } from '../state/army.ts';
 import { captureCounty } from './conquest.ts';
 import { drawFood } from './foraging.ts';
 import type { GameState } from '../types/realm.ts';
@@ -122,14 +123,18 @@ export function advanceSieges(state: GameState, rng: Rng): SiegeLedger {
       status = 'starved';
       captured = true;
     } else if (siege.progress >= 1) {
-      // Breach! Storm the walls: defenders fight at their wall multiplier.
+      // Breach! Storm the walls: the garrison (archers/crossbows behind walls)
+      // fights at the castle's wall multiplier.
       const result = resolveBattle(
-        { soldiers: army.soldiers },
-        { soldiers: county.castle.garrison, modifier: garrisonStrength(county) / county.castle.garrison },
+        { units: army.units },
+        {
+          units: garrisonComposition(county.castle.garrison),
+          modifier: garrisonStrength(county) / county.castle.garrison,
+        },
         rng,
       );
-      army.soldiers = result.attackerSurvivors;
-      county.castle.garrison = result.defenderSurvivors;
+      setUnits(army, result.attacker.unitsAfter);
+      county.castle.garrison = result.defender.survivors;
 
       if (result.defenderDestroyed) {
         captureCounty(state, siege.countyId, siege.attackerRealmId);

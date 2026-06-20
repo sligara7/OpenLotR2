@@ -27,7 +27,10 @@ function realmLine(state: GameState, realmId: string): string {
   const pop = counties.reduce((s, c) => s + c.population, 0);
   const happy = counties.length ? Math.round(counties.reduce((s, c) => s + c.happiness, 0) / counties.length) : 0;
   const army = Object.values(state.armies).find((a) => a.ownerId === realmId);
-  const where = army ? `${army.soldiers}men @${army.countyId ?? '—'}` : 'no army';
+  // Compact composition, e.g. "40men[P16 A8 Sw8 M4 Kn4]".
+  const abbr: Record<string, string> = { Peasant: 'P', Maceman: 'M', Pikeman: 'Pk', Archer: 'A', Crossbowman: 'X', Swordsman: 'Sw', Knight: 'Kn' };
+  const comp = army ? Object.entries(army.units).filter(([, n]) => n > 0).map(([t, n]) => `${abbr[t]}${n}`).join(' ') : '';
+  const where = army ? `${army.soldiers}men[${comp}] @${army.countyId ?? '—'}` : 'no army';
   return `${realm.name.padEnd(10)} ${pad(counties.length, 2)}co ${pad(pop, 5)}pop ${pad(happy, 3)}happy ` +
     `${pad(Math.round(realm.treasury.gold), 4)}g  ${where}`;
 }

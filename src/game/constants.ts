@@ -9,7 +9,7 @@
  * Citations point at the manual section that motivates each value.
  */
 
-import { CastleType, Industry } from './types/enums.ts';
+import { CastleType, Industry, UnitType } from './types/enums.ts';
 
 // --- Food & rations -------------------------------------------------------
 // One "portion" feeds one peasant for one season at Normal ration.
@@ -103,6 +103,40 @@ export const COMBAT = {
   /** Small edge for the side that is attacked in the open (knows the ground). */
   defenderBonus: 1.1,
 } as const;
+
+// --- Unit types (Manual Part-4 "Armies") ----------------------------------
+// The manual is qualitative (no stat numbers), so attack/defence are our tunable
+// design. attack drives the damage a unit deals; defence reduces the casualties
+// it takes. Cost (iron/wood per soldier) is used when raising units — the
+// conscription/weapons economy is a later increment.
+export const UNIT_SPEC: Record<
+  UnitType,
+  { attack: number; defence: number; iron: number; wood: number }
+> = {
+  [UnitType.Peasant]:     { attack: 1, defence: 1, iron: 0, wood: 0 },
+  [UnitType.Maceman]:     { attack: 3, defence: 2, iron: 1, wood: 1 },
+  [UnitType.Pikeman]:     { attack: 2, defence: 4, iron: 1, wood: 1 },
+  [UnitType.Archer]:      { attack: 3, defence: 1, iron: 0, wood: 2 },
+  [UnitType.Crossbowman]: { attack: 4, defence: 2, iron: 1, wood: 1 },
+  [UnitType.Swordsman]:   { attack: 4, defence: 4, iron: 2, wood: 1 },
+  [UnitType.Knight]:      { attack: 6, defence: 5, iron: 3, wood: 1 },
+};
+
+// MATCHUP[attacker][defender] multiplies the attacker's damage against that
+// defender — the rock-paper-scissors spine from the manual. Omitted pairs are
+// neutral (1.0). Archers shred the unarmored but glance off plate; crossbows
+// punch through armour and unhorse knights; macemen run down missile troops;
+// knights crush most things but fear the crossbow; pikemen brace against cavalry.
+export const UNIT_NEUTRAL_MATCHUP = 1.0;
+export const UNIT_MATCHUP: Partial<Record<UnitType, Partial<Record<UnitType, number>>>> = {
+  [UnitType.Archer]:      { Peasant: 1.5, Maceman: 1.0, Archer: 1.3, Crossbowman: 1.2, Pikeman: 0.5, Swordsman: 0.4, Knight: 0.4 },
+  [UnitType.Crossbowman]: { Swordsman: 1.6, Knight: 1.8, Pikeman: 1.4, Maceman: 1.1 },
+  [UnitType.Maceman]:     { Archer: 1.6, Crossbowman: 1.6, Peasant: 1.5, Knight: 0.6 },
+  [UnitType.Knight]:      { Peasant: 1.5, Maceman: 1.4, Archer: 1.6, Swordsman: 1.3, Crossbowman: 0.5, Pikeman: 0.7 },
+  [UnitType.Pikeman]:     { Knight: 1.8, Maceman: 1.2 },
+  [UnitType.Swordsman]:   { Archer: 1.4, Peasant: 1.4, Maceman: 1.2 },
+  [UnitType.Peasant]:     {},
+};
 
 // --- Sieges (multi-season; the only way to take a garrisoned castle) -------
 // A besieging army batters the castle over several seasons (bigger army → faster,

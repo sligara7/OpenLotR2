@@ -52,7 +52,7 @@ src/game/
     taxes.ts          revenue -> shared treasury (castle bonus)
     revolt.ts         unrest countdown -> losing the county
     foraging.ts       armies eat the occupied county's food (or starve)
-    combat.ts         auto-resolved field battles (size x modifiers x RNG)
+    combat.ts         combined-arms battle resolution (unit matchups + RNG)
     siege.ts          multi-season siege of a garrisoned castle (storm/starve)
     conquest.ts       ownership transfer + realm elimination
   testing/harness.ts  Minimal zero-dependency test runner
@@ -93,16 +93,21 @@ is **stormed** (an assault, resolved as a battle with the defenders fighting at 
 wall-strength multiplier) or **starved** into surrender. Sieges run last in the
 pipeline, after foraging, so a county a besieger has stripped this season starves
 its garrison the same season. Field battles between armies (`AttackArmy`) and
-siege assaults share one **auto-resolved** strength model (`systems/combat.ts`):
-power = soldiers × terrain/wall modifiers × a seeded random swing; casualties
-scale with the enemy's share of total power. Combat is intentionally
-strength-only for now — **unit types** (archers, knights, the rock-paper-scissors
-matchups) are the next increment and will feed richer per-side power.
+siege assaults share one **auto-resolved combined-arms** model
+(`systems/combat.ts`): an army is a **composition** of unit types (peasant,
+maceman, pikeman, archer, crossbowman, swordsman, knight — `UNIT_SPEC`), and each
+side's power sums attack × a **matchup multiplier** against the enemy's mix
+(`UNIT_MATCHUP`: archers shred the unarmored but glance off plate, crossbows
+punch through armour and unhorse knights, macemen run down missile troops, pikes
+brace against cavalry), × terrain/wall modifiers × a seeded swing. Casualties
+scale with the enemy's power share and are distributed across the loser's units
+by vulnerability. `Army.units` is the source of truth; `Army.soldiers` is its
+denormalised total (kept in sync by `state/army.ts`). **Raising** units —
+conscription, the weapons economy that caps each type — is the next increment;
+for now armies start with a fixed retinue.
 
 Supply convoys (feeding armies across friendly tiles, intercepting enemy convoys)
-remain a queued logistics step. A **map-connectivity bug** can also strand a
-county's town on an impassable island (the terrain pass rings it with mountains/
-water), immobilising an army there — a fix owed to the map generator.
+remain a queued logistics step; a few sea-isolated counties await ferries.
 
 ## Running it
 

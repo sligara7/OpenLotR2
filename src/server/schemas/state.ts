@@ -95,6 +95,16 @@ export const RealmSchema = z
   .openapi('Realm');
 
 // --- Army -----------------------------------------------------------------
+const UnitCountsSchema = z.object({
+  Peasant: z.number(),
+  Maceman: z.number(),
+  Pikeman: z.number(),
+  Archer: z.number(),
+  Crossbowman: z.number(),
+  Swordsman: z.number(),
+  Knight: z.number(),
+});
+
 export const ArmySchema = z
   .object({
     id: z.string(),
@@ -102,6 +112,7 @@ export const ArmySchema = z
     col: z.number(),
     row: z.number(),
     countyId: z.string().nullable(),
+    units: UnitCountsSchema,
     soldiers: z.number(),
   })
   .openapi('Army');

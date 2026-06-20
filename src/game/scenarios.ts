@@ -7,6 +7,8 @@
 import { createCounty } from './state/county.ts';
 import { createRealm } from './state/realm.ts';
 import { createWorld } from './state/world.ts';
+import { createArmy } from './state/army.ts';
+import type { UnitCounts } from './types/army.ts';
 import { CastleType, FieldStatus, NoblePersonality, Season } from './types/enums.ts';
 import { BRITAIN, mapEdges, buildBritainTileMap, countyProfiles, countyTowns } from './maps/index.ts';
 import {
@@ -33,6 +35,18 @@ function farm(county: County, grainFields: number, cattleFields: number): County
   }
   county.labour.industryShare = 0.35; // most hands on the land
   return county;
+}
+
+/** A balanced starting retinue of `total` soldiers — a peasant levy stiffened
+ *  with archers, swordsmen, a few macemen and knights (peasants absorb the
+ *  rounding remainder so the parts sum exactly). */
+function retinue(total: number): Partial<UnitCounts> {
+  const knight = Math.round(total * 0.1);
+  const maceman = Math.round(total * 0.1);
+  const archer = Math.round(total * 0.2);
+  const swordsman = Math.round(total * 0.2);
+  const peasant = total - knight - maceman - archer - swordsman;
+  return { Knight: knight, Maceman: maceman, Archer: archer, Swordsman: swordsman, Peasant: peasant };
 }
 
 /**
@@ -63,7 +77,7 @@ export function createDemoWorld(): GameState {
   // A player army has marched into the rival's Kent and lives off its land —
   // foraging drains Kent's stores each season (demo world has no tile grid, so
   // the army's col/row are nominal; foraging keys off countyId).
-  const invader: Army = { id: 'p1-army', ownerId: 'p1', col: 0, row: 0, countyId: 'kent', soldiers: 80 };
+  const invader = createArmy({ id: 'p1-army', ownerId: 'p1', col: 0, row: 0, countyId: 'kent', units: retinue(80) });
 
   return createWorld({
     realms: [player, rival],
@@ -150,7 +164,7 @@ export function createBritainWorld(): GameState {
   const armies: Army[] = [];
   for (const [realm, ids] of Object.entries(clusters)) {
     const town = towns.get(ids[0]);
-    if (town) armies.push({ id: `${realm}-army`, ownerId: realm, col: town.col, row: town.row, countyId: ids[0], soldiers: 40 });
+    if (town) armies.push(createArmy({ id: `${realm}-army`, ownerId: realm, col: town.col, row: town.row, countyId: ids[0], units: retinue(40) }));
   }
 
   return createWorld({
