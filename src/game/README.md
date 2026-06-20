@@ -1,4 +1,4 @@
-# OpenLotR2 — Simulation Core (`src/game`)
+# King of the Lands — Simulation Core (`src/game`)
 
 A **headless, deterministic, dependency-free** model of the Lords of the Realm II
 county economy: population, happiness, health, food/rations, labour, agriculture,

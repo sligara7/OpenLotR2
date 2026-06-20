@@ -1,9 +1,9 @@
 {
-  "name": "openlotr2",
-  "title": "Open Lords of the Realm2",
-  "homepage": "https://github.com/s-ayers/OpenLotR2",
+  "name": "king-of-the-lands",
+  "title": "King of the Lands",
+  "homepage": "https://github.com/sligara7/OpenLotR2",
   "version": "0.0.1-alpha",
-  "description": "Open Lords of the Realm 2",
+  "description": "King of the Lands — a medieval realm-management & conquest strategy game (inspired by Lords of the Realm II, with Civ V / Axis & Allies / Risk influences)",
   "main": "dist/main/index.js",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",

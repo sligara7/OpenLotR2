@@ -6,5 +6,5 @@
 import './api.test.mts';
 import { run } from '../../game/testing/harness.ts';
 
-console.log('OpenLotR2 server — API test suite\n');
+console.log('King of the Lands server — API test suite\n');
 await run();

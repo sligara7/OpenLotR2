@@ -32,7 +32,7 @@ function realmLine(state: GameState, realmId: string): string {
     `${pad(Math.round(realm.treasury.gold), 4)}g  ${where}`;
 }
 
-console.log('OpenLotR2 — AI rulers demo (Britain, 3 years)\n');
+console.log('King of the Lands — AI rulers demo (Britain, 3 years)\n');
 console.log('The human (p1) does nothing; the Baron (Scots) and Knight (Welsh) play.\n');
 
 for (let i = 0; i < 12; i++) {

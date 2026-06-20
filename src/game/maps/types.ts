@@ -1,5 +1,5 @@
 /*
- * Map data model — original geography for OpenLotR2.
+ * Map data model — original geography for King of the Lands.
  *
  * A GameMap is a graph of regions (historic counties) with a coarse layout grid
  * (col/row, our own coordinate scheme for rendering) and land/ferry adjacency.

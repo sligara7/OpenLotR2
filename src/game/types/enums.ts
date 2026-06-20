@@ -1,5 +1,5 @@
 /*
- * Core enumerations for the OpenLotR2 simulation.
+ * Core enumerations for the King of the Lands simulation.
  *
  * NOTE: these are `as const` objects + union types rather than TypeScript
  * `enum`s on purpose. Node's `--experimental-strip-types` (how we run the

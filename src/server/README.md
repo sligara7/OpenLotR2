@@ -1,4 +1,4 @@
-# OpenLotR2 — Backend API (`src/server`)
+# King of the Lands — Backend API (`src/server`)
 
 A thin, **authoritative** REST service over the simulation core (`src/game`).
 The server owns game state and transport; it never reimplements rules — every

@@ -18,7 +18,7 @@ const rng = createRng(20260618);
 
 const pad = (s: string | number, n: number): string => String(s).padStart(n);
 
-console.log('OpenLotR2 — headless simulation demo (4 years)\n');
+console.log('King of the Lands — headless simulation demo (4 years)\n');
 console.log('Yr Season  County      Pop   Happy Health Ration  Tax+  Notes');
 console.log('-- ------- ----------- ----- ----- ------ ------- ----- -----------------');
 

@@ -98,10 +98,10 @@ export function buildOpenApiDocument() {
   return generator.generateDocument({
     openapi: '3.1.0',
     info: {
-      title: 'OpenLotR2 API',
+      title: 'King of the Lands API',
       version: '0.1.0',
       description:
-        'REST API over the OpenLotR2 simulation core. Commands are the player ' +
+        'REST API over the King of the Lands simulation core. Commands are the player ' +
         'action protocol; the server is authoritative for all game state.',
     },
     servers: [{ url: '/' }],

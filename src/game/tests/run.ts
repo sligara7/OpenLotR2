@@ -28,5 +28,5 @@ import './balance.test.ts';
 
 import { run } from '../testing/harness.ts';
 
-console.log('OpenLotR2 simulation core — test suite\n');
+console.log('King of the Lands simulation core — test suite\n');
 run();

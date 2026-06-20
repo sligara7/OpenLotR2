@@ -1,6 +1,6 @@
 {
-  "productName": "OpenLotR2",
-  "appId": "com.openlotr2.app",
+  "productName": "King of the Lands",
+  "appId": "com.kingofthelands.app",
   "directories": {
     "output": "release/"
   },

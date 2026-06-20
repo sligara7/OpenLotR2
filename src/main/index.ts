@@ -74,7 +74,7 @@ function customizeMenu() {
     );
     helpSubmenu.append(
       new MenuItem({
-        label: "About OpenLotR2",
+        label: "About King of the Lands",
         click: () => openAboutWindow({ icon_path: icon, homepage: pkg.homepage }),
       }),
     );

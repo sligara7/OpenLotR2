@@ -1,5 +1,5 @@
 /*
- * Public API for the headless OpenLotR2 simulation core.
+ * Public API for the headless King of the Lands simulation core.
  *
  * The renderer (Phaser scenes) and any AI/tools should depend ONLY on what is
  * re-exported here, never reach into individual system files. This keeps the
