@@ -6,7 +6,7 @@
  */
 
 import { Router } from 'express';
-import { dispatch } from '../../game/index.ts';
+import { dispatch, takeAiTurns } from '../../game/index.ts';
 import { CommandSchema } from '../schemas/commands.ts';
 import { CreateGameRequestSchema } from '../schemas/api.ts';
 import type { GameStore } from '../store.ts';
@@ -49,6 +49,10 @@ export function gamesRouter(store: GameStore): Router {
       return;
     }
     const actorRealmId = req.header('x-realm-id') ?? 'p1';
+    // Single-host turn order: when the human ends the turn, the AI rulers take
+    // theirs first (through the same dispatcher, bound by the same rules), then
+    // the world ticks once for everyone.
+    if (parsed.data.type === 'EndTurn') takeAiTurns(game.state);
     const result = dispatch(game.state, parsed.data, { actorRealmId, rng: game.rng });
     if (result.report) game.reports.push(result.report);
     res.json(result);

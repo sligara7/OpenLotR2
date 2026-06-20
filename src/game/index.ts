@@ -31,6 +31,10 @@ export type { TurnReport, CountyTurnReport } from './engine.ts';
 export { forageArmies } from './systems/foraging.ts';
 export type { ForageLedger, ArmyForageResult } from './systems/foraging.ts';
 
+// AI rulers (drive non-human realms via the command protocol)
+export { takeAiTurns, planRealmTurn, isAiRealm, TRAITS_BY_PERSONALITY } from './ai/index.ts';
+export type { AiTurnLog, AiRealmLog, AiTraits } from './ai/index.ts';
+
 // Command protocol (the client/server API boundary)
 export { dispatch } from './commands/index.ts';
 export type {
