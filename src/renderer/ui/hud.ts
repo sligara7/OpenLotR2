@@ -49,6 +49,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, testId?: string, css?
 export class Hud {
   private root: HTMLDivElement;
   private header: HTMLDivElement;
+  private banner!: HTMLDivElement;
+  private endTurnBtn!: HTMLButtonElement;
   private status: HTMLDivElement;
   private realmRows: HTMLDivElement;
   private counties: HTMLDivElement;
@@ -80,9 +82,12 @@ export class Hud {
       'padding:12px;box-sizing:border-box;z-index:10;');
 
     this.header = el('div', 'hud-header', 'font-size:15px;font-weight:bold;margin-bottom:8px;');
-    const endTurn = el('button', 'end-turn', 'width:100%;padding:8px;margin-bottom:10px;cursor:pointer;');
-    endTurn.textContent = 'End Turn ▶';
-    endTurn.onclick = () => this.cb.onEndTurn();
+    this.banner = el('div', 'game-over',
+      'display:none;padding:10px;margin-bottom:10px;text-align:center;font-size:15px;font-weight:bold;border-radius:3px;');
+    this.endTurnBtn = el('button', 'end-turn', 'width:100%;padding:8px;margin-bottom:10px;cursor:pointer;');
+    this.endTurnBtn.textContent = 'End Turn ▶';
+    this.endTurnBtn.onclick = () => this.cb.onEndTurn();
+    const endTurn = this.endTurnBtn;
 
     // --- Your Realm overview --------------------------------------------
     const realm = el('div', 'realm', 'border:1px solid #6a5a3a;padding:8px;margin-bottom:8px;');
@@ -122,7 +127,27 @@ export class Hud {
     this.status = el('div', 'status', 'min-height:1.4em;color:#c8b890;margin:6px 0;');
     this.counties = el('div', 'counties');
 
-    this.root.append(this.header, endTurn, realm, this.panel, this.armyPanel, this.status, this.counties);
+    this.root.append(this.header, this.banner, endTurn, realm, this.panel, this.armyPanel, this.status, this.counties);
+  }
+
+  /** Show the end-game banner (and lock End Turn) once the game is decided. */
+  showOutcome(outcome: GameState['outcome'], meId: string, realmName: (id: string) => string): void {
+    if (!outcome) {
+      this.banner.style.display = 'none';
+      this.endTurnBtn.disabled = false;
+      return;
+    }
+    const won = outcome.winnerId === meId;
+    const winner = outcome.winnerId ? realmName(outcome.winnerId) : null;
+    let text: string;
+    if (outcome.reason === 'extinction') text = 'The realm lies in ruins — no victor.';
+    else if (won) text = outcome.reason === 'conquest' ? 'VICTORY — you rule the land by conquest!' : 'VICTORY — you are the last lord standing!';
+    else text = `DEFEAT — ${winner ?? 'a rival'} prevails.`;
+    this.banner.textContent = text;
+    this.banner.style.background = won ? '#2e5a2a' : '#5a2a26';
+    this.banner.style.color = '#f4ecd6';
+    this.banner.style.display = 'block';
+    this.endTurnBtn.disabled = true;
   }
 
   mount(parent: HTMLElement = document.body): void {

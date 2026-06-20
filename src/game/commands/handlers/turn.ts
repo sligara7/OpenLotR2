@@ -13,6 +13,7 @@ import type { GameState } from '../../types/realm.ts';
 
 export function endTurn(state: GameState, ctx: CommandContext): CommandResult {
   if (!ctx.rng) return err('EndTurn requires an RNG in the command context');
+  if (state.outcome) return err('The game is over');
   const report = advanceSeason(state, ctx.rng);
   return ok(report);
 }

@@ -39,8 +39,9 @@ export type { ArmyInit } from './state/army.ts';
 export type { UnitCounts } from './types/army.ts';
 export { advanceSieges, garrisonStrength } from './systems/siege.ts';
 export type { SiegeLedger, SiegeOutcome, SiegeStatus } from './systems/siege.ts';
-export { captureCounty, updateEliminations, realmIsAlive } from './systems/conquest.ts';
+export { captureCounty, updateEliminations, realmIsAlive, evaluateOutcome } from './systems/conquest.ts';
 export type { Siege } from './types/siege.ts';
+export type { GameOutcome } from './types/realm.ts';
 
 // AI rulers (drive non-human realms via the command protocol)
 export { takeAiTurns, planRealmTurn, isAiRealm, TRAITS_BY_PERSONALITY } from './ai/index.ts';

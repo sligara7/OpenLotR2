@@ -131,6 +131,14 @@ export const SiegeSchema = z
   })
   .openapi('Siege');
 
+// --- Outcome --------------------------------------------------------------
+export const GameOutcomeSchema = z
+  .object({
+    winnerId: z.string().nullable(),
+    reason: z.enum(['conquest', 'last-standing', 'defeat', 'extinction']),
+  })
+  .openapi('GameOutcome');
+
 // --- GameState ------------------------------------------------------------
 export const GameStateSchema = z
   .object({
@@ -142,6 +150,7 @@ export const GameStateSchema = z
     adjacency: z.record(z.string(), z.array(z.string())),
     armies: z.record(z.string(), ArmySchema),
     sieges: z.record(z.string(), SiegeSchema),
+    outcome: GameOutcomeSchema.nullable(),
   })
   .openapi('GameState');
 
@@ -199,6 +208,7 @@ export const TurnReportSchema = z
     migration: z.record(z.string(), z.number()),
     forage: ForageLedgerSchema,
     siege: SiegeLedgerSchema,
+    outcome: GameOutcomeSchema.nullable(),
   })
   .openapi('TurnReport');
 

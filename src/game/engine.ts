@@ -36,6 +36,8 @@ import type { ForageLedger } from './systems/foraging.ts';
 import { advanceSieges } from './systems/siege.ts';
 import type { SiegeLedger } from './systems/siege.ts';
 import { armyMovementAllowance } from './state/army.ts';
+import { updateEliminations, evaluateOutcome } from './systems/conquest.ts';
+import type { GameOutcome } from './types/realm.ts';
 
 export interface CountyTurnReport {
   countyId: string;
@@ -60,6 +62,8 @@ export interface TurnReport {
   migration: MigrationLedger;
   forage: ForageLedger;
   siege: SiegeLedger;
+  /** Set the turn the game is decided; null while it continues. */
+  outcome: GameOutcome | null;
 }
 
 const scratchTreasury = (): Treasury => ({ gold: 0, wood: 0, stone: 0, iron: 0, weapons: {} });
@@ -122,6 +126,10 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
   // Fresh movement budget for every surviving army next turn.
   for (const army of Object.values(state.armies)) army.movement = armyMovementAllowance(army);
 
+  // Settle eliminations from this turn's fighting, then check for a winner.
+  updateEliminations(state);
+  state.outcome = evaluateOutcome(state);
+
   const report: TurnReport = {
     turn: state.turn,
     year: state.year,
@@ -130,6 +138,7 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
     migration,
     forage,
     siege,
+    outcome: state.outcome,
   };
   nextCalendar(state);
   return report;

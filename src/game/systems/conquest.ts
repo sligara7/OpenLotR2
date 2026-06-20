@@ -7,8 +7,8 @@
  * possible elimination of the loser — stay consistent however the county falls.
  */
 
-import { CONQUEST } from '../constants.ts';
-import type { GameState } from '../types/realm.ts';
+import { CONQUEST, VICTORY_COUNTY_FRACTION } from '../constants.ts';
+import type { GameState, GameOutcome } from '../types/realm.ts';
 
 /**
  * Transfer a county to a new owner. The defeated garrison is gone (set to 0),
@@ -45,4 +45,42 @@ export function updateEliminations(state: GameState): string[] {
     }
   }
   return fallen;
+}
+
+/** Count of counties a realm holds. */
+function countyCount(state: GameState, realmId: string): number {
+  let n = 0;
+  for (const c of Object.values(state.counties)) if (c.ownerId === realmId) n += 1;
+  return n;
+}
+
+/**
+ * Decide whether the game is over, from a single-player standpoint. Returns the
+ * outcome (winner + reason) or null while play continues. Checked each turn:
+ *  - extinction: no realm survives
+ *  - last-standing: exactly one realm survives
+ *  - conquest: a realm holds ≥ VICTORY_COUNTY_FRACTION of all counties
+ *  - defeat: the human player has been eliminated while rivals fight on
+ */
+export function evaluateOutcome(state: GameState): GameOutcome | null {
+  const alive = Object.values(state.realms).filter((r) => !r.eliminated);
+  if (alive.length === 0) return { winnerId: null, reason: 'extinction' };
+  if (alive.length === 1) return { winnerId: alive[0].id, reason: 'last-standing' };
+
+  const total = Object.keys(state.counties).length;
+  if (total > 0) {
+    for (const r of alive) {
+      if (countyCount(state, r.id) / total >= VICTORY_COUNTY_FRACTION) {
+        return { winnerId: r.id, reason: 'conquest' };
+      }
+    }
+  }
+
+  const human = Object.values(state.realms).find((r) => r.isHuman);
+  if (human && human.eliminated) {
+    // The player's game ends; credit the strongest surviving rival.
+    const leader = [...alive].sort((a, b) => countyCount(state, b.id) - countyCount(state, a.id))[0];
+    return { winnerId: leader.id, reason: 'defeat' };
+  }
+  return null;
 }

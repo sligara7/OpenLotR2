@@ -41,6 +41,7 @@ export function createWorld(init: WorldInit): GameState {
     adjacency,
     armies,
     sieges: {},
+    outcome: null,
   };
 }
 

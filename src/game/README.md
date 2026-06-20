@@ -118,6 +118,13 @@ population (off the labour pool) and morale (the manual's rule: you can't draft 
 many that happiness would fall below zero), and a new army needs at least 50.
 Mercenaries, wages and desertion are still to come.
 
+**Winning** (`systems/conquest.ts` `evaluateOutcome`, checked each turn and stored
+on `GameState.outcome`): the game is decided when a realm holds a supermajority of
+all counties (`VICTORY_COUNTY_FRACTION`, *conquest*), when only one realm survives
+(*last-standing*), or — for the single-player game — when the human is eliminated
+(*defeat*); no survivors is *extinction*. Once `outcome` is set, `EndTurn` is
+refused and the client shows a victory/defeat banner.
+
 Supply convoys (feeding armies across friendly tiles, intercepting enemy convoys)
 remain a queued logistics step; a few sea-isolated counties await ferries.
 

@@ -127,6 +127,10 @@ test('combat & units: army composition, the armory, forging and mustering', asyn
   // The realm armory is shown (empty until the smith forges).
   await expect(page.getByTestId('armory')).toContainText('Armory');
 
+  // The game is ongoing: no end-game banner, End Turn enabled.
+  await expect(page.getByTestId('game-over')).toBeHidden();
+  await expect(page.getByTestId('end-turn')).toBeEnabled();
+
   // Select an owned county → forge + muster controls appear.
   await page.getByTestId('county-hampshire-info').click();
   await expect(page.getByTestId('mil-controls')).toBeVisible();

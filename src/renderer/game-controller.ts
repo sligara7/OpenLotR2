@@ -51,6 +51,7 @@ function refreshArmy(): void {
 function publish(state: GameState): void {
   meId = humanId(state);
   hud.render(state, meId);
+  hud.showOutcome(state.outcome, meId, (id) => state.realms[id]?.name ?? id);
   stateBus.publish(state);
   refreshSelected();
   refreshArmy();
