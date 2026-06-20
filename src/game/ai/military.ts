@@ -14,8 +14,11 @@
 
 import { buildBritainTileMap, countyTowns, findTilePath, hexNeighbours } from '../maps/index.ts';
 import { countiesOfRealm } from '../state/world.ts';
+import { ARMED_UNITS, HAPPINESS, MIN_ARMY_SIZE } from '../constants.ts';
+import { UnitType } from '../types/enums.ts';
 import type { GameState, Realm } from '../types/realm.ts';
 import type { Army } from '../types/army.ts';
+import type { County } from '../types/county.ts';
 import type { Command } from '../commands/types.ts';
 import type { AiTraits } from './traits.ts';
 
@@ -23,6 +26,8 @@ import type { AiTraits } from './traits.ts';
 export const AI_MARCH_TILES_PER_TURN = 3;
 /** Numerical edge the AI wants before committing to a field battle. */
 const ATTACK_CONFIDENCE = 1.2;
+/** Army size the AI tops its forces back up to (the minimum legal army). */
+const REINFORCE_TARGET = MIN_ARMY_SIZE;
 
 /** Pick the weakest non-owned county adjacent to the realm's territory. */
 function weakestBorderTarget(state: GameState, realm: Realm): string | null {
@@ -79,6 +84,57 @@ function planArmy(state: GameState, realm: Realm, army: Army): Command | null {
   const step = path.tiles[Math.min(AI_MARCH_TILES_PER_TURN, path.tiles.length - 1)];
   if (step.col === army.col && step.row === army.row) return null;
   return { type: 'MoveArmy', armyId: army.id, col: step.col, row: step.row };
+}
+
+/** Most peasants a county can draft this turn without driving morale below half
+ *  (a margin shy of the hard floor the conscription command enforces). */
+function safeLevy(county: County, want: number): number {
+  const headroom = (county.happiness * 0.5) / HAPPINESS.conscriptionPenaltyPerPct; // allowable % of pop
+  const byMorale = Math.floor((headroom / 100) * county.population) - county.recentConscription;
+  return Math.max(0, Math.min(want, byMorale, county.population - 1));
+}
+
+/**
+ * Keep the war machine fed: forge a weapon the realm can supply, and top up any
+ * home army below strength with a peasant levy. Runs before maneuvers so fresh
+ * recruits march out the same turn.
+ */
+export function planReinforce(state: GameState, realm: Realm): Command[] {
+  const cmds: Command[] = [];
+  const owned = countiesOfRealm(state, realm.id);
+  if (owned.length === 0) return cmds;
+
+  // Forge at the capital whatever the realm has the materials for.
+  const capital = owned[0];
+  const hasIron = owned.some((c) => c.industries.IronMine.present);
+  const hasWood = owned.some((c) => c.industries.Lumber.present);
+  const product = hasIron ? UnitType.Swordsman : hasWood ? UnitType.Archer : null;
+  if (product && capital.blacksmithProduct !== product) {
+    cmds.push({ type: 'SetBlacksmith', countyId: capital.id, product });
+  }
+
+  // The best-stocked weapon in the armory — the AI arms recruits with it when it
+  // can, otherwise raises a free peasant levy.
+  let armed: UnitType | null = null;
+  let stock = 0;
+  for (const u of ARMED_UNITS) {
+    const have = realm.treasury.weapons[u] ?? 0;
+    if (have > stock) { stock = have; armed = u; }
+  }
+
+  // Reinforce under-strength armies standing on friendly soil.
+  for (const army of Object.values(state.armies)) {
+    if (army.ownerId !== realm.id || army.soldiers >= REINFORCE_TARGET) continue;
+    const county = army.countyId ? state.counties[army.countyId] : undefined;
+    if (!county || county.ownerId !== realm.id) continue;
+    const levy = safeLevy(county, REINFORCE_TARGET - army.soldiers);
+    if (levy <= 0) continue;
+    const unit = armed && stock > 0 ? armed : UnitType.Peasant;
+    const count = unit === UnitType.Peasant ? levy : Math.min(levy, stock);
+    cmds.push({ type: 'Conscript', countyId: county.id, unit, count, armyId: army.id });
+    if (unit !== UnitType.Peasant) stock -= count; // don't promise the same swords twice
+  }
+  return cmds;
 }
 
 /** All military commands for this ruler (empty if too timid or armyless). */

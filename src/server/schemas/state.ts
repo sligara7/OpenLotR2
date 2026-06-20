@@ -11,6 +11,7 @@ import {
   NoblePersonalitySchema,
   RationLevelSchema,
   SeasonSchema,
+  UnitTypeSchema,
 } from './enums.ts';
 import type { GameState } from '../../game/types/realm.ts';
 import type { TurnReport } from '../../game/engine.ts';
@@ -68,6 +69,7 @@ export const CountySchema = z
       garrison: z.number(),
     }),
     labour: z.object({ industryShare: z.number(), grainBeefBalance: z.number() }),
+    blacksmithProduct: UnitTypeSchema.nullable(),
     recentConscription: z.number(),
     aleSeasons: z.number(),
     revolting: z.boolean(),

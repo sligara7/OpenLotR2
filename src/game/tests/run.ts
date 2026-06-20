@@ -27,6 +27,7 @@ import './ai.test.ts';
 import './balance.test.ts';
 import './combat.test.ts';
 import './siege.test.ts';
+import './conscription.test.ts';
 
 import { run } from '../testing/harness.ts';
 

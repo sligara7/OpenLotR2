@@ -6,6 +6,7 @@ import type {
   HealthLevel,
   Industry,
   RationLevel,
+  UnitType,
 } from './enums.ts';
 
 /** A single field that can be farmed, grazed, or reclaimed. */
@@ -93,6 +94,9 @@ export interface County {
   industries: Record<Industry, IndustrySite>;
   castle: Castle;
   labour: LabourPolicy;
+  /** Weapon the county blacksmith is currently forging (a unit type), or null
+   *  when idle. Output pools to the realm's shared armory (treasury.weapons). */
+  blacksmithProduct: UnitType | null;
 
   /** Soldiers conscripted from this county this season (drives unhappiness). */
   recentConscription: number;

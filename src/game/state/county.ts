@@ -73,6 +73,7 @@ export function createCounty(init: CountyInit): County {
       garrison: init.garrison ?? 0,
     },
     labour: { industryShare: 0.5, grainBeefBalance: 0.5 },
+    blacksmithProduct: null,
     recentConscription: 0,
     aleSeasons: 0,
     revolting: false,

@@ -122,6 +122,19 @@ export const UNIT_SPEC: Record<
   [UnitType.Knight]:      { attack: 6, defence: 5, iron: 3, wood: 1 },
 };
 
+// Raising troops (Manual Part-4): the blacksmith forges one weapon type from the
+// realm's iron+wood; conscription turns county population into soldiers, arming
+// non-peasants from that armory. Peasants need no weapon.
+export const WEAPON_LABOUR_PER_UNIT = 2; // blacksmith crew-seasons to forge one weapon
+export const MIN_ARMY_SIZE = 50; // "an army must have at least 50 soldiers"
+/** Unit types that require a weapon from the armory to raise (everyone but the
+ *  pitchfork-wielding peasant). */
+export const ARMED_UNITS: readonly UnitType[] = [
+  UnitType.Maceman, UnitType.Pikeman, UnitType.Archer,
+  UnitType.Crossbowman, UnitType.Swordsman, UnitType.Knight,
+];
+export const needsWeapon = (u: UnitType): boolean => u !== UnitType.Peasant;
+
 // MATCHUP[attacker][defender] multiplies the attacker's damage against that
 // defender — the rock-paper-scissors spine from the manual. Omitted pairs are
 // neutral (1.0). Archers shred the unarmored but glance off plate; crossbows

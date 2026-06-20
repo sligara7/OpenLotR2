@@ -29,6 +29,8 @@ import {
   STONE_PER_WORKER,
   WOOD_PER_WORKER,
   CASTLE_SPEC,
+  UNIT_SPEC,
+  WEAPON_LABOUR_PER_UNIT,
 } from '../constants.ts';
 import type { County } from '../types/county.ts';
 import type { Treasury } from '../types/realm.ts';
@@ -41,6 +43,8 @@ export interface ProductionSummary {
   wood: number;
   stone: number;
   iron: number;
+  /** Weapons forged by the blacksmith this season (banked to the armory). */
+  weapons: number;
   castleCompleted: boolean;
 }
 
@@ -129,7 +133,22 @@ function runIndustry(
     summary.iron = Math.min(alloc.ironMine * IRON_PER_WORKER, county.industries.IronMine.capacity ?? Infinity);
     treasury.iron += summary.iron;
   }
-  // FUTURE: blacksmith consumes wood+iron -> weapons (alloc.blacksmith).
+  // Blacksmith: forge the chosen weapon, limited by its crew and the realm's
+  // iron+wood. Output pools to the shared armory (treasury.weapons), where
+  // conscription draws it to arm new units.
+  if (county.industries.Blacksmith.operational && county.blacksmithProduct) {
+    const spec = UNIT_SPEC[county.blacksmithProduct];
+    const byLabour = Math.floor(alloc.blacksmith / WEAPON_LABOUR_PER_UNIT);
+    const byIron = spec.iron > 0 ? Math.floor(treasury.iron / spec.iron) : Infinity;
+    const byWood = spec.wood > 0 ? Math.floor(treasury.wood / spec.wood) : Infinity;
+    const made = Math.max(0, Math.min(byLabour, byIron, byWood));
+    if (made > 0) {
+      treasury.iron -= made * spec.iron;
+      treasury.wood -= made * spec.wood;
+      treasury.weapons[county.blacksmithProduct] = (treasury.weapons[county.blacksmithProduct] ?? 0) + made;
+      summary.weapons = made;
+    }
+  }
 
   // Castle construction: advance the active project, drawing materials as
   // available. Progress is gated by both labour and accumulated materials.
@@ -167,6 +186,7 @@ export function runProduction(
     wood: 0,
     stone: 0,
     iron: 0,
+    weapons: 0,
     castleCompleted: false,
   };
   runAgriculture(county, alloc, season, summary);

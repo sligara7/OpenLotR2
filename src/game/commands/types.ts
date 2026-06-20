@@ -12,7 +12,7 @@
  * handler under ./handlers.
  */
 
-import type { CastleType, FieldStatus, RationLevel } from '../types/enums.ts';
+import type { CastleType, FieldStatus, RationLevel, UnitType } from '../types/enums.ts';
 import type { Rng } from '../rng.ts';
 import type { TurnReport } from '../engine.ts';
 
@@ -49,6 +49,12 @@ export interface MoveArmy { type: 'MoveArmy'; armyId: string; col: number; row: 
 export interface AttackArmy { type: 'AttackArmy'; armyId: string; targetArmyId: string; }
 /** Lay (or keep up) a siege on the garrisoned-castle county your army occupies. */
 export interface LaySiege { type: 'LaySiege'; armyId: string; countyId: string; }
+/** Set which weapon a county's blacksmith forges (null = idle). */
+export interface SetBlacksmith { type: 'SetBlacksmith'; countyId: string; product: UnitType | null; }
+/** Raise `count` soldiers of `unit` from a county's population into an army
+ *  (reinforce `armyId` if given and present, else muster a new one at the town).
+ *  Non-peasants consume matching weapons from the armory. */
+export interface Conscript { type: 'Conscript'; countyId: string; unit: UnitType; count: number; armyId?: string; }
 export interface EndTurn { type: 'EndTurn'; }
 
 /** The full set of commands a client may send. */
@@ -63,6 +69,8 @@ export type Command =
   | MoveArmy
   | AttackArmy
   | LaySiege
+  | SetBlacksmith
+  | Conscript
   | EndTurn;
 
 /** Context the server supplies when dispatching: who is acting + the RNG used

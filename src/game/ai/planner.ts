@@ -11,7 +11,7 @@
 
 import { dispatch } from '../commands/dispatch.ts';
 import { planGovernance } from './governance.ts';
-import { planMilitary } from './military.ts';
+import { planMilitary, planReinforce } from './military.ts';
 import { TRAITS_BY_PERSONALITY, DEFAULT_TRAITS } from './traits.ts';
 import type { GameState, Realm } from '../types/realm.ts';
 import type { Command } from '../commands/types.ts';
@@ -37,7 +37,13 @@ export function isAiRealm(realm: Realm): boolean {
 /** All commands an AI ruler wants to issue this turn (governance + maneuver). */
 export function planRealmTurn(state: GameState, realm: Realm): Command[] {
   const traits = realm.personality ? TRAITS_BY_PERSONALITY[realm.personality] : DEFAULT_TRAITS;
-  return [...planGovernance(state, realm, traits), ...planMilitary(state, realm, traits)];
+  // Order: govern the economy, raise/forge troops, then maneuver (so fresh
+  // recruits march out the same turn).
+  return [
+    ...planGovernance(state, realm, traits),
+    ...planReinforce(state, realm),
+    ...planMilitary(state, realm, traits),
+  ];
 }
 
 /**

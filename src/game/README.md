@@ -102,9 +102,16 @@ punch through armour and unhorse knights, macemen run down missile troops, pikes
 brace against cavalry), × terrain/wall modifiers × a seeded swing. Casualties
 scale with the enemy's power share and are distributed across the loser's units
 by vulnerability. `Army.units` is the source of truth; `Army.soldiers` is its
-denormalised total (kept in sync by `state/army.ts`). **Raising** units —
-conscription, the weapons economy that caps each type — is the next increment;
-for now armies start with a fixed retinue.
+denormalised total (kept in sync by `state/army.ts`).
+
+**Raising troops** (`commands/handlers/conscription.ts`): a county's blacksmith
+forges one weapon type (`SetBlacksmith`) from the realm's iron+wood into the
+shared armory (`treasury.weapons`); `Conscript` then turns county population into
+soldiers — peasants for free, everyone else drawing a matching weapon from the
+armory — mustering a new army at the town or reinforcing one in place. It costs
+population (off the labour pool) and morale (the manual's rule: you can't draft so
+many that happiness would fall below zero), and a new army needs at least 50.
+Mercenaries, wages and desertion are still to come.
 
 Supply convoys (feeding armies across friendly tiles, intercepting enemy convoys)
 remain a queued logistics step; a few sea-isolated counties await ferries.
@@ -178,8 +185,9 @@ leaving state untouched). `ctx.actorRealmId` enforces ownership.
 
 Implemented commands: `SetTaxRate`, `SetRation`, `SetLabourPolicy`,
 `AssignField`, `BuildCastle`, `SendSupplies`, `BuyAle`, `MoveArmy`, `AttackArmy`,
-`LaySiege`, `EndTurn`. `EndTurn` advances the world via `advanceSeason` and
-returns the `TurnReport`. `AttackArmy` (and `EndTurn`) need `ctx.rng`.
+`LaySiege`, `SetBlacksmith`, `Conscript`, `EndTurn`. `EndTurn` advances the world
+via `advanceSeason` and returns the `TurnReport`. `AttackArmy` (and `EndTurn`)
+need `ctx.rng`.
 
 ```ts
 import { dispatch, createRng } from './game';

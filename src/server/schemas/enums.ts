@@ -11,6 +11,7 @@ import {
   NoblePersonality,
   RationLevel,
   Season,
+  UnitType,
 } from '../../game/types/enums.ts';
 
 export const RationLevelSchema = z.nativeEnum(RationLevel).openapi('RationLevel');
@@ -19,6 +20,7 @@ export const CastleTypeSchema = z.nativeEnum(CastleType).openapi('CastleType');
 export const HealthLevelSchema = z.nativeEnum(HealthLevel).openapi('HealthLevel');
 export const SeasonSchema = z.nativeEnum(Season).openapi('Season');
 export const NoblePersonalitySchema = z.nativeEnum(NoblePersonality).openapi('NoblePersonality');
+export const UnitTypeSchema = z.nativeEnum(UnitType).openapi('UnitType');
 
 /** Field uses a player may assign directly (subset of FieldStatus). */
 export const FieldUseSchema = z

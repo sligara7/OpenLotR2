@@ -8,7 +8,7 @@
  * can never silently diverge.
  */
 import { z } from './zod.ts';
-import { CastleTypeSchema, FieldUseSchema, RationLevelSchema } from './enums.ts';
+import { CastleTypeSchema, FieldUseSchema, RationLevelSchema, UnitTypeSchema } from './enums.ts';
 import type { Command } from '../../game/commands/index.ts';
 
 const countyId = z.string().openapi({ example: 'york' });
@@ -74,6 +74,20 @@ export const LaySiegeSchema = z.object({
   countyId,
 });
 
+export const SetBlacksmithSchema = z.object({
+  type: z.literal('SetBlacksmith'),
+  countyId,
+  product: UnitTypeSchema.nullable(),
+});
+
+export const ConscriptSchema = z.object({
+  type: z.literal('Conscript'),
+  countyId,
+  unit: UnitTypeSchema,
+  count: z.number().int().positive(),
+  armyId: z.string().optional(),
+});
+
 export const EndTurnSchema = z.object({ type: z.literal('EndTurn') });
 
 export const CommandSchema = z
@@ -88,6 +102,8 @@ export const CommandSchema = z
     MoveArmySchema,
     AttackArmySchema,
     LaySiegeSchema,
+    SetBlacksmithSchema,
+    ConscriptSchema,
     EndTurnSchema,
   ])
   .openapi('Command');
