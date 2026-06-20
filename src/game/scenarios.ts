@@ -13,6 +13,7 @@ import {
   WOOD_PER_TILE, STONE_PER_TILE, IRON_PER_TILE,
   GRAIN_SACKS_PER_FIELD, GRAIN_YIELD_MULTIPLIER,
   FOOD_SURPLUS_TARGET, STARTING_FOOD_SEASONS,
+  CASTLE_SPEC, SIEGE,
 } from './constants.ts';
 import type { County } from './types/county.ts';
 import type { GameState } from './types/realm.ts';
@@ -127,8 +128,13 @@ export function createBritainWorld(): GameState {
         Quarry: (p?.stone ?? 0) > 0,
         IronMine: (p?.iron ?? 0) > 0,
       },
-      // Each starting county already holds a modest castle.
+      // Each starting county already holds a modest, garrisoned castle — so it
+      // can only be taken by siege (neutral counties have none and fall to a
+      // marching army).
       castle: ownerId ? CastleType.MotteAndBailey : undefined,
+      garrison: ownerId
+        ? Math.round(CASTLE_SPEC[CastleType.MotteAndBailey].garrison * SIEGE.startingGarrisonFraction)
+        : 0,
     });
 
     // Tile-derived production ceilings.

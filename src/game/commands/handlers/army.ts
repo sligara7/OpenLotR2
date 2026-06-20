@@ -2,6 +2,7 @@
 
 import { buildBritainTileMap, findTilePath } from '../../maps/index.ts';
 import { ok, err } from '../types.ts';
+import { captureOnOccupy } from './combat.ts';
 import type { MoveArmy, CommandContext, CommandResult } from '../types.ts';
 import type { GameState } from '../../types/realm.ts';
 
@@ -21,5 +22,9 @@ export function moveArmy(state: GameState, cmd: MoveArmy, ctx: CommandContext): 
   army.col = cmd.col;
   army.row = cmd.row;
   army.countyId = dest.countyId; // forage from the county now occupied
-  return ok();
+
+  // Occupying a hostile, undefended county town takes it; a garrisoned castle
+  // shrugs off the march and must be besieged instead.
+  const captured = captureOnOccupy(state, army);
+  return ok(undefined, captured ? { captured } : undefined);
 }

@@ -15,6 +15,7 @@ import { planMilitary } from './military.ts';
 import { TRAITS_BY_PERSONALITY, DEFAULT_TRAITS } from './traits.ts';
 import type { GameState, Realm } from '../types/realm.ts';
 import type { Command } from '../commands/types.ts';
+import type { Rng } from '../rng.ts';
 
 export interface AiRealmLog {
   realmId: string;
@@ -43,8 +44,11 @@ export function planRealmTurn(state: GameState, realm: Realm): Command[] {
  * Plan and apply every AI realm's turn through dispatch(). Mutates `state`.
  * Returns a per-realm log of issued (and any rejected) commands. Does not end
  * the turn — call EndTurn / advanceSeason afterwards to tick the world.
+ *
+ * Pass the game's RNG so the AI's field battles (AttackArmy) resolve
+ * deterministically; without it those commands are rejected, leaving the rest.
  */
-export function takeAiTurns(state: GameState): AiTurnLog {
+export function takeAiTurns(state: GameState, rng?: Rng): AiTurnLog {
   const realms: AiRealmLog[] = [];
 
   for (const realm of Object.values(state.realms)) {
@@ -53,7 +57,7 @@ export function takeAiTurns(state: GameState): AiTurnLog {
     const commands = planRealmTurn(state, realm);
     const log: AiRealmLog = { realmId: realm.id, commands, rejected: [] };
     for (const command of commands) {
-      const result = dispatch(state, command, { actorRealmId: realm.id });
+      const result = dispatch(state, command, { actorRealmId: realm.id, rng });
       if (!result.ok) log.rejected.push({ command, error: result.error ?? 'unknown' });
     }
     realms.push(log);

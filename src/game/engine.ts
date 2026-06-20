@@ -33,6 +33,8 @@ import { runImmigration } from './systems/immigration.ts';
 import type { MigrationLedger } from './systems/immigration.ts';
 import { forageArmies } from './systems/foraging.ts';
 import type { ForageLedger } from './systems/foraging.ts';
+import { advanceSieges } from './systems/siege.ts';
+import type { SiegeLedger } from './systems/siege.ts';
 
 export interface CountyTurnReport {
   countyId: string;
@@ -56,6 +58,7 @@ export interface TurnReport {
   counties: CountyTurnReport[];
   migration: MigrationLedger;
   forage: ForageLedger;
+  siege: SiegeLedger;
 }
 
 const scratchTreasury = (): Treasury => ({ gold: 0, wood: 0, stone: 0, iron: 0, weapons: {} });
@@ -112,6 +115,9 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
   // draws down whatever the occupied county has left in store (and starves if
   // that is not enough).
   const forage = forageArmies(state);
+  // Sieges resolve after foraging, so a besieger that has stripped the county
+  // starves its garrison this same season.
+  const siege = advanceSieges(state, rng);
 
   const report: TurnReport = {
     turn: state.turn,
@@ -120,6 +126,7 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
     counties: reports,
     migration,
     forage,
+    siege,
   };
   nextCalendar(state);
   return report;

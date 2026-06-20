@@ -42,8 +42,13 @@ export interface SendSupplies {
   cows?: number;
 }
 export interface BuyAle { type: 'BuyAle'; countyId: string; }
-/** Move one of your armies to a destination tile (must be reachable). */
+/** Move one of your armies to a destination tile (must be reachable). Occupying
+ *  a hostile, undefended county captures it; a garrisoned castle needs a siege. */
 export interface MoveArmy { type: 'MoveArmy'; armyId: string; col: number; row: number; }
+/** Attack an enemy army with one of yours (auto-resolved field battle). */
+export interface AttackArmy { type: 'AttackArmy'; armyId: string; targetArmyId: string; }
+/** Lay (or keep up) a siege on the garrisoned-castle county your army occupies. */
+export interface LaySiege { type: 'LaySiege'; armyId: string; countyId: string; }
 export interface EndTurn { type: 'EndTurn'; }
 
 /** The full set of commands a client may send. */
@@ -56,6 +61,8 @@ export type Command =
   | SendSupplies
   | BuyAle
   | MoveArmy
+  | AttackArmy
+  | LaySiege
   | EndTurn;
 
 /** Context the server supplies when dispatching: who is acting + the RNG used
@@ -63,7 +70,8 @@ export type Command =
 export interface CommandContext {
   /** Realm id on whose authority the command is issued (ownership checks). */
   actorRealmId: string;
-  /** Required only for EndTurn; the deterministic RNG to tick the world with. */
+  /** Deterministic RNG. Required by EndTurn (to tick the world) and AttackArmy
+   *  (to resolve the battle); other commands ignore it. */
   rng?: Rng;
 }
 
@@ -72,7 +80,9 @@ export interface CommandResult {
   error?: string;
   /** Present when the command advanced the world (EndTurn). */
   report?: TurnReport;
+  /** Command-specific payload (e.g. a field-battle result from AttackArmy). */
+  data?: unknown;
 }
 
-export const ok = (report?: TurnReport): CommandResult => ({ ok: true, report });
+export const ok = (report?: TurnReport, data?: unknown): CommandResult => ({ ok: true, report, data });
 export const err = (error: string): CommandResult => ({ ok: false, error });

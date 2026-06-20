@@ -61,16 +61,19 @@ export const IRON_PER_TILE = 5;
 // --- Castles (Manual Part-3 "Castle Building") ----------------------------
 /** Material cost & garrison capacity per design. workUnits = total labour-
  *  seasons to build from scratch (progress accrues at builders/workUnits). */
+// defenseMultiplier: walls multiply the garrison's fighting strength in a siege
+// — the manual says "the advantage becomes greater the larger and more complex
+// the castle is." garrison is the design's max defender capacity.
 export const CASTLE_SPEC: Record<
   CastleType,
-  { wood: number; stone: number; workUnits: number; garrison: number; taxBonus: number }
+  { wood: number; stone: number; workUnits: number; garrison: number; taxBonus: number; defenseMultiplier: number }
 > = {
-  [CastleType.None]: { wood: 0, stone: 0, workUnits: 0, garrison: 0, taxBonus: 0 },
-  [CastleType.WoodenPalisade]: { wood: 40, stone: 0, workUnits: 60, garrison: 20, taxBonus: 0.1 },
-  [CastleType.MotteAndBailey]: { wood: 60, stone: 20, workUnits: 120, garrison: 40, taxBonus: 0.2 },
-  [CastleType.NormanKeep]: { wood: 40, stone: 120, workUnits: 240, garrison: 80, taxBonus: 0.35 },
-  [CastleType.StoneCastle]: { wood: 60, stone: 240, workUnits: 420, garrison: 140, taxBonus: 0.55 },
-  [CastleType.RoyalCastle]: { wood: 100, stone: 480, workUnits: 720, garrison: 240, taxBonus: 0.8 },
+  [CastleType.None]: { wood: 0, stone: 0, workUnits: 0, garrison: 0, taxBonus: 0, defenseMultiplier: 1 },
+  [CastleType.WoodenPalisade]: { wood: 40, stone: 0, workUnits: 60, garrison: 20, taxBonus: 0.1, defenseMultiplier: 1.5 },
+  [CastleType.MotteAndBailey]: { wood: 60, stone: 20, workUnits: 120, garrison: 40, taxBonus: 0.2, defenseMultiplier: 2 },
+  [CastleType.NormanKeep]: { wood: 40, stone: 120, workUnits: 240, garrison: 80, taxBonus: 0.35, defenseMultiplier: 3 },
+  [CastleType.StoneCastle]: { wood: 60, stone: 240, workUnits: 420, garrison: 140, taxBonus: 0.55, defenseMultiplier: 4 },
+  [CastleType.RoyalCastle]: { wood: 100, stone: 480, workUnits: 720, garrison: 240, taxBonus: 0.8, defenseMultiplier: 5 },
 };
 
 // --- Armies & foraging (armies live off the land they occupy) -------------
@@ -84,6 +87,46 @@ export const CASTLE_SPEC: Record<
 // then, occupation is the only supply line.
 export const ARMY_FORAGE_PORTIONS_PER_SOLDIER = 1; // a soldier eats like a peasant
 export const ARMY_STARVE_FRACTION = 0.25; // share of unfed soldiers lost/season
+
+// --- Combat (auto-resolved field battles) ---------------------------------
+// The manual is purely qualitative on battle math (decline a battle and "it is
+// calculated automatically"), so this is a tunable strength model: each side's
+// power is its soldier count times terrain/posture modifiers and a random swing;
+// casualties scale with the enemy's share of total power. Unit types (archers,
+// knights, the rock-paper-scissors matchups) are a future increment that will
+// feed richer per-side power.
+export const COMBAT = {
+  /** ± fraction of random swing applied to each side's power each battle. */
+  powerVariance: 0.2,
+  /** Casualty lethality; >1 lets a decisive power edge annihilate the loser. */
+  lethality: 1.4,
+  /** Small edge for the side that is attacked in the open (knows the ground). */
+  defenderBonus: 1.1,
+} as const;
+
+// --- Sieges (multi-season; the only way to take a garrisoned castle) -------
+// A besieging army batters the castle over several seasons (bigger army → faster,
+// per the manual) while foraging starves the garrison. The siege resolves to an
+// assault (or a starve-out surrender) that flips the county to the attacker.
+export const SIEGE = {
+  /** Breach progress per season when besieger size equals the wall-backed
+   *  garrison strength; scales with the army:defence ratio (bigger → faster). */
+  baseProgressPerSeason: 0.2,
+  /** Cap on how much the size ratio can accelerate a siege. */
+  maxProgressPerSeason: 0.6,
+  /** Castle damage added per season under bombardment (persists until repaired). */
+  damagePerSeason: 0.15,
+  /** Garrison soldiers raised per starting castle, as a fraction of its design
+   *  garrison capacity (CASTLE_SPEC.garrison). */
+  startingGarrisonFraction: 0.6,
+} as const;
+
+// --- Conquest (a county changing hands) -----------------------------------
+export const CONQUEST = {
+  /** A freshly conquered populace resents its new lord — happiness is capped
+   *  to this until the conqueror wins them over. */
+  conqueredHappiness: 25,
+} as const;
 
 // --- Taxes (Manual Part-3 "Taxes", "Castles and Tax Revenues") ------------
 export const TAX_GOLD_PER_PERSON = 0.05; // crowns per person at 100% rate

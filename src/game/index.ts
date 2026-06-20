@@ -31,6 +31,14 @@ export type { TurnReport, CountyTurnReport } from './engine.ts';
 export { forageArmies } from './systems/foraging.ts';
 export type { ForageLedger, ArmyForageResult } from './systems/foraging.ts';
 
+// Combat & siege (auto-resolved field battles; multi-season sieges)
+export { resolveBattle } from './systems/combat.ts';
+export type { BattleResult, Combatant } from './systems/combat.ts';
+export { advanceSieges, garrisonStrength } from './systems/siege.ts';
+export type { SiegeLedger, SiegeOutcome, SiegeStatus } from './systems/siege.ts';
+export { captureCounty, updateEliminations, realmIsAlive } from './systems/conquest.ts';
+export type { Siege } from './types/siege.ts';
+
 // AI rulers (drive non-human realms via the command protocol)
 export { takeAiTurns, planRealmTurn, isAiRealm, TRAITS_BY_PERSONALITY } from './ai/index.ts';
 export type { AiTurnLog, AiRealmLog, AiTraits } from './ai/index.ts';

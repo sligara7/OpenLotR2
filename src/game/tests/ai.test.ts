@@ -10,6 +10,7 @@ import { planGovernance } from '../ai/governance.ts';
 import { planMilitary } from '../ai/military.ts';
 import { takeAiTurns, planRealmTurn } from '../ai/planner.ts';
 import { TRAITS_BY_PERSONALITY } from '../ai/traits.ts';
+import { createRng } from '../rng.ts';
 import type { Command } from '../commands/types.ts';
 
 const BARON = TRAITS_BY_PERSONALITY[NoblePersonality.Baron];
@@ -74,7 +75,7 @@ test('ai: takeAiTurns drives only AI realms and obeys ownership', () => {
   const scotTaxBefore = world.counties.midlothian.taxRate; // p2 (AI)
   const armyBefore = `${world.armies['p2-army'].col},${world.armies['p2-army'].row}`;
 
-  const log = takeAiTurns(world);
+  const log = takeAiTurns(world, createRng(1));
 
   assertEqual(log.realms.length, 2, 'two AI realms acted (p2, p3), not the human');
   assert(log.realms.every((r) => r.realmId !== 'p1'), 'human realm left alone');

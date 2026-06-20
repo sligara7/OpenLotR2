@@ -65,6 +65,7 @@ export const CountySchema = z
       type: CastleTypeSchema,
       buildProgress: z.number(),
       damage: z.number(),
+      garrison: z.number(),
     }),
     labour: z.object({ industryShare: z.number(), grainBeefBalance: z.number() }),
     recentConscription: z.number(),
@@ -105,6 +106,17 @@ export const ArmySchema = z
   })
   .openapi('Army');
 
+// --- Siege ----------------------------------------------------------------
+export const SiegeSchema = z
+  .object({
+    countyId: z.string(),
+    attackerRealmId: z.string(),
+    besiegerArmyId: z.string(),
+    progress: z.number(),
+    seasons: z.number(),
+  })
+  .openapi('Siege');
+
 // --- GameState ------------------------------------------------------------
 export const GameStateSchema = z
   .object({
@@ -115,6 +127,7 @@ export const GameStateSchema = z
     counties: z.record(z.string(), CountySchema),
     adjacency: z.record(z.string(), z.array(z.string())),
     armies: z.record(z.string(), ArmySchema),
+    sieges: z.record(z.string(), SiegeSchema),
   })
   .openapi('GameState');
 
@@ -147,6 +160,22 @@ const ForageLedgerSchema = z.object({
   armies: z.array(ArmyForageResultSchema),
 });
 
+const SiegeOutcomeSchema = z.object({
+  countyId: z.string(),
+  attackerRealmId: z.string(),
+  besiegerArmyId: z.string(),
+  progress: z.number(),
+  seasons: z.number(),
+  garrison: z.number(),
+  garrisonStarved: z.number(),
+  status: z.enum(['ongoing', 'stormed', 'starved', 'repulsed', 'lifted']),
+  captured: z.boolean(),
+});
+
+const SiegeLedgerSchema = z.object({
+  sieges: z.array(SiegeOutcomeSchema),
+});
+
 export const TurnReportSchema = z
   .object({
     turn: z.number(),
@@ -155,6 +184,7 @@ export const TurnReportSchema = z
     counties: z.array(CountyTurnReportSchema),
     migration: z.record(z.string(), z.number()),
     forage: ForageLedgerSchema,
+    siege: SiegeLedgerSchema,
   })
   .openapi('TurnReport');
 

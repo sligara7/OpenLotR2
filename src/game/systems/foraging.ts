@@ -42,8 +42,9 @@ export interface ForageLedger {
 
 /** Draw up to `need` portions of food from a county's stores (grain first, then
  *  beef). Mutates the county's food in place; returns portions actually served.
- *  Uses the same conversion constants as the population's own consumption. */
-function drawFood(county: County, need: number): number {
+ *  Uses the same conversion constants as the population's own consumption.
+ *  Exported so a besieged garrison can eat from the same stores (systems/siege). */
+export function drawFood(county: County, need: number): number {
   let remaining = need;
 
   const grainAvail = county.food.grainSacks / GRAIN_SACKS_PER_PORTION;

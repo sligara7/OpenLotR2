@@ -17,6 +17,7 @@ import { assignField } from './handlers/fields.ts';
 import { buildCastle } from './handlers/castle.ts';
 import { sendSupplies, buyAle } from './handlers/logistics.ts';
 import { moveArmy } from './handlers/army.ts';
+import { attackArmy, laySiege } from './handlers/combat.ts';
 import { endTurn } from './handlers/turn.ts';
 
 export function dispatch(state: GameState, command: Command, ctx: CommandContext): CommandResult {
@@ -29,6 +30,8 @@ export function dispatch(state: GameState, command: Command, ctx: CommandContext
     case 'SendSupplies': return sendSupplies(state, command, ctx);
     case 'BuyAle': return buyAle(state, command, ctx);
     case 'MoveArmy': return moveArmy(state, command, ctx);
+    case 'AttackArmy': return attackArmy(state, command, ctx);
+    case 'LaySiege': return laySiege(state, command, ctx);
     case 'EndTurn': return endTurn(state, ctx);
     default: {
       // Exhaustiveness guard: if a Command variant is added without a case,

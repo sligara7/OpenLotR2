@@ -40,6 +40,7 @@ export function createWorld(init: WorldInit): GameState {
     counties,
     adjacency,
     armies,
+    sieges: {},
   };
 }
 

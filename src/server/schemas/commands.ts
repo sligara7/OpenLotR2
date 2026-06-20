@@ -62,6 +62,18 @@ export const MoveArmySchema = z.object({
   row: z.number().int().nonnegative(),
 });
 
+export const AttackArmySchema = z.object({
+  type: z.literal('AttackArmy'),
+  armyId: z.string(),
+  targetArmyId: z.string(),
+});
+
+export const LaySiegeSchema = z.object({
+  type: z.literal('LaySiege'),
+  armyId: z.string(),
+  countyId,
+});
+
 export const EndTurnSchema = z.object({ type: z.literal('EndTurn') });
 
 export const CommandSchema = z
@@ -74,6 +86,8 @@ export const CommandSchema = z
     SendSuppliesSchema,
     BuyAleSchema,
     MoveArmySchema,
+    AttackArmySchema,
+    LaySiegeSchema,
     EndTurnSchema,
   ])
   .openapi('Command');

@@ -35,8 +35,8 @@ function realmLine(state: GameState, realmId: string): string {
 console.log('King of the Lands — AI rulers demo (Britain, 3 years)\n');
 console.log('The human (p1) does nothing; the Baron (Scots) and Knight (Welsh) play.\n');
 
-for (let i = 0; i < 12; i++) {
-  const log = takeAiTurns(world);
+for (let i = 0; i < 24; i++) {
+  const log = takeAiTurns(world, rng);
   const report = advanceSeason(world, rng);
 
   console.log(`── Year ${report.year} ${report.season} ` + '─'.repeat(40));
@@ -50,6 +50,13 @@ for (let i = 0; i < 12; i++) {
     const name = world.realms[r.realmId].name;
     const rej = r.rejected.length ? ` (${r.rejected.length} rejected)` : '';
     console.log(`    ${name}: ${summary}${rej}`);
+  }
+  // Surface any active sieges and their outcomes this season.
+  for (const s of report.siege.sieges) {
+    const county = world.counties[s.countyId]?.name ?? s.countyId;
+    const who = world.realms[s.attackerRealmId]?.name ?? s.attackerRealmId;
+    console.log(`    ⚔ ${who} besieging ${county}: ${s.status} ` +
+      `(progress ${(s.progress * 100) | 0}%, garrison ${s.garrison})`);
   }
   console.log('');
 }

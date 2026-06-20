@@ -25,6 +25,8 @@ import './army.test.ts';
 import './foraging.test.ts';
 import './ai.test.ts';
 import './balance.test.ts';
+import './combat.test.ts';
+import './siege.test.ts';
 
 import { run } from '../testing/harness.ts';
 

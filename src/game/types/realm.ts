@@ -43,4 +43,6 @@ export interface GameState {
   adjacency: Adjacency;
   /** Armies on the map, keyed by id. */
   armies: Record<string, import('./army.ts').Army>;
+  /** Active sieges, keyed by the besieged county id (one siege per county). */
+  sieges: Record<string, import('./siege.ts').Siege>;
 }

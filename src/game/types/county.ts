@@ -43,6 +43,9 @@ export interface Castle {
   buildProgress: number;
   /** Damage 0..1 (post-siege); blocks full effectiveness until repaired. */
   damage: number;
+  /** Soldiers defending the castle. A garrisoned castle (garrison > 0) can only
+   *  be taken by siege; an empty one is captured by occupying the county town. */
+  garrison: number;
 }
 
 /**

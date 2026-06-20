@@ -52,7 +52,7 @@ export function gamesRouter(store: GameStore): Router {
     // Single-host turn order: when the human ends the turn, the AI rulers take
     // theirs first (through the same dispatcher, bound by the same rules), then
     // the world ticks once for everyone.
-    if (parsed.data.type === 'EndTurn') takeAiTurns(game.state);
+    if (parsed.data.type === 'EndTurn') takeAiTurns(game.state, game.rng);
     const result = dispatch(game.state, parsed.data, { actorRealmId, rng: game.rng });
     if (result.report) game.reports.push(result.report);
     res.json(result);

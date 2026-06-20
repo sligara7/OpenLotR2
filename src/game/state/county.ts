@@ -24,6 +24,8 @@ export interface CountyInit {
   /** Which optional industries physically exist here (Blacksmith is implied). */
   industries?: Partial<Record<Industry, boolean>>;
   castle?: CastleType;
+  /** Soldiers garrisoning the castle (0 = undefended, capturable without siege). */
+  garrison?: number;
 }
 
 function makeField(): Field {
@@ -64,7 +66,12 @@ export function createCounty(init: CountyInit): County {
     fields,
     food: { grainSacks: init.grainSacks ?? 0, cows: init.cows ?? 0 },
     industries: makeIndustries(init.industries),
-    castle: { type: init.castle ?? CastleType.None, buildProgress: init.castle ? 1 : 0, damage: 0 },
+    castle: {
+      type: init.castle ?? CastleType.None,
+      buildProgress: init.castle ? 1 : 0,
+      damage: 0,
+      garrison: init.garrison ?? 0,
+    },
     labour: { industryShare: 0.5, grainBeefBalance: 0.5 },
     recentConscription: 0,
     aleSeasons: 0,

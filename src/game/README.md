@@ -52,6 +52,9 @@ src/game/
     taxes.ts          revenue -> shared treasury (castle bonus)
     revolt.ts         unrest countdown -> losing the county
     foraging.ts       armies eat the occupied county's food (or starve)
+    combat.ts         auto-resolved field battles (size x modifiers x RNG)
+    siege.ts          multi-season siege of a garrisoned castle (storm/starve)
+    conquest.ts       ownership transfer + realm elimination
   testing/harness.ts  Minimal zero-dependency test runner
   tests/              One *.test.ts per feature + run.ts entry
 ```
@@ -69,17 +72,37 @@ happiness, taxes are collected before population changes):
 ```
 per county:  labour → production → food → health → happiness → taxes
              → population → revolt
-world:       immigration → foraging
+world:       immigration → foraging → sieges
 then:        calendar tick (Spring→Summer→Fall→Winter, year++ after Winter)
 ```
 
-**Foraging** (`systems/foraging.ts`) runs last, after counties have fed their own
+**Foraging** (`systems/foraging.ts`) runs after counties have fed their own
 people: each army eats grain then beef from the county it occupies
 (`army.countyId`), drawing the stores down — so an occupying force weakens the
 land it sits on, friend or foe. A county that can't meet the army's appetite
-starves a fraction of its soldiers; an army at zero soldiers is destroyed. Supply
-convoys (feeding armies across friendly tiles, intercepting enemy convoys) are
-the queued next step — until then, occupation is the only supply line.
+starves a fraction of its soldiers; an army at zero soldiers is destroyed.
+
+## Combat & conquest
+
+A county changes hands two ways. An **undefended** county (no castle, or a castle
+with no garrison) is captured simply by occupying its town — `MoveArmy` flips it.
+A **garrisoned castle** can only be taken by **siege** (`LaySiege`): the besieger
+invests the county for several seasons, battering the walls (faster the larger
+the army, per the manual) while foraging starves the garrison, until the castle
+is **stormed** (an assault, resolved as a battle with the defenders fighting at a
+wall-strength multiplier) or **starved** into surrender. Sieges run last in the
+pipeline, after foraging, so a county a besieger has stripped this season starves
+its garrison the same season. Field battles between armies (`AttackArmy`) and
+siege assaults share one **auto-resolved** strength model (`systems/combat.ts`):
+power = soldiers × terrain/wall modifiers × a seeded random swing; casualties
+scale with the enemy's share of total power. Combat is intentionally
+strength-only for now — **unit types** (archers, knights, the rock-paper-scissors
+matchups) are the next increment and will feed richer per-side power.
+
+Supply convoys (feeding armies across friendly tiles, intercepting enemy convoys)
+remain a queued logistics step. A **map-connectivity bug** can also strand a
+county's town on an impassable island (the terrain pass rings it with mountains/
+water), immobilising an army there — a fix owed to the map generator.
 
 ## Running it
 
@@ -149,8 +172,9 @@ handler that **validates and applies** it (or returns `{ ok:false, error }`
 leaving state untouched). `ctx.actorRealmId` enforces ownership.
 
 Implemented commands: `SetTaxRate`, `SetRation`, `SetLabourPolicy`,
-`AssignField`, `BuildCastle`, `SendSupplies`, `BuyAle`, `EndTurn`. `EndTurn`
-advances the world via `advanceSeason` and returns the `TurnReport`.
+`AssignField`, `BuildCastle`, `SendSupplies`, `BuyAle`, `MoveArmy`, `AttackArmy`,
+`LaySiege`, `EndTurn`. `EndTurn` advances the world via `advanceSeason` and
+returns the `TurnReport`. `AttackArmy` (and `EndTurn`) need `ctx.rng`.
 
 ```ts
 import { dispatch, createRng } from './game';
@@ -160,8 +184,8 @@ dispatch(state, { type: 'EndTurn' }, { actorRealmId: 'p1', rng });
 ```
 
 FUTURE commands (need systems that don't exist yet): merchant Buy/Sell,
-Conscript, MoveArmy, LaySiege. Add a variant to the `Command` union and a
-handler under `commands/handlers/`.
+Conscript/DisbandArmy, GarrisonCastle, SupplyArmy. Add a variant to the `Command`
+union and a handler under `commands/handlers/`.
 
 ## Client/server roadmap
 
