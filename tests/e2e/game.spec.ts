@@ -111,3 +111,34 @@ test('realm overview manages all owned counties (per-county + bulk)', async ({ p
   await expect(page.getByTestId('realm-berkshire-ration')).toContainText('Double');
   await expect(page.getByTestId('realm-wiltshire-ration')).toContainText('Double');
 });
+
+test('combat & units: army composition, the armory, forging and mustering', async ({ page }) => {
+  await page.goto('/');
+
+  // The map labels each army with its troop count.
+  await expect(page.getByTestId('army-p1-army')).toContainText('40');
+
+  // Selecting an army shows its strength and unit composition.
+  await page.getByTestId('army-p1-army').click();
+  await expect(page.getByTestId('army-name')).toContainText('40 men');
+  await expect(page.getByTestId('army-detail')).toContainText('Knt'); // the starting retinue has knights
+
+  // The realm armory is shown (empty until the smith forges).
+  await expect(page.getByTestId('armory')).toContainText('Armory');
+
+  // Select an owned county → forge + muster controls appear.
+  await page.getByTestId('county-hampshire-info').click();
+  await expect(page.getByTestId('mil-controls')).toBeVisible();
+
+  // Forge crossbows.
+  await page.getByTestId('forge-select').selectOption('Crossbowman');
+  await expect(page.getByTestId('status')).toContainText('Applied SetBlacksmith');
+  await expect(page.getByTestId('sel-detail')).toContainText('forging Crossbowman');
+
+  // Muster a fresh peasant levy from the county.
+  await page.getByTestId('muster-select').selectOption('Peasant');
+  await page.getByTestId('muster-btn').click();
+  await expect(page.getByTestId('status')).toContainText('Applied Conscript');
+
+  await page.screenshot({ path: 'test-results/combat-units.png', fullPage: true });
+});

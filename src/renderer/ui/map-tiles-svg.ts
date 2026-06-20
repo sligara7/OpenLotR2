@@ -197,6 +197,7 @@ export class MapTilesSvg {
   private settle: SVGGElement;
   private borders: SVGGElement;
   private castles: SVGGElement;
+  private sieges: SVGGElement;
   private units: SVGGElement;
   private paths: SVGGElement;
   /** Pan/zoom is applied to this group (all layers live inside it). */
@@ -227,6 +228,8 @@ export class MapTilesSvg {
     this.borders.setAttribute('data-testid', 'borders');
     this.castles = document.createElementNS(SVGNS, 'g');
     this.castles.setAttribute('data-testid', 'castles');
+    this.sieges = document.createElementNS(SVGNS, 'g');
+    this.sieges.setAttribute('data-testid', 'sieges');
     this.units = document.createElementNS(SVGNS, 'g');
     this.units.setAttribute('data-testid', 'units');
     this.paths = document.createElementNS(SVGNS, 'g');
@@ -313,7 +316,7 @@ export class MapTilesSvg {
     // redrawn from state); they sit above the land but below structures/units.
     this.viewport.append(
       terrainLayer, featuresLayer, riversLayer, this.farms, industryLayer, this.borders,
-      this.castles, this.settle, labelLayer, this.paths, this.units,
+      this.castles, this.sieges, this.settle, labelLayer, this.paths, this.units,
     );
 
     const pad = 6;
@@ -435,8 +438,30 @@ export class MapTilesSvg {
     this.lastState = state;
     this.drawBorders(state);
     this.drawCastles(state);
+    this.drawSieges(state);
     this.drawUnits(state);
     while (this.paths.firstChild) this.paths.removeChild(this.paths.firstChild); // clear stale move preview
+  }
+
+  /** Mark besieged county towns with crossed swords + a progress %. */
+  private drawSieges(state: GameState): void {
+    while (this.sieges.firstChild) this.sieges.removeChild(this.sieges.firstChild);
+    for (const siege of Object.values(state.sieges)) {
+      const view = this.counties.get(siege.countyId);
+      if (!view || view.spots.length === 0) continue;
+      const [cx, cy] = view.spots[0];
+      const g = document.createElementNS(SVGNS, 'g');
+      g.setAttribute('data-testid', `siege-${siege.countyId}`);
+      g.setAttribute('pointer-events', 'none');
+      // Crossed swords.
+      for (const d of [1, -1]) {
+        g.appendChild(el('line', { x1: cx - 3 * d, y1: cy + 3, x2: cx + 3 * d, y2: cy - 3, stroke: '#d23b2a', 'stroke-width': 1.1, 'stroke-linecap': 'round' }));
+      }
+      g.appendChild(el('text', {
+        x: cx, y: cy + 9, 'text-anchor': 'middle', 'font-size': 4, 'font-weight': 'bold', fill: '#ffd9a8',
+      })).textContent = `${Math.round(siege.progress * 100)}%`;
+      this.sieges.appendChild(g);
+    }
   }
 
   /** Castles sit on the county town tile (the centre-most passable tile). */
@@ -457,6 +482,13 @@ export class MapTilesSvg {
       const [ux, uy] = hexCentre(army.col, army.row);
       const colour = OWNER_COLOR[army.ownerId] ?? '#888';
       const g = armyIcon(ux * S, uy * S, colour, army.id === this.selectedArmyId);
+      // Troop-count label below the banner.
+      const label = el('text', {
+        x: ux * S, y: uy * S + 8, 'text-anchor': 'middle', 'font-size': 3.6, 'font-weight': 'bold',
+        fill: '#fff', stroke: '#000', 'stroke-width': 0.4, 'paint-order': 'stroke',
+      });
+      label.textContent = String(army.soldiers);
+      g.appendChild(label);
       g.setAttribute('data-testid', `army-${army.id}`);
       (g as SVGElement).style.cursor = 'pointer';
       g.addEventListener('click', (e) => { e.stopPropagation(); armyClicked(army.id); });

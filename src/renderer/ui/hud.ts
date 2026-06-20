@@ -12,9 +12,12 @@
  * Every control carries a data-testid so Playwright can drive it.
  */
 
-import { RationLevel } from '../../game/types/enums.ts';
+import { RationLevel, UNIT_TYPES } from '../../game/types/enums.ts';
+import type { UnitType } from '../../game/types/enums.ts';
 import type { County } from '../../game/types/county.ts';
 import type { GameState } from '../../game/types/realm.ts';
+import type { Army } from '../../game/types/army.ts';
+import { composition, armoryLine, FORGEABLE } from './units.ts';
 
 export type ControlKind = 'tax' | 'ration' | 'industry' | 'diet';
 
@@ -28,6 +31,12 @@ export interface HudCallbacks {
   onCommand: (countyId: string, kind: ControlKind, delta: number) => void;
   /** Adjust every owned county at once. */
   onBulk: (kind: ControlKind, delta: number) => void;
+  /** Besiege the garrisoned castle the selected army occupies. */
+  onSiege: () => void;
+  /** Set a county blacksmith's product (null = idle). */
+  onBlacksmith: (countyId: string, product: UnitType | null) => void;
+  /** Muster a batch of `unit` from a county. */
+  onMuster: (countyId: string, unit: UnitType) => void;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, testId?: string, css?: string): HTMLElementTagNameMap[K] {
@@ -53,6 +62,17 @@ export class Hud {
   private selInd!: HTMLSpanElement;
   private selDiet!: HTMLSpanElement;
 
+  /** Military: armory readout, the army panel, and per-county forge/muster. */
+  private meId = 'p1';
+  private armory!: HTMLDivElement;
+  private armyPanel!: HTMLDivElement;
+  private armyName!: HTMLDivElement;
+  private armyDetail!: HTMLDivElement;
+  private siegeBtn!: HTMLButtonElement;
+  private milRow!: HTMLDivElement;
+  private forgeSel!: HTMLSelectElement;
+  private musterSel!: HTMLSelectElement;
+
   constructor(private readonly cb: HudCallbacks) {
     this.root = el('div', 'hud',
       'position:fixed;top:0;right:0;width:400px;max-height:100vh;overflow:auto;' +
@@ -68,7 +88,8 @@ export class Hud {
     const realm = el('div', 'realm', 'border:1px solid #6a5a3a;padding:8px;margin-bottom:8px;');
     const realmTitle = el('div', undefined, 'font-weight:bold;margin-bottom:4px;');
     realmTitle.textContent = 'Your Realm';
-    realm.append(realmTitle, this.bulkRow(), (this.realmRows = el('div', 'realm-rows')));
+    this.armory = el('div', 'armory', 'color:#d8c89a;margin-bottom:4px;');
+    realm.append(realmTitle, this.armory, this.bulkRow(), (this.realmRows = el('div', 'realm-rows')));
 
     // --- Selected county -------------------------------------------------
     this.panel = el('div', 'county-panel', 'border:1px solid #4a3c28;padding:8px;margin-bottom:8px;');
@@ -79,17 +100,29 @@ export class Hud {
     const ind = this.control('sel-ind', () => this.selected?.id ?? null, 'industry');
     const diet = this.control('sel-diet', () => this.selected?.id ?? null, 'diet');
     this.selTax = tax.value; this.selRation = ration.value; this.selInd = ind.value; this.selDiet = diet.value;
+    this.milRow = this.buildMilControls();
     this.panel.append(
       this.selName, this.selDetail,
       this.labelled('Tax', tax.group), this.labelled('Ration', ration.group),
       this.labelled('Industry', ind.group), this.labelled('Grain⇄Beef', diet.group),
+      this.milRow,
     );
     this.showSelected(null);
+
+    // --- Selected army ---------------------------------------------------
+    this.armyPanel = el('div', 'army-panel', 'border:1px solid #5a3c28;padding:8px;margin-bottom:8px;');
+    this.armyName = el('div', 'army-name', 'font-weight:bold;');
+    this.armyDetail = el('div', 'army-detail', 'color:#c8b890;margin:4px 0;');
+    this.siegeBtn = el('button', 'army-siege', 'cursor:pointer;padding:4px 8px;');
+    this.siegeBtn.textContent = 'Lay Siege';
+    this.siegeBtn.onclick = () => this.cb.onSiege();
+    this.armyPanel.append(this.armyName, this.armyDetail, this.siegeBtn);
+    this.showArmy(null, null, 'p1');
 
     this.status = el('div', 'status', 'min-height:1.4em;color:#c8b890;margin:6px 0;');
     this.counties = el('div', 'counties');
 
-    this.root.append(this.header, endTurn, realm, this.panel, this.status, this.counties);
+    this.root.append(this.header, endTurn, realm, this.panel, this.armyPanel, this.status, this.counties);
   }
 
   mount(parent: HTMLElement = document.body): void {
@@ -106,20 +139,76 @@ export class Hud {
       this.selName.textContent = 'No county selected';
       this.selDetail.textContent = 'Click a county on the map.';
       this.selTax.textContent = this.selRation.textContent = this.selInd.textContent = this.selDiet.textContent = '—';
+      this.milRow.style.display = 'none';
       return;
     }
     this.selName.textContent = `${county.name} [${county.ownerId ?? 'unowned'}]`;
+    const garrison = county.castle.garrison > 0 ? ` · garrison ${county.castle.garrison}` : '';
+    const forging = county.blacksmithProduct ? ` · forging ${county.blacksmithProduct}` : '';
     this.selDetail.textContent =
-      `pop ${county.population} · happy ${Math.round(county.happiness)} · ${county.healthLabel} · getting ${county.achievedRation}`;
+      `pop ${county.population} · happy ${Math.round(county.happiness)} · ${county.healthLabel} · ` +
+      `getting ${county.achievedRation}${garrison}${forging}`;
     this.selTax.textContent = `${county.taxRate}%`;
     this.selRation.textContent = county.wantedRation;
     this.selInd.textContent = `${Math.round(county.labour.industryShare * 100)}%`;
     this.selDiet.textContent = `${Math.round(county.labour.grainBeefBalance * 100)}% beef`;
+
+    // Forge/muster controls only make sense on your own counties.
+    const mine = county.ownerId === this.meId;
+    this.milRow.style.display = mine ? 'flex' : 'none';
+    if (mine) this.forgeSel.value = county.blacksmithProduct ?? '';
+  }
+
+  /** Show the currently selected army's strength, composition, and siege option. */
+  showArmy(army: Army | null, state: GameState | null, meId: string): void {
+    if (!army) {
+      this.armyName.textContent = 'No army selected';
+      this.armyDetail.textContent = 'Click an army on the map.';
+      this.siegeBtn.style.display = 'none';
+      return;
+    }
+    const county = army.countyId && state ? state.counties[army.countyId] ?? null : null;
+    const where = county ? county.name : army.countyId ?? 'open country';
+    this.armyName.textContent = `Army [${army.ownerId}] — ${army.soldiers} men`;
+    this.armyDetail.textContent = `${composition(army)} · at ${where}`;
+    const canSiege = army.ownerId === meId && !!county && county.ownerId !== meId && county.castle.garrison > 0;
+    this.siegeBtn.style.display = canSiege ? 'inline-block' : 'none';
+  }
+
+  /** Blacksmith (forge) + conscription (muster) controls for an owned county. */
+  private buildMilControls(): HTMLDivElement {
+    const row = el('div', 'mil-controls', 'border-top:1px solid #4a3c28;margin-top:6px;padding-top:6px;flex-direction:column;gap:4px;display:none;');
+
+    const forge = el('div', undefined, 'display:flex;align-items:center;gap:6px;');
+    const fLabel = el('span'); fLabel.textContent = 'Forge:';
+    this.forgeSel = el('select', 'forge-select', 'background:#1a140c;color:#e8dcc0;border:1px solid #5a4a2a;');
+    const idle = document.createElement('option'); idle.value = ''; idle.textContent = '— idle —';
+    this.forgeSel.appendChild(idle);
+    for (const u of FORGEABLE) { const o = document.createElement('option'); o.value = u; o.textContent = u; this.forgeSel.appendChild(o); }
+    this.forgeSel.onchange = () => {
+      const id = this.selected?.id;
+      if (id) this.cb.onBlacksmith(id, (this.forgeSel.value || null) as UnitType | null);
+    };
+    forge.append(fLabel, this.forgeSel);
+
+    const muster = el('div', undefined, 'display:flex;align-items:center;gap:6px;');
+    const mLabel = el('span'); mLabel.textContent = 'Muster:';
+    this.musterSel = el('select', 'muster-select', 'background:#1a140c;color:#e8dcc0;border:1px solid #5a4a2a;');
+    for (const u of UNIT_TYPES) { const o = document.createElement('option'); o.value = u; o.textContent = u; this.musterSel.appendChild(o); }
+    const mBtn = el('button', 'muster-btn', 'cursor:pointer;padding:2px 8px;');
+    mBtn.textContent = 'Muster 50';
+    mBtn.onclick = () => { const id = this.selected?.id; if (id) this.cb.onMuster(id, this.musterSel.value as UnitType); };
+    muster.append(mLabel, this.musterSel, mBtn);
+
+    row.append(forge, muster);
+    return row;
   }
 
   /** @param meId the human player's realm id (owned counties are listed). */
   render(state: GameState, meId: string): void {
+    this.meId = meId;
     this.header.textContent = `Year ${state.year} · ${state.season} · turn ${state.turn}`;
+    this.armory.textContent = `Armory: ${armoryLine(state.realms[meId]?.treasury.weapons ?? {})}`;
 
     // Realm overview: one editable row per owned county.
     const owned = Object.values(state.counties).filter((c) => c.ownerId === meId);
