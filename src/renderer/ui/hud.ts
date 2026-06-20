@@ -33,6 +33,8 @@ export interface HudCallbacks {
   onBulk: (kind: ControlKind, delta: number) => void;
   /** Besiege the garrisoned castle the selected army occupies. */
   onSiege: () => void;
+  /** Disband the selected army. */
+  onDisband: () => void;
   /** Set a county blacksmith's product (null = idle). */
   onBlacksmith: (countyId: string, product: UnitType | null) => void;
   /** Muster a batch of `unit` from a county. */
@@ -71,6 +73,8 @@ export class Hud {
   private armyName!: HTMLDivElement;
   private armyDetail!: HTMLDivElement;
   private siegeBtn!: HTMLButtonElement;
+  private disbandBtn!: HTMLButtonElement;
+  private treasury!: HTMLDivElement;
   private milRow!: HTMLDivElement;
   private forgeSel!: HTMLSelectElement;
   private musterSel!: HTMLSelectElement;
@@ -93,8 +97,9 @@ export class Hud {
     const realm = el('div', 'realm', 'border:1px solid #6a5a3a;padding:8px;margin-bottom:8px;');
     const realmTitle = el('div', undefined, 'font-weight:bold;margin-bottom:4px;');
     realmTitle.textContent = 'Your Realm';
+    this.treasury = el('div', 'treasury', 'color:#d8c89a;');
     this.armory = el('div', 'armory', 'color:#d8c89a;margin-bottom:4px;');
-    realm.append(realmTitle, this.armory, this.bulkRow(), (this.realmRows = el('div', 'realm-rows')));
+    realm.append(realmTitle, this.treasury, this.armory, this.bulkRow(), (this.realmRows = el('div', 'realm-rows')));
 
     // --- Selected county -------------------------------------------------
     this.panel = el('div', 'county-panel', 'border:1px solid #4a3c28;padding:8px;margin-bottom:8px;');
@@ -118,10 +123,13 @@ export class Hud {
     this.armyPanel = el('div', 'army-panel', 'border:1px solid #5a3c28;padding:8px;margin-bottom:8px;');
     this.armyName = el('div', 'army-name', 'font-weight:bold;');
     this.armyDetail = el('div', 'army-detail', 'color:#c8b890;margin:4px 0;');
-    this.siegeBtn = el('button', 'army-siege', 'cursor:pointer;padding:4px 8px;');
+    this.siegeBtn = el('button', 'army-siege', 'cursor:pointer;padding:4px 8px;margin-right:6px;');
     this.siegeBtn.textContent = 'Lay Siege';
     this.siegeBtn.onclick = () => this.cb.onSiege();
-    this.armyPanel.append(this.armyName, this.armyDetail, this.siegeBtn);
+    this.disbandBtn = el('button', 'army-disband', 'cursor:pointer;padding:4px 8px;');
+    this.disbandBtn.textContent = 'Disband';
+    this.disbandBtn.onclick = () => this.cb.onDisband();
+    this.armyPanel.append(this.armyName, this.armyDetail, this.siegeBtn, this.disbandBtn);
     this.showArmy(null, null, 'p1');
 
     this.status = el('div', 'status', 'min-height:1.4em;color:#c8b890;margin:6px 0;');
@@ -190,14 +198,18 @@ export class Hud {
       this.armyName.textContent = 'No army selected';
       this.armyDetail.textContent = 'Click an army on the map.';
       this.siegeBtn.style.display = 'none';
+      this.disbandBtn.style.display = 'none';
       return;
     }
     const county = army.countyId && state ? state.counties[army.countyId] ?? null : null;
     const where = county ? county.name : army.countyId ?? 'open country';
+    const mine = army.ownerId === meId;
     this.armyName.textContent = `Army [${army.ownerId}] — ${army.soldiers} men`;
     this.armyDetail.textContent = `${composition(army)} · at ${where} · move ${army.movement}/${armySpeed(army)}`;
-    const canSiege = army.ownerId === meId && !!county && county.ownerId !== meId && county.castle.garrison > 0;
+    const canSiege = mine && !!county && county.ownerId !== meId && county.castle.garrison > 0;
     this.siegeBtn.style.display = canSiege ? 'inline-block' : 'none';
+    // Disband only your own army, and only when it stands in your own county.
+    this.disbandBtn.style.display = mine && !!county && county.ownerId === meId ? 'inline-block' : 'none';
   }
 
   /** Blacksmith (forge) + conscription (muster) controls for an owned county. */
@@ -233,6 +245,10 @@ export class Hud {
   render(state: GameState, meId: string): void {
     this.meId = meId;
     this.header.textContent = `Year ${state.year} · ${state.season} · turn ${state.turn}`;
+    const t = state.realms[meId]?.treasury;
+    this.treasury.textContent = t
+      ? `Treasury: ${Math.round(t.gold)} gold · ${Math.round(t.wood)} wood · ${Math.round(t.stone)} stone · ${Math.round(t.iron)} iron`
+      : 'Treasury: —';
     this.armory.textContent = `Armory: ${armoryLine(state.realms[meId]?.treasury.weapons ?? {})}`;
 
     // Realm overview: one editable row per owned county.

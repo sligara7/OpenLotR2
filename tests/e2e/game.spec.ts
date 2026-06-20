@@ -123,6 +123,10 @@ test('combat & units: army composition, the armory, forging and mustering', asyn
   await expect(page.getByTestId('army-name')).toContainText('40 men');
   await expect(page.getByTestId('army-detail')).toContainText('Knt'); // the starting retinue has knights
   await expect(page.getByTestId('army-detail')).toContainText('move'); // movement points shown
+  // The army sits on the player's own county, so it can be disbanded.
+  await expect(page.getByTestId('army-disband')).toBeVisible();
+  // The treasury is shown (drives army upkeep).
+  await expect(page.getByTestId('treasury')).toContainText('gold');
 
   // The realm armory is shown (empty until the smith forges).
   await expect(page.getByTestId('armory')).toContainText('Armory');

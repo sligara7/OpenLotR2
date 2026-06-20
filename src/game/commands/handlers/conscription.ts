@@ -9,7 +9,7 @@
 import { buildBritainTileMap, countyTowns } from '../../maps/index.ts';
 import { HAPPINESS, MIN_ARMY_SIZE, needsWeapon } from '../../constants.ts';
 import { UNIT_TYPES } from '../../types/enums.ts';
-import { createArmy, setUnits } from '../../state/army.ts';
+import { createArmy, setUnits, freeArmyId } from '../../state/army.ts';
 import { ok, err } from '../types.ts';
 import type { SetBlacksmith, Conscript, CommandContext, CommandResult } from '../types.ts';
 import type { GameState } from '../../types/realm.ts';
@@ -24,14 +24,6 @@ export function setBlacksmith(state: GameState, cmd: SetBlacksmith, ctx: Command
   }
   county.blacksmithProduct = cmd.product;
   return ok();
-}
-
-/** A free army id for `realm` (its capital army keeps the bare `${realm}-army`). */
-function nextArmyId(state: GameState, realmId: string): string {
-  let id = `${realmId}-army`;
-  let n = 1;
-  while (state.armies[id]) { n += 1; id = `${realmId}-army-${n}`; }
-  return id;
 }
 
 export function conscript(state: GameState, cmd: Conscript, ctx: CommandContext): CommandResult {
@@ -79,7 +71,7 @@ export function conscript(state: GameState, cmd: Conscript, ctx: CommandContext)
     setUnits(army, { ...army.units, [cmd.unit]: army.units[cmd.unit] + count });
     return ok(undefined, { armyId: army.id, conscripted: count });
   }
-  const id = nextArmyId(state, ctx.actorRealmId);
+  const id = freeArmyId(state.armies, ctx.actorRealmId);
   state.armies[id] = createArmy({
     id, ownerId: ctx.actorRealmId, col: town!.col, row: town!.row,
     countyId: cmd.countyId, units: { [cmd.unit]: count },

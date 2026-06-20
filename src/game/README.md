@@ -118,7 +118,14 @@ soldiers — peasants for free, everyone else drawing a matching weapon from the
 armory — mustering a new army at the town or reinforcing one in place. It costs
 population (off the labour pool) and morale (the manual's rule: you can't draft so
 many that happiness would fall below zero), and a new army needs at least 50.
-Mercenaries, wages and desertion are still to come.
+**Upkeep** (`systems/wages.ts`): each turn a realm pays wages for the soldiers it
+keeps under arms (`WAGE_PER_SOLDIER`); if the treasury falls short, the unpaid
+share of every army bleeds deserters — so militarism must be financed. Armies are
+also managed in the field: `DisbandArmy` sends troops back to a county's
+population (and weapons to the armory), `SplitArmy` carves a new force off one
+(both keeping the 50-soldier minimum), and `CombineArmy` merges two of yours that
+share a tile. **Mercenaries** (hireable, self-armed) are the remaining Part-4
+piece still to come.
 
 **Winning** (`systems/conquest.ts` `evaluateOutcome`, checked each turn and stored
 on `GameState.outcome`): the game is decided when a realm holds a supermajority of
@@ -199,9 +206,9 @@ leaving state untouched). `ctx.actorRealmId` enforces ownership.
 
 Implemented commands: `SetTaxRate`, `SetRation`, `SetLabourPolicy`,
 `AssignField`, `BuildCastle`, `SendSupplies`, `BuyAle`, `MoveArmy`, `AttackArmy`,
-`LaySiege`, `SetBlacksmith`, `Conscript`, `EndTurn`. `EndTurn` advances the world
-via `advanceSeason` and returns the `TurnReport`. `AttackArmy` (and `EndTurn`)
-need `ctx.rng`.
+`LaySiege`, `SetBlacksmith`, `Conscript`, `DisbandArmy`, `SplitArmy`,
+`CombineArmy`, `EndTurn`. `EndTurn` advances the world via `advanceSeason` and
+returns the `TurnReport`. `AttackArmy` (and `EndTurn`) need `ctx.rng`.
 
 ```ts
 import { dispatch, createRng } from './game';

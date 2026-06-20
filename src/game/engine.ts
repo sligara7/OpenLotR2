@@ -37,6 +37,8 @@ import { advanceSieges } from './systems/siege.ts';
 import type { SiegeLedger } from './systems/siege.ts';
 import { armyMovementAllowance } from './state/army.ts';
 import { updateEliminations, evaluateOutcome } from './systems/conquest.ts';
+import { payWages } from './systems/wages.ts';
+import type { WagesLedger } from './systems/wages.ts';
 import type { GameOutcome } from './types/realm.ts';
 
 export interface CountyTurnReport {
@@ -62,6 +64,7 @@ export interface TurnReport {
   migration: MigrationLedger;
   forage: ForageLedger;
   siege: SiegeLedger;
+  wages: WagesLedger;
   /** Set the turn the game is decided; null while it continues. */
   outcome: GameOutcome | null;
 }
@@ -123,6 +126,9 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
   // Sieges resolve after foraging, so a besieger that has stripped the county
   // starves its garrison this same season.
   const siege = advanceSieges(state, rng);
+  // Upkeep: pay army wages from the (now tax-funded) treasuries; unpaid troops
+  // desert. Runs after the fighting so survivors are what gets paid.
+  const wages = payWages(state);
   // Fresh movement budget for every surviving army next turn.
   for (const army of Object.values(state.armies)) army.movement = armyMovementAllowance(army);
 
@@ -138,6 +144,7 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
     migration,
     forage,
     siege,
+    wages,
     outcome: state.outcome,
   };
   nextCalendar(state);

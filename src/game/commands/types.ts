@@ -13,6 +13,7 @@
  */
 
 import type { CastleType, FieldStatus, RationLevel, UnitType } from '../types/enums.ts';
+import type { UnitCounts } from '../types/army.ts';
 import type { Rng } from '../rng.ts';
 import type { TurnReport } from '../engine.ts';
 
@@ -55,6 +56,14 @@ export interface SetBlacksmith { type: 'SetBlacksmith'; countyId: string; produc
  *  (reinforce `armyId` if given and present, else muster a new one at the town).
  *  Non-peasants consume matching weapons from the armory. */
 export interface Conscript { type: 'Conscript'; countyId: string; unit: UnitType; count: number; armyId?: string; }
+/** Disband an army standing in your own county: its soldiers rejoin the
+ *  population and any weapons return to the armory. */
+export interface DisbandArmy { type: 'DisbandArmy'; armyId: string; }
+/** Split the given units off an army into a NEW army on the same tile (both the
+ *  remainder and the new army must keep at least MIN_ARMY_SIZE soldiers). */
+export interface SplitArmy { type: 'SplitArmy'; armyId: string; units: Partial<UnitCounts>; }
+/** Merge one army into another of yours sharing the same tile. */
+export interface CombineArmy { type: 'CombineArmy'; armyId: string; intoArmyId: string; }
 export interface EndTurn { type: 'EndTurn'; }
 
 /** The full set of commands a client may send. */
@@ -71,6 +80,9 @@ export type Command =
   | LaySiege
   | SetBlacksmith
   | Conscript
+  | DisbandArmy
+  | SplitArmy
+  | CombineArmy
   | EndTurn;
 
 /** Context the server supplies when dispatching: who is acting + the RNG used

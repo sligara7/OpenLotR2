@@ -72,9 +72,10 @@ export function armyClicked(armyId: string): void {
   const clicked = state.armies[armyId];
   const selected = selectedArmyId ? state.armies[selectedArmyId] : null;
 
-  if (selected && selected.ownerId === meId && clicked && clicked.ownerId !== meId) {
-    void attack(selected.id, clicked.id);
-    return;
+  if (selected && clicked && selected.ownerId === meId && selected.id !== clicked.id) {
+    // Click an enemy → attack; click another of MY armies on the same tile → combine.
+    if (clicked.ownerId !== meId) { void attack(selected.id, clicked.id); return; }
+    if (clicked.col === selected.col && clicked.row === selected.row) { void combine(selected.id, clicked.id); return; }
   }
 
   selectedArmyId = selectedArmyId === armyId ? null : armyId;
@@ -102,6 +103,19 @@ async function attack(armyId: string, targetArmyId: string): Promise<void> {
     hud.setStatus(`Attack rejected: ${result.error ?? 'unknown'}`);
   }
   publish(await api.getState(gameId));
+}
+
+/** Merge one of my armies into another that shares its tile. */
+async function combine(intoArmyId: string, fromArmyId: string): Promise<void> {
+  const result = await api.sendCommand(gameId, { type: 'CombineArmy', armyId: fromArmyId, intoArmyId }, meId);
+  hud.setStatus(result.ok ? 'Armies combined.' : `Rejected: ${result.error ?? 'unknown'}`);
+  publish(await api.getState(gameId)); // selection stays on intoArmyId, which lives on
+}
+
+/** Disband the selected army (its troops and weapons go home). */
+export function disband(): void {
+  if (!selectedArmyId) { hud.setStatus('Select one of your armies first.'); return; }
+  void act({ type: 'DisbandArmy', armyId: selectedArmyId });
 }
 
 /** Besiege the garrisoned castle the selected army occupies. */
@@ -155,7 +169,12 @@ function buildCommand(county: County, kind: ControlKind, delta: number): Command
 
 async function act(command: Command): Promise<void> {
   const result = await api.sendCommand(gameId, command, meId);
-  hud.setStatus(result.ok ? `Applied ${command.type}.` : `Rejected: ${result.error ?? 'unknown'}`);
+  let msg = result.ok ? `Applied ${command.type}.` : `Rejected: ${result.error ?? 'unknown'}`;
+  if (result.ok && command.type === 'EndTurn' && result.report) {
+    const deserted = result.report.wages.realms.reduce((s, r) => s + r.deserted, 0);
+    if (deserted > 0) msg += ` ${deserted} unpaid soldiers deserted.`;
+  }
+  hud.setStatus(msg);
   publish(await api.getState(gameId));
 }
 
@@ -185,6 +204,7 @@ export async function startGameUI(): Promise<void> {
       void actMany(owned.map((c) => buildCommand(c, kind, delta)), `All ${kind}`);
     },
     onSiege: () => laySiege(),
+    onDisband: () => disband(),
     onBlacksmith: (countyId, product) => setBlacksmith(countyId, product),
     onMuster: (countyId, unit) => muster(countyId, unit),
   });

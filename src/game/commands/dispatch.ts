@@ -19,6 +19,7 @@ import { sendSupplies, buyAle } from './handlers/logistics.ts';
 import { moveArmy } from './handlers/army.ts';
 import { attackArmy, laySiege } from './handlers/combat.ts';
 import { setBlacksmith, conscript } from './handlers/conscription.ts';
+import { disbandArmy, splitArmy, combineArmy } from './handlers/army-manage.ts';
 import { endTurn } from './handlers/turn.ts';
 
 export function dispatch(state: GameState, command: Command, ctx: CommandContext): CommandResult {
@@ -35,6 +36,9 @@ export function dispatch(state: GameState, command: Command, ctx: CommandContext
     case 'LaySiege': return laySiege(state, command, ctx);
     case 'SetBlacksmith': return setBlacksmith(state, command, ctx);
     case 'Conscript': return conscript(state, command, ctx);
+    case 'DisbandArmy': return disbandArmy(state, command, ctx);
+    case 'SplitArmy': return splitArmy(state, command, ctx);
+    case 'CombineArmy': return combineArmy(state, command, ctx);
     case 'EndTurn': return endTurn(state, ctx);
     default: {
       // Exhaustiveness guard: if a Command variant is added without a case,

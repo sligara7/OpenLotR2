@@ -139,6 +139,12 @@ export const MIN_ARMY_SIZE = 50; // "an army must have at least 50 soldiers"
 // next turn — so distance, terrain, rivers AND composition shape maneuver. This
 // constant is only the fallback for a (transient) empty army.
 export const ARMY_MOVEMENT_POINTS = 5;
+
+// Upkeep: a standing army draws seasonal wages from the realm treasury (Manual
+// Part-4). When a realm cannot pay in full, the unpaid share of every army
+// bleeds deserters — so militarism has to be financed.
+export const WAGE_PER_SOLDIER = 0.05; // gold per soldier per turn
+export const DESERTION_FRACTION = 0.3; // share of UNPAID soldiers that desert each turn
 /** Unit types that require a weapon from the armory to raise (everyone but the
  *  pitchfork-wielding peasant). */
 export const ARMED_UNITS: readonly UnitType[] = [

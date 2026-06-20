@@ -88,6 +88,30 @@ export const ConscriptSchema = z.object({
   armyId: z.string().optional(),
 });
 
+const PartialUnitCountsSchema = z.object({
+  Peasant: z.number().optional(),
+  Maceman: z.number().optional(),
+  Pikeman: z.number().optional(),
+  Archer: z.number().optional(),
+  Crossbowman: z.number().optional(),
+  Swordsman: z.number().optional(),
+  Knight: z.number().optional(),
+});
+
+export const DisbandArmySchema = z.object({ type: z.literal('DisbandArmy'), armyId: z.string() });
+
+export const SplitArmySchema = z.object({
+  type: z.literal('SplitArmy'),
+  armyId: z.string(),
+  units: PartialUnitCountsSchema,
+});
+
+export const CombineArmySchema = z.object({
+  type: z.literal('CombineArmy'),
+  armyId: z.string(),
+  intoArmyId: z.string(),
+});
+
 export const EndTurnSchema = z.object({ type: z.literal('EndTurn') });
 
 export const CommandSchema = z
@@ -104,6 +128,9 @@ export const CommandSchema = z
     LaySiegeSchema,
     SetBlacksmithSchema,
     ConscriptSchema,
+    DisbandArmySchema,
+    SplitArmySchema,
+    CombineArmySchema,
     EndTurnSchema,
   ])
   .openapi('Command');

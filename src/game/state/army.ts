@@ -73,3 +73,38 @@ export function setUnits(army: Army, units: UnitCounts): void {
   army.soldiers = unitsTotal(units);
   army.movement = Math.min(army.movement, unitsSpeed(units));
 }
+
+/** Remove `n` soldiers from an army, spread proportionally across its unit types
+ *  (largest-remainder so the total is exact and no type goes negative). Used for
+ *  desertion. */
+export function removeSoldiers(army: Army, n: number): void {
+  const total = army.soldiers;
+  if (n <= 0 || total <= 0) return;
+  if (n >= total) { setUnits(army, emptyUnits()); return; }
+
+  const cut: Record<string, number> = {};
+  const frac: { t: UnitType; f: number }[] = [];
+  let assigned = 0;
+  for (const t of UNIT_TYPES) {
+    const want = (army.units[t] * n) / total;
+    const whole = Math.min(army.units[t], Math.floor(want));
+    cut[t] = whole;
+    assigned += whole;
+    frac.push({ t, f: want - Math.floor(want) });
+  }
+  let rem = n - assigned;
+  frac.sort((a, b) => b.f - a.f);
+  for (const { t } of frac) { if (rem <= 0) break; if (cut[t] < army.units[t]) { cut[t] += 1; rem -= 1; } }
+
+  const next = { ...army.units };
+  for (const t of UNIT_TYPES) next[t] -= cut[t];
+  setUnits(army, next);
+}
+
+/** An unused army id for a realm (its first army keeps the bare `${realm}-army`). */
+export function freeArmyId(armies: Record<string, { id: string }>, realmId: string): string {
+  let id = `${realmId}-army`;
+  let n = 1;
+  while (armies[id]) { n += 1; id = `${realmId}-army-${n}`; }
+  return id;
+}

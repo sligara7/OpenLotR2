@@ -34,9 +34,11 @@ export type { ForageLedger, ArmyForageResult } from './systems/foraging.ts';
 // Combat & siege (auto-resolved combined-arms battles; multi-season sieges)
 export { resolveBattle, garrisonComposition } from './systems/combat.ts';
 export type { BattleResult, SideResult, Force } from './systems/combat.ts';
-export { createArmy, unitsOf, unitsTotal, emptyUnits } from './state/army.ts';
+export { createArmy, unitsOf, unitsTotal, emptyUnits, unitsSpeed, armyMovementAllowance } from './state/army.ts';
 export type { ArmyInit } from './state/army.ts';
 export type { UnitCounts } from './types/army.ts';
+export { payWages } from './systems/wages.ts';
+export type { WagesLedger, RealmWages } from './systems/wages.ts';
 export { advanceSieges, garrisonStrength } from './systems/siege.ts';
 export type { SiegeLedger, SiegeOutcome, SiegeStatus } from './systems/siege.ts';
 export { captureCounty, updateEliminations, realmIsAlive, evaluateOutcome } from './systems/conquest.ts';

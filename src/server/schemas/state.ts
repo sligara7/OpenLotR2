@@ -199,6 +199,17 @@ const SiegeLedgerSchema = z.object({
   sieges: z.array(SiegeOutcomeSchema),
 });
 
+const RealmWagesSchema = z.object({
+  realmId: z.string(),
+  due: z.number(),
+  paid: z.number(),
+  deserted: z.number(),
+});
+
+const WagesLedgerSchema = z.object({
+  realms: z.array(RealmWagesSchema),
+});
+
 export const TurnReportSchema = z
   .object({
     turn: z.number(),
@@ -208,6 +219,7 @@ export const TurnReportSchema = z
     migration: z.record(z.string(), z.number()),
     forage: ForageLedgerSchema,
     siege: SiegeLedgerSchema,
+    wages: WagesLedgerSchema,
     outcome: GameOutcomeSchema.nullable(),
   })
   .openapi('TurnReport');
