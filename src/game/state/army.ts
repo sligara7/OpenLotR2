@@ -1,13 +1,20 @@
 /* Army construction & the unit-composition invariant (soldiers === Σ units). */
 
-import { ARMY_MOVEMENT_POINTS } from '../constants.ts';
+import { ARMY_MOVEMENT_POINTS, UNIT_SPEC } from '../constants.ts';
 import { UNIT_TYPES, UnitType } from '../types/enums.ts';
 import type { Army, UnitCounts } from '../types/army.ts';
 
-/** Movement points an army receives at the start of each turn. (Flat for now;
- *  a future refinement can slow armies that carry pikes or speed all-cavalry.) */
-export function armyMovementAllowance(_army?: Army): number {
-  return ARMY_MOVEMENT_POINTS;
+/** Movement allowance of a composition: the speed of its SLOWEST present unit
+ *  (combined arms keep pace with the baggage). Empty → the flat fallback. */
+export function unitsSpeed(units: UnitCounts): number {
+  let slowest = Infinity;
+  for (const t of UNIT_TYPES) if (units[t] > 0) slowest = Math.min(slowest, UNIT_SPEC[t].speed);
+  return slowest === Infinity ? ARMY_MOVEMENT_POINTS : slowest;
+}
+
+/** Movement points an army receives at the start of each turn. */
+export function armyMovementAllowance(army: Army): number {
+  return unitsSpeed(army.units);
 }
 
 /** A zeroed composition (every unit type present at 0). */
@@ -53,13 +60,16 @@ export function createArmy(init: ArmyInit): Army {
     countyId: init.countyId,
     units,
     soldiers: unitsTotal(units),
-    movement: armyMovementAllowance(),
+    movement: unitsSpeed(units),
   };
 }
 
 /** Replace an army's composition and re-sync its soldier total (the one place
- *  combat/conquest should mutate troop counts, so the invariant always holds). */
+ *  combat/conquest should mutate troop counts, so the invariant always holds).
+ *  Also caps remaining movement to the new allowance, so adding a slow unit
+ *  (e.g. conscripting pikemen) drags the whole army down this turn too. */
 export function setUnits(army: Army, units: UnitCounts): void {
   army.units = units;
   army.soldiers = unitsTotal(units);
+  army.movement = Math.min(army.movement, unitsSpeed(units));
 }

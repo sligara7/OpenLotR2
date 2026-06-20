@@ -17,7 +17,7 @@ import type { UnitType } from '../../game/types/enums.ts';
 import type { County } from '../../game/types/county.ts';
 import type { GameState } from '../../game/types/realm.ts';
 import type { Army } from '../../game/types/army.ts';
-import { composition, armoryLine, FORGEABLE } from './units.ts';
+import { composition, armoryLine, armySpeed, FORGEABLE } from './units.ts';
 
 export type ControlKind = 'tax' | 'ration' | 'industry' | 'diet';
 
@@ -195,7 +195,7 @@ export class Hud {
     const county = army.countyId && state ? state.counties[army.countyId] ?? null : null;
     const where = county ? county.name : army.countyId ?? 'open country';
     this.armyName.textContent = `Army [${army.ownerId}] — ${army.soldiers} men`;
-    this.armyDetail.textContent = `${composition(army)} · at ${where} · move ${army.movement}`;
+    this.armyDetail.textContent = `${composition(army)} · at ${where} · move ${army.movement}/${armySpeed(army)}`;
     const canSiege = army.ownerId === meId && !!county && county.ownerId !== meId && county.castle.garrison > 0;
     this.siegeBtn.style.display = canSiege ? 'inline-block' : 'none';
   }

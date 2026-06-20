@@ -109,17 +109,22 @@ export const COMBAT = {
 // design. attack drives the damage a unit deals; defence reduces the casualties
 // it takes. Cost (iron/wood per soldier) is used when raising units — the
 // conscription/weapons economy is a later increment.
+// speed = movement points this unit can sustain. An ARMY moves at the speed of
+// its SLOWEST present unit (combined arms keep pace with the baggage), so a pure
+// cavalry force raids fast while pikes-and-peasants trudge. Relative speeds
+// follow the manual: knights fastest (mounted), macemen/archers quick, pikemen
+// very slow.
 export const UNIT_SPEC: Record<
   UnitType,
-  { attack: number; defence: number; iron: number; wood: number }
+  { attack: number; defence: number; iron: number; wood: number; speed: number }
 > = {
-  [UnitType.Peasant]:     { attack: 1, defence: 1, iron: 0, wood: 0 },
-  [UnitType.Maceman]:     { attack: 3, defence: 2, iron: 1, wood: 1 },
-  [UnitType.Pikeman]:     { attack: 2, defence: 4, iron: 1, wood: 1 },
-  [UnitType.Archer]:      { attack: 3, defence: 1, iron: 0, wood: 2 },
-  [UnitType.Crossbowman]: { attack: 4, defence: 2, iron: 1, wood: 1 },
-  [UnitType.Swordsman]:   { attack: 4, defence: 4, iron: 2, wood: 1 },
-  [UnitType.Knight]:      { attack: 6, defence: 5, iron: 3, wood: 1 },
+  [UnitType.Peasant]:     { attack: 1, defence: 1, iron: 0, wood: 0, speed: 4 },
+  [UnitType.Maceman]:     { attack: 3, defence: 2, iron: 1, wood: 1, speed: 5 },
+  [UnitType.Pikeman]:     { attack: 2, defence: 4, iron: 1, wood: 1, speed: 3 },
+  [UnitType.Archer]:      { attack: 3, defence: 1, iron: 0, wood: 2, speed: 5 },
+  [UnitType.Crossbowman]: { attack: 4, defence: 2, iron: 1, wood: 1, speed: 4 },
+  [UnitType.Swordsman]:   { attack: 4, defence: 4, iron: 2, wood: 1, speed: 4 },
+  [UnitType.Knight]:      { attack: 6, defence: 5, iron: 3, wood: 1, speed: 6 },
 };
 
 // Raising troops (Manual Part-4): the blacksmith forges one weapon type from the
@@ -128,11 +133,11 @@ export const UNIT_SPEC: Record<
 export const WEAPON_LABOUR_PER_UNIT = 2; // blacksmith crew-seasons to forge one weapon
 export const MIN_ARMY_SIZE = 50; // "an army must have at least 50 soldiers"
 
-// Movement points an army may spend each turn. A plain tile costs 1; crossing a
-// river edge costs RIVER_CROSS_COST extra (maps/movement.ts). An army marches as
-// far along its route as its budget allows, then halts until next turn — so
-// distance, terrain and rivers all shape maneuver. (Per-unit speed — knights
-// fast, pikes slow — is a future refinement; for now every army moves the same.)
+// An army's movement budget per turn is the speed of its slowest unit (see
+// UNIT_SPEC.speed). A plain tile costs 1, a river crossing more (maps/movement.ts);
+// the army marches as far along its route as the budget allows, then halts until
+// next turn — so distance, terrain, rivers AND composition shape maneuver. This
+// constant is only the fallback for a (transient) empty army.
 export const ARMY_MOVEMENT_POINTS = 5;
 /** Unit types that require a weapon from the armory to raise (everyone but the
  *  pitchfork-wielding peasant). */

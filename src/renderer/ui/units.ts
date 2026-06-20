@@ -3,6 +3,7 @@
 import { UNIT_TYPES } from '../../game/types/enums.ts';
 import type { UnitType } from '../../game/types/enums.ts';
 import type { Army } from '../../game/types/army.ts';
+import { UNIT_SPEC } from '../../game/constants.ts';
 
 /** Short labels for the troop types. */
 export const UNIT_ABBR: Record<UnitType, string> = {
@@ -19,6 +20,13 @@ export const UNIT_ABBR: Record<UnitType, string> = {
 export function composition(army: Army): string {
   const parts = UNIT_TYPES.filter((t) => army.units[t] > 0).map((t) => `${UNIT_ABBR[t]} ${army.units[t]}`);
   return parts.length ? parts.join(' · ') : 'empty';
+}
+
+/** An army's movement allowance: the speed of its slowest present unit. */
+export function armySpeed(army: Army): number {
+  let slowest = Infinity;
+  for (const t of UNIT_TYPES) if (army.units[t] > 0) slowest = Math.min(slowest, UNIT_SPEC[t].speed);
+  return slowest === Infinity ? 0 : slowest;
 }
 
 /** "Swd 12 · Arc 5" for a realm's armory (weapons in stock), or "empty". */

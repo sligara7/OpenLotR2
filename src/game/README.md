@@ -84,10 +84,12 @@ starves a fraction of its soldiers; an army at zero soldiers is destroyed.
 
 ## Combat & conquest
 
-Armies maneuver on a **movement budget** (`ARMY_MOVEMENT_POINTS`, reset each turn):
-`MoveArmy` marches as far along the pathfound route as the budget allows — a plain
-tile costs 1, a river crossing more — and halts partway if the destination is out
-of range, so distance and terrain shape strategy.
+Armies maneuver on a **movement budget**, reset each turn, equal to the **speed of
+their slowest unit** (`UNIT_SPEC.speed` — knights fast, pikes slow; combined arms
+keep pace with the baggage). `MoveArmy` marches as far along the pathfound route as
+the budget allows — a plain tile costs 1, a river crossing more — and halts partway
+if the destination is out of range, so distance, terrain *and composition* shape
+strategy (a pure-cavalry force raids fast; a pikes-and-peasants column trudges).
 
 A county changes hands two ways. An **undefended** county (no castle, or a castle
 with no garrison) is captured simply by occupying its town — `MoveArmy` flips it.
