@@ -23,4 +23,7 @@ export interface Army {
   soldiers: number;
   /** Movement points left this turn; spent marching, reset each season. */
   movement: number;
+  /** True if this army is (or contains) hired mercenaries: self-armed, higher
+   *  wages, and it cannot be combined with another mercenary army. */
+  mercenary: boolean;
 }

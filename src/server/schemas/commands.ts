@@ -98,6 +98,13 @@ const PartialUnitCountsSchema = z.object({
   Knight: z.number().optional(),
 });
 
+export const HireMercenariesSchema = z.object({
+  type: z.literal('HireMercenaries'),
+  countyId,
+  unit: UnitTypeSchema,
+  count: z.number().int().positive(),
+});
+
 export const DisbandArmySchema = z.object({ type: z.literal('DisbandArmy'), armyId: z.string() });
 
 export const SplitArmySchema = z.object({
@@ -128,6 +135,7 @@ export const CommandSchema = z
     LaySiegeSchema,
     SetBlacksmithSchema,
     ConscriptSchema,
+    HireMercenariesSchema,
     DisbandArmySchema,
     SplitArmySchema,
     CombineArmySchema,

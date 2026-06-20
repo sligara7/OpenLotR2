@@ -39,6 +39,8 @@ export interface HudCallbacks {
   onBlacksmith: (countyId: string, product: UnitType | null) => void;
   /** Muster a batch of `unit` from a county. */
   onMuster: (countyId: string, unit: UnitType) => void;
+  /** Hire a mercenary band of `unit` at a county. */
+  onHire: (countyId: string, unit: UnitType) => void;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, testId?: string, css?: string): HTMLElementTagNameMap[K] {
@@ -204,7 +206,7 @@ export class Hud {
     const county = army.countyId && state ? state.counties[army.countyId] ?? null : null;
     const where = county ? county.name : army.countyId ?? 'open country';
     const mine = army.ownerId === meId;
-    this.armyName.textContent = `Army [${army.ownerId}] — ${army.soldiers} men`;
+    this.armyName.textContent = `Army [${army.ownerId}]${army.mercenary ? ' ⚔ mercenary' : ''} — ${army.soldiers} men`;
     this.armyDetail.textContent = `${composition(army)} · at ${where} · move ${army.movement}/${armySpeed(army)}`;
     const canSiege = mine && !!county && county.ownerId !== meId && county.castle.garrison > 0;
     this.siegeBtn.style.display = canSiege ? 'inline-block' : 'none';
@@ -235,7 +237,11 @@ export class Hud {
     const mBtn = el('button', 'muster-btn', 'cursor:pointer;padding:2px 8px;');
     mBtn.textContent = 'Muster 50';
     mBtn.onclick = () => { const id = this.selected?.id; if (id) this.cb.onMuster(id, this.musterSel.value as UnitType); };
-    muster.append(mLabel, this.musterSel, mBtn);
+    const hBtn = el('button', 'hire-btn', 'cursor:pointer;padding:2px 8px;');
+    hBtn.textContent = 'Hire 50';
+    hBtn.title = 'Hire a self-armed mercenary band (gold only)';
+    hBtn.onclick = () => { const id = this.selected?.id; if (id) this.cb.onHire(id, this.musterSel.value as UnitType); };
+    muster.append(mLabel, this.musterSel, mBtn, hBtn);
 
     row.append(forge, muster);
     return row;

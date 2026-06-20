@@ -117,6 +117,7 @@ export const ArmySchema = z
     units: UnitCountsSchema,
     soldiers: z.number(),
     movement: z.number(),
+    mercenary: z.boolean(),
   })
   .openapi('Army');
 

@@ -124,8 +124,11 @@ share of every army bleeds deserters — so militarism must be financed. Armies 
 also managed in the field: `DisbandArmy` sends troops back to a county's
 population (and weapons to the armory), `SplitArmy` carves a new force off one
 (both keeping the 50-soldier minimum), and `CombineArmy` merges two of yours that
-share a tile. **Mercenaries** (hireable, self-armed) are the remaining Part-4
-piece still to come.
+share a tile. **Mercenaries** (`HireMercenaries`,
+`commands/handlers/mercenaries.ts`) are a self-armed band bought for gold — no
+population or happiness cost — but they charge a steep up-front fee and triple
+wages, and two mercenary bands won't combine (rival clans); disbanding a band
+disperses it (no troops or arms returned). This completes the manual's Part-4.
 
 **Winning** (`systems/conquest.ts` `evaluateOutcome`, checked each turn and stored
 on `GameState.outcome`): the game is decided when a realm holds a supermajority of
@@ -206,8 +209,9 @@ leaving state untouched). `ctx.actorRealmId` enforces ownership.
 
 Implemented commands: `SetTaxRate`, `SetRation`, `SetLabourPolicy`,
 `AssignField`, `BuildCastle`, `SendSupplies`, `BuyAle`, `MoveArmy`, `AttackArmy`,
-`LaySiege`, `SetBlacksmith`, `Conscript`, `DisbandArmy`, `SplitArmy`,
-`CombineArmy`, `EndTurn`. `EndTurn` advances the world via `advanceSeason` and
+`LaySiege`, `SetBlacksmith`, `Conscript`, `HireMercenaries`, `DisbandArmy`,
+`SplitArmy`, `CombineArmy`, `EndTurn`. `EndTurn` advances the world via
+`advanceSeason` and
 returns the `TurnReport`. `AttackArmy` (and `EndTurn`) need `ctx.rng`.
 
 ```ts

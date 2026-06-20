@@ -145,6 +145,12 @@ export const ARMY_MOVEMENT_POINTS = 5;
 // bleeds deserters — so militarism has to be financed.
 export const WAGE_PER_SOLDIER = 0.05; // gold per soldier per turn
 export const DESERTION_FRACTION = 0.3; // share of UNPAID soldiers that desert each turn
+
+// Mercenaries (Manual Part-4): hireable professionals who arrive self-armed and
+// cost no population or happiness — but command a steep up-front fee and far
+// higher wages. Two mercenary bands won't serve together (rival clans).
+export const MERCENARY_HIRE_COST_PER_SOLDIER = 2; // gold up front to hire
+export const MERCENARY_WAGE_MULTIPLIER = 3; // wage vs a citizen soldier
 /** Unit types that require a weapon from the armory to raise (everyone but the
  *  pitchfork-wielding peasant). */
 export const ARMED_UNITS: readonly UnitType[] = [

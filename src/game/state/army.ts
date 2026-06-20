@@ -47,6 +47,8 @@ export interface ArmyInit {
   /** Composition; or pass `soldiers` for a plain all-peasant levy. */
   units?: Partial<UnitCounts>;
   soldiers?: number;
+  /** Hired mercenaries (self-armed, costly). Defaults to a citizen army. */
+  mercenary?: boolean;
 }
 
 /** Create an army, deriving the `soldiers` total from its composition. */
@@ -61,6 +63,7 @@ export function createArmy(init: ArmyInit): Army {
     units,
     soldiers: unitsTotal(units),
     movement: unitsSpeed(units),
+    mercenary: init.mercenary ?? false,
   };
 }
 

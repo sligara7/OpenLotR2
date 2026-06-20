@@ -149,5 +149,10 @@ test('combat & units: army composition, the armory, forging and mustering', asyn
   await page.getByTestId('muster-btn').click();
   await expect(page.getByTestId('status')).toContainText('Applied Conscript');
 
+  // Hire a self-armed mercenary band (gold only).
+  await page.getByTestId('muster-select').selectOption('Crossbowman');
+  await page.getByTestId('hire-btn').click();
+  await expect(page.getByTestId('status')).toContainText('Applied HireMercenaries');
+
   await page.screenshot({ path: 'test-results/combat-units.png', fullPage: true });
 });

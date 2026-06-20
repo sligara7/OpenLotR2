@@ -25,13 +25,16 @@ export function disbandArmy(state: GameState, cmd: DisbandArmy, ctx: CommandCont
   }
   const realm = state.realms[ctx.actorRealmId]!;
 
-  // Soldiers rejoin the population; weapons go back to the shared armory.
-  for (const t of UNIT_TYPES) {
-    const n = army.units[t];
-    if (n <= 0) continue;
-    if (needsWeapon(t)) realm.treasury.weapons[t] = (realm.treasury.weapons[t] ?? 0) + n;
+  // Citizen soldiers rejoin the population and their weapons return to the
+  // armory; mercenaries are hired hands — they simply disperse, taking their own
+  // arms with them.
+  if (!army.mercenary) {
+    for (const t of UNIT_TYPES) {
+      const n = army.units[t];
+      if (n > 0 && needsWeapon(t)) realm.treasury.weapons[t] = (realm.treasury.weapons[t] ?? 0) + n;
+    }
+    county.population += army.soldiers;
   }
-  county.population += army.soldiers;
   delete state.armies[army.id];
   updateEliminations(state);
   return ok();
@@ -56,7 +59,7 @@ export function splitArmy(state: GameState, cmd: SplitArmy, ctx: CommandContext)
   setUnits(army, keep);
 
   const id = freeArmyId(state.armies, ctx.actorRealmId);
-  const fresh = createArmy({ id, ownerId: ctx.actorRealmId, col: army.col, row: army.row, countyId: army.countyId, units: take });
+  const fresh = createArmy({ id, ownerId: ctx.actorRealmId, col: army.col, row: army.row, countyId: army.countyId, units: take, mercenary: army.mercenary });
   fresh.movement = Math.min(army.movement, fresh.movement); // can't out-march the parent this turn
   state.armies[id] = fresh;
   return ok(undefined, { armyId: id });
@@ -71,12 +74,16 @@ export function combineArmy(state: GameState, cmd: CombineArmy, ctx: CommandCont
   if (from.army.col !== into.army.col || from.army.row !== into.army.row) {
     return err('Armies must share a tile to combine');
   }
+  if (from.army.mercenary && into.army.mercenary) {
+    return err('Two mercenary bands will not serve together');
+  }
 
   const merged = { ...into.army.units };
   for (const t of UNIT_TYPES) merged[t] += from.army.units[t];
   const movement = Math.min(into.army.movement, from.army.movement, unitsSpeed(merged));
   setUnits(into.army, merged);
   into.army.movement = movement;
+  into.army.mercenary = into.army.mercenary || from.army.mercenary; // now contains mercenaries
   delete state.armies[from.army.id];
   return ok();
 }

@@ -8,9 +8,15 @@
  * sustains. An army deserted to nothing is disbanded.
  */
 
-import { DESERTION_FRACTION, WAGE_PER_SOLDIER } from '../constants.ts';
+import { DESERTION_FRACTION, MERCENARY_WAGE_MULTIPLIER, WAGE_PER_SOLDIER } from '../constants.ts';
 import { removeSoldiers } from '../state/army.ts';
 import type { GameState } from '../types/realm.ts';
+import type { Army } from '../types/army.ts';
+
+/** Seasonal wage bill for one army (mercenaries cost far more). */
+function armyWage(army: Army): number {
+  return army.soldiers * WAGE_PER_SOLDIER * (army.mercenary ? MERCENARY_WAGE_MULTIPLIER : 1);
+}
 
 export interface RealmWages {
   realmId: string;
@@ -32,7 +38,7 @@ export function payWages(state: GameState): WagesLedger {
 
   for (const realm of Object.values(state.realms)) {
     const armies = Object.values(state.armies).filter((a) => a.ownerId === realm.id);
-    const due = armies.reduce((s, a) => s + a.soldiers * WAGE_PER_SOLDIER, 0);
+    const due = armies.reduce((s, a) => s + armyWage(a), 0);
     if (due <= 0) continue;
 
     const purse = realm.treasury.gold;

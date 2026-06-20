@@ -140,6 +140,11 @@ export function muster(countyId: string, unit: UnitType): void {
   void act({ type: 'Conscript', countyId, unit, count: MUSTER_BATCH, armyId });
 }
 
+/** Hire a self-armed mercenary band of `unit` at a county. */
+export function hire(countyId: string, unit: UnitType): void {
+  void act({ type: 'HireMercenaries', countyId, unit, count: MUSTER_BATCH });
+}
+
 /** A tile was clicked: march the selected army there, else select the county. */
 export function tileClicked(countyId: string | null, col: number, row: number): void {
   if (selectedArmyId) {
@@ -207,6 +212,7 @@ export async function startGameUI(): Promise<void> {
     onDisband: () => disband(),
     onBlacksmith: (countyId, product) => setBlacksmith(countyId, product),
     onMuster: (countyId, unit) => muster(countyId, unit),
+    onHire: (countyId, unit) => hire(countyId, unit),
   });
   mapView = new MapTilesSvg(); // canvas-free SVG map; subscribes to the state bus
   mapView.mount();

@@ -56,8 +56,11 @@ export interface SetBlacksmith { type: 'SetBlacksmith'; countyId: string; produc
  *  (reinforce `armyId` if given and present, else muster a new one at the town).
  *  Non-peasants consume matching weapons from the armory. */
 export interface Conscript { type: 'Conscript'; countyId: string; unit: UnitType; count: number; armyId?: string; }
+/** Hire a self-armed mercenary band of `count` `unit`s at a county town (no
+ *  population/happiness cost, but a steep up-front fee from the treasury). */
+export interface HireMercenaries { type: 'HireMercenaries'; countyId: string; unit: UnitType; count: number; }
 /** Disband an army standing in your own county: its soldiers rejoin the
- *  population and any weapons return to the armory. */
+ *  population and any weapons return to the armory (mercenaries simply disperse). */
 export interface DisbandArmy { type: 'DisbandArmy'; armyId: string; }
 /** Split the given units off an army into a NEW army on the same tile (both the
  *  remainder and the new army must keep at least MIN_ARMY_SIZE soldiers). */
@@ -80,6 +83,7 @@ export type Command =
   | LaySiege
   | SetBlacksmith
   | Conscript
+  | HireMercenaries
   | DisbandArmy
   | SplitArmy
   | CombineArmy
