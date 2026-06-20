@@ -1,7 +1,14 @@
 /* Army construction & the unit-composition invariant (soldiers === Σ units). */
 
+import { ARMY_MOVEMENT_POINTS } from '../constants.ts';
 import { UNIT_TYPES, UnitType } from '../types/enums.ts';
 import type { Army, UnitCounts } from '../types/army.ts';
+
+/** Movement points an army receives at the start of each turn. (Flat for now;
+ *  a future refinement can slow armies that carry pikes or speed all-cavalry.) */
+export function armyMovementAllowance(_army?: Army): number {
+  return ARMY_MOVEMENT_POINTS;
+}
 
 /** A zeroed composition (every unit type present at 0). */
 export function emptyUnits(): UnitCounts {
@@ -46,6 +53,7 @@ export function createArmy(init: ArmyInit): Army {
     countyId: init.countyId,
     units,
     soldiers: unitsTotal(units),
+    movement: armyMovementAllowance(),
   };
 }
 

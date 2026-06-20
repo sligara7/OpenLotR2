@@ -35,6 +35,7 @@ import { forageArmies } from './systems/foraging.ts';
 import type { ForageLedger } from './systems/foraging.ts';
 import { advanceSieges } from './systems/siege.ts';
 import type { SiegeLedger } from './systems/siege.ts';
+import { armyMovementAllowance } from './state/army.ts';
 
 export interface CountyTurnReport {
   countyId: string;
@@ -118,6 +119,8 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
   // Sieges resolve after foraging, so a besieger that has stripped the county
   // starves its garrison this same season.
   const siege = advanceSieges(state, rng);
+  // Fresh movement budget for every surviving army next turn.
+  for (const army of Object.values(state.armies)) army.movement = armyMovementAllowance(army);
 
   const report: TurnReport = {
     turn: state.turn,

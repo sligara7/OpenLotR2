@@ -22,8 +22,6 @@ import type { County } from '../types/county.ts';
 import type { Command } from '../commands/types.ts';
 import type { AiTraits } from './traits.ts';
 
-/** Tiles an army advances along its route per turn (no movement points yet). */
-export const AI_MARCH_TILES_PER_TURN = 3;
 /** Numerical edge the AI wants before committing to a field battle. */
 const ATTACK_CONFIDENCE = 1.2;
 /** Army size the AI tops its forces back up to (the minimum legal army). */
@@ -73,7 +71,10 @@ function planArmy(state: GameState, realm: Realm, army: Army): Command | null {
     return { type: 'AttackArmy', armyId: army.id, targetArmyId: foe.id };
   }
 
-  // 3. March on the weakest border county (captures it if undefended on arrival).
+  // 3. March on the weakest border county (the move handler advances the army as
+  // far as its movement points allow; it captures the town if it arrives and the
+  // county is undefended).
+  if (army.movement <= 0) return null;
   const targetId = weakestBorderTarget(state, realm);
   if (!targetId) return null;
   const map = buildBritainTileMap();
@@ -81,9 +82,7 @@ function planArmy(state: GameState, realm: Realm, army: Army): Command | null {
   if (!dest) return null;
   const path = findTilePath(map, { col: army.col, row: army.row }, dest);
   if (!path || path.tiles.length < 2) return null; // already there / unreachable
-  const step = path.tiles[Math.min(AI_MARCH_TILES_PER_TURN, path.tiles.length - 1)];
-  if (step.col === army.col && step.row === army.row) return null;
-  return { type: 'MoveArmy', armyId: army.id, col: step.col, row: step.row };
+  return { type: 'MoveArmy', armyId: army.id, col: dest.col, row: dest.row };
 }
 
 /** Most peasants a county can draft this turn without driving morale below half

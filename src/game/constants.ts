@@ -127,6 +127,13 @@ export const UNIT_SPEC: Record<
 // non-peasants from that armory. Peasants need no weapon.
 export const WEAPON_LABOUR_PER_UNIT = 2; // blacksmith crew-seasons to forge one weapon
 export const MIN_ARMY_SIZE = 50; // "an army must have at least 50 soldiers"
+
+// Movement points an army may spend each turn. A plain tile costs 1; crossing a
+// river edge costs RIVER_CROSS_COST extra (maps/movement.ts). An army marches as
+// far along its route as its budget allows, then halts until next turn — so
+// distance, terrain and rivers all shape maneuver. (Per-unit speed — knights
+// fast, pikes slow — is a future refinement; for now every army moves the same.)
+export const ARMY_MOVEMENT_POINTS = 5;
 /** Unit types that require a weapon from the armory to raise (everyone but the
  *  pitchfork-wielding peasant). */
 export const ARMED_UNITS: readonly UnitType[] = [

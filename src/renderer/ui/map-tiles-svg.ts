@@ -15,7 +15,7 @@
 import { buildBritainTileMap } from '../../game/maps/britain-tiles.ts';
 import { BRITAIN } from '../../game/maps/britain.ts';
 import { Terrain, TileResource, edgeKey, hexCentre, hexNeighbours, isPassable, type HexTile } from '../../game/maps/tiles.ts';
-import { findTilePath } from '../../game/maps/movement.ts';
+import { findTilePath, advanceWithinBudget } from '../../game/maps/movement.ts';
 import { stateBus } from '../state-bus.ts';
 import { selectCounty, tileClicked, armyClicked } from '../game-controller.ts';
 import { CastleType, FieldStatus } from '../../game/types/enums.ts';
@@ -502,16 +502,31 @@ export class MapTilesSvg {
     if (this.lastState) this.drawUnits(this.lastState);
   }
 
-  /** Draw the path an army would take to (col,row), as a route preview. */
-  previewPath(fromCol: number, fromRow: number, toCol: number, toRow: number): void {
+  /** Draw the route an army would take to (col,row). With a movement `budget`,
+   *  the reachable part this turn is drawn solid/bright and the rest faint. */
+  previewPath(fromCol: number, fromRow: number, toCol: number, toRow: number, budget?: number): void {
     while (this.paths.firstChild) this.paths.removeChild(this.paths.firstChild);
     const path = findTilePath(buildBritainTileMap(), { col: fromCol, row: fromRow }, { col: toCol, row: toRow });
     if (!path) return;
-    const pts = path.tiles.map((t) => { const [x, y] = hexCentre(t.col, t.row); return `${(x * S).toFixed(1)},${(y * S).toFixed(1)}`; });
-    this.paths.appendChild(el('polyline', {
-      points: pts.join(' '), fill: 'none', stroke: '#ffe9a8', 'stroke-width': 1.6,
-      'stroke-dasharray': '3 2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'pointer-events': 'none',
-    }));
+    const pt = (i: number): string => { const [x, y] = hexCentre(path.tiles[i].col, path.tiles[i].row); return `${(x * S).toFixed(1)},${(y * S).toFixed(1)}`; };
+    const reach = budget === undefined ? path.tiles.length - 1 : advanceWithinBudget(path, budget).index;
+
+    // Reachable-this-turn segment (bright, solid).
+    if (reach >= 1) {
+      const near = Array.from({ length: reach + 1 }, (_, i) => pt(i));
+      this.paths.appendChild(el('polyline', {
+        points: near.join(' '), fill: 'none', stroke: '#ffe9a8', 'stroke-width': 1.8,
+        'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'pointer-events': 'none',
+      }));
+    }
+    // Out-of-range remainder (faint, dashed).
+    if (reach < path.tiles.length - 1) {
+      const far = Array.from({ length: path.tiles.length - reach }, (_, i) => pt(reach + i));
+      this.paths.appendChild(el('polyline', {
+        points: far.join(' '), fill: 'none', stroke: 'rgba(255,233,168,0.4)', 'stroke-width': 1.4,
+        'stroke-dasharray': '2 3', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'pointer-events': 'none',
+      }));
+    }
   }
 
   // --- pan / zoom -------------------------------------------------------

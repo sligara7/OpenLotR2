@@ -8,7 +8,7 @@ export type { HexTile, TileMap, ResourceCounts } from './tiles.ts';
 export { buildBritainTileMap } from './britain-tiles.ts';
 export { offsetToCube, cubeToOffset, hexDistance, hexLine, findPath } from './hex.ts';
 export type { Offset, Cube } from './hex.ts';
-export { findTilePath, RIVER_CROSS_COST } from './movement.ts';
+export { findTilePath, advanceWithinBudget, RIVER_CROSS_COST } from './movement.ts';
 export type { TilePath } from './movement.ts';
 
 import type { GameMap } from './types.ts';

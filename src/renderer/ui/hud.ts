@@ -170,7 +170,7 @@ export class Hud {
     const county = army.countyId && state ? state.counties[army.countyId] ?? null : null;
     const where = county ? county.name : army.countyId ?? 'open country';
     this.armyName.textContent = `Army [${army.ownerId}] — ${army.soldiers} men`;
-    this.armyDetail.textContent = `${composition(army)} · at ${where}`;
+    this.armyDetail.textContent = `${composition(army)} · at ${where} · move ${army.movement}`;
     const canSiege = army.ownerId === meId && !!county && county.ownerId !== meId && county.castle.garrison > 0;
     this.siegeBtn.style.display = canSiege ? 'inline-block' : 'none';
   }

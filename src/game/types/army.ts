@@ -21,4 +21,6 @@ export interface Army {
   /** Total soldiers. INVARIANT: equals the sum of `units` (kept in sync by the
    *  state/army helpers); systems that only need the size read this. */
   soldiers: number;
+  /** Movement points left this turn; spent marching, reset each season. */
+  movement: number;
 }

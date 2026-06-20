@@ -84,6 +84,11 @@ starves a fraction of its soldiers; an army at zero soldiers is destroyed.
 
 ## Combat & conquest
 
+Armies maneuver on a **movement budget** (`ARMY_MOVEMENT_POINTS`, reset each turn):
+`MoveArmy` marches as far along the pathfound route as the budget allows — a plain
+tile costs 1, a river crossing more — and halts partway if the destination is out
+of range, so distance and terrain shape strategy.
+
 A county changes hands two ways. An **undefended** county (no castle, or a castle
 with no garrison) is captured simply by occupying its town — `MoveArmy` flips it.
 A **garrisoned castle** can only be taken by **siege** (`LaySiege`): the besieger

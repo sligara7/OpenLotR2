@@ -116,6 +116,7 @@ export const ArmySchema = z
     countyId: z.string().nullable(),
     units: UnitCountsSchema,
     soldiers: z.number(),
+    movement: z.number(),
   })
   .openapi('Army');
 

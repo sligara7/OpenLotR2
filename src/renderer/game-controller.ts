@@ -130,7 +130,7 @@ export function tileClicked(countyId: string | null, col: number, row: number): 
   if (selectedArmyId) {
     const army = stateBus.current?.armies[selectedArmyId];
     if (army) {
-      mapView.previewPath(army.col, army.row, col, row);
+      mapView.previewPath(army.col, army.row, col, row, army.movement);
       void act({ type: 'MoveArmy', armyId: selectedArmyId, col, row });
     }
     return;

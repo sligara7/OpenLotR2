@@ -15,6 +15,15 @@ export const RIVER_CROSS_COST = 2;
 export interface TilePath {
   tiles: HexTile[];
   cost: number;
+  /** Cost to ENTER each tile from the previous one (stepCosts[0] === 0). Lets a
+   *  caller walk the route within a movement budget. */
+  stepCosts: number[];
+}
+
+/** Cost to step from tile `a` onto adjacent tile `b` (∞ if impassable). */
+function stepCost(a: HexTile, b: HexTile, rivers: ReadonlySet<string>): number {
+  if (!isPassable(b.terrain)) return Infinity;
+  return 1 + (rivers.has(edgeKey(a.col, a.row, b.col, b.row)) ? RIVER_CROSS_COST : 0);
 }
 
 /** Shortest passable path between two tiles, or null if unreachable. */
@@ -32,11 +41,23 @@ export function findTilePath(map: TileMap, from: Offset, to: Offset): TilePath |
       .map(([c, r]) => byKey.get(`${c},${r}`))
       .filter((n): n is HexTile => !!n);
 
-  const cost = (a: HexTile, b: HexTile): number => {
-    if (!isPassable(b.terrain)) return Infinity;
-    return 1 + (rivers.has(edgeKey(a.col, a.row, b.col, b.row)) ? RIVER_CROSS_COST : 0);
-  };
+  const cost = (a: HexTile, b: HexTile): number => stepCost(a, b, rivers);
 
   const result = findPath<HexTile>(start, goal, neighbours, cost, key, (n, g) => hexDistance(n, g));
-  return result ? { tiles: result.path, cost: result.cost } : null;
+  if (!result) return null;
+  const stepCosts = result.path.map((t, i) => (i === 0 ? 0 : stepCost(result.path[i - 1], t, rivers)));
+  return { tiles: result.path, cost: result.cost, stepCosts };
+}
+
+/** The furthest point along a path reachable within `budget` movement points:
+ *  the path-index of the stop tile and the points it costs to get there. */
+export function advanceWithinBudget(path: TilePath, budget: number): { index: number; spent: number } {
+  let spent = 0;
+  let index = 0;
+  for (let i = 1; i < path.tiles.length; i++) {
+    if (spent + path.stepCosts[i] > budget) break;
+    spent += path.stepCosts[i];
+    index = i;
+  }
+  return { index, spent };
 }

@@ -122,6 +122,7 @@ test('combat & units: army composition, the armory, forging and mustering', asyn
   await page.getByTestId('army-p1-army').click();
   await expect(page.getByTestId('army-name')).toContainText('40 men');
   await expect(page.getByTestId('army-detail')).toContainText('Knt'); // the starting retinue has knights
+  await expect(page.getByTestId('army-detail')).toContainText('move'); // movement points shown
 
   // The realm armory is shown (empty until the smith forges).
   await expect(page.getByTestId('armory')).toContainText('Armory');
