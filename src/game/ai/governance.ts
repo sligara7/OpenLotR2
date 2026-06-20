@@ -59,8 +59,9 @@ export function planGovernance(state: GameState, realm: Realm, traits: AiTraits)
       cmds.push({ type: 'SetRation', countyId: county.id, level: ration });
     }
 
-    // Labour: farm hard when food is tight, otherwise free hands for industry.
-    const industryShare = food < 3 ? 0.25 : 0.45;
+    // Labour: keep most hands on the land (an over-eager industry share starves
+    // the farms in smaller counties); divert even fewer when food runs short.
+    const industryShare = food < 3 ? 0.2 : 0.35;
     if (Math.abs(industryShare - county.labour.industryShare) > 0.05) {
       cmds.push({ type: 'SetLabourPolicy', countyId: county.id, industryShare });
     }

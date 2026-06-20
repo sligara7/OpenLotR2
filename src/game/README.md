@@ -113,9 +113,17 @@ suite (invariants, calendar, determinism). 25 cases, all passing. Add a feature
 The manual gives no numbers, so constants are educated placeholders. The least
 settled:
 
-- **Agriculture yields** (`GRAIN_YIELD_MULTIPLIER`, cattle dairy/capacity) were
-  set so a modest farm can feed a few-hundred-person county. They have not been
-  balanced against real LotR2 population scales (thousands per county).
+- **Starting self-sufficiency — fixed.** Counties once out-ate their farms (grain
+  fields scaled with rare wheat tiles, population with land area) and the whole
+  Britain map famined to extinction by year two. Scenarios now derive a county's
+  grain-field count from its population (`FOOD_SURPLUS_TARGET`,
+  `STARTING_FOOD_SEASONS`) so every county begins able to feed itself with a
+  surplus. Guarded by `tests/balance.test.ts`.
+- **Carrying-capacity boom-bust.** Field count is fixed at scenario start but
+  population grows with happiness, so a thriving county overshoots what its farms
+  feed, famines, and rebounds — a Malthusian oscillation. Emergent and arguably a
+  feature (population pressure motivates expansion), but the swings are violent;
+  smoothing wants a population-growth damping or letting rulers add fields freely.
 - **Happiness** is additive-with-clamp; it can peg at 0/100. Consider moving it
   toward a computed target instead (noted in `happiness.ts`).
 - **Emigration vs immigration** overlap conceptually (noted in `population.ts`).

@@ -9,7 +9,11 @@ import { createRealm } from './state/realm.ts';
 import { createWorld } from './state/world.ts';
 import { CastleType, FieldStatus, NoblePersonality, Season } from './types/enums.ts';
 import { BRITAIN, mapEdges, buildBritainTileMap, countyProfiles, countyTowns } from './maps/index.ts';
-import { WOOD_PER_TILE, STONE_PER_TILE, IRON_PER_TILE } from './constants.ts';
+import {
+  WOOD_PER_TILE, STONE_PER_TILE, IRON_PER_TILE,
+  GRAIN_SACKS_PER_FIELD, GRAIN_YIELD_MULTIPLIER,
+  FOOD_SURPLUS_TARGET, STARTING_FOOD_SEASONS,
+} from './constants.ts';
 import type { County } from './types/county.ts';
 import type { GameState } from './types/realm.ts';
 import type { Army } from './types/army.ts';
@@ -92,21 +96,30 @@ export function createBritainWorld(): GameState {
   const profiles = countyProfiles(tileMap);
   const towns = countyTowns(tileMap);
 
+  // People one fully-worked grain field feeds per season (annual yield / 4).
+  const peoplePerGrainField = (GRAIN_SACKS_PER_FIELD * GRAIN_YIELD_MULTIPLIER) / 4;
+
   const counties = BRITAIN.regions.map((region) => {
     const ownerId = starts[region.id] ?? null;
     const p = profiles.get(region.id);
-    const grainFields = Math.max(1, p?.wheat ?? 0); // every county can grow some grain
+
+    // Bigger (more habitable) counties carry more people.
+    const population = Math.round(80 + (p?.passable ?? 0) * 30 + (ownerId ? 60 : 0));
+    // Give each county enough grain fields to feed its population with a surplus
+    // (so it survives to its first harvest and can spare labour for industry).
+    // Wheat tiles add bonus fertility; pasture tiles become cattle.
+    const grainFields = Math.max(2, Math.ceil((population * FOOD_SURPLUS_TARGET) / peoplePerGrainField))
+      + (p?.wheat ?? 0);
     const cattleFields = p?.pasture ?? 0;
 
     const county = createCounty({
       id: region.id,
       name: region.name,
       ownerId,
-      // Bigger (more habitable) counties carry more people.
-      population: Math.round(80 + (p?.passable ?? 0) * 30 + (ownerId ? 60 : 0)),
+      population,
       happiness: ownerId ? 60 : 50,
       taxRate: 18,
-      grainSacks: grainFields * 180,
+      grainSacks: Math.round(population * STARTING_FOOD_SEASONS),
       cows: cattleFields * 8,
       fieldCount: grainFields + cattleFields + 1,
       industries: {

@@ -31,6 +31,19 @@ export const CATTLE_FIELD_CAPACITY = 12; // cows per field before overcrowding
 export const RECLAIM_MAX_PER_SEASON = 0.25; // "never ... more than a quarter"
 export const RECLAIM_WORKERS_PER_FIELD = 10;
 
+// --- Starting economy (scenario balance) ----------------------------------
+// A new county must be able to FEED ITSELF, or it spirals into famine before
+// its first harvest (the balance gap the README flagged). One fully-worked
+// grain field feeds GRAIN_SACKS_PER_FIELD*GRAIN_YIELD_MULTIPLIER/4 people per
+// season (~50 at the defaults); scenarios derive each county's grain-field
+// count from its population so production matches consumption with a margin.
+/** Target ratio of annual grain harvest to annual consumption at game start
+ *  (>1 so counties stockpile, can divert labour to industry, and feed armies). */
+export const FOOD_SURPLUS_TARGET = 1.35;
+/** Seasons of grain a county begins with — enough to eat until the first Fall
+ *  harvest (a Spring start is two seasons of eating away from it). */
+export const STARTING_FOOD_SEASONS = 3;
+
 // --- Industry (Manual Part-3 "Industry") ----------------------------------
 export const WOOD_PER_WORKER = 1.5;
 export const STONE_PER_WORKER = 1.0;
