@@ -3,7 +3,27 @@
 import { test, assert, assertEqual, assertGreater, assertLess } from '../testing/harness.ts';
 import { buildBritainTileMap } from '../maps/britain-tiles.ts';
 import { BRITAIN } from '../maps/britain.ts';
-import { Terrain, TileResource, isPassable, hexNeighbours } from '../maps/tiles.ts';
+import { Terrain, TileResource, isPassable, hexNeighbours, countyTowns } from '../maps/tiles.ts';
+import type { TileMap } from '../maps/tiles.ts';
+
+/** Connected components of passable land tiles, keyed "col,row" → component id. */
+function passableComponents(map: TileMap): { comp: Map<string, number>; sizes: number[] } {
+  const byKey = new Map(map.tiles.map((t) => [`${t.col},${t.row}`, t]));
+  const pass = (c: number, r: number) => { const t = byKey.get(`${c},${r}`); return !!t && isPassable(t.terrain); };
+  const comp = new Map<string, number>();
+  const sizes: number[] = [];
+  for (const t of map.tiles) {
+    if (!isPassable(t.terrain) || comp.has(`${t.col},${t.row}`)) continue;
+    const id = sizes.length; let size = 0; const stack = [`${t.col},${t.row}`];
+    comp.set(stack[0], id);
+    while (stack.length) {
+      const [c, r] = stack.pop()!.split(',').map(Number); size += 1;
+      for (const [a, b] of hexNeighbours(c, r)) if (pass(a, b) && !comp.has(`${a},${b}`)) { comp.set(`${a},${b}`, id); stack.push(`${a},${b}`); }
+    }
+    sizes[id] = size;
+  }
+  return { comp, sizes };
+}
 
 test('tiles: every county is a non-empty cluster of hexes', () => {
   const map = buildBritainTileMap();
@@ -85,6 +105,35 @@ test('tiles: rivers exist, sit on real edges, and reach the sea', () => {
     if (ta!.countyId === null || tb!.countyId === null) reachesSea += 1;
   }
   assertGreater(reachesSea, 0, 'at least one river reaches the sea (a mouth)');
+});
+
+test('tiles: no county town is stranded (an army can always march off it)', () => {
+  const map = buildBritainTileMap();
+  const byKey = new Map(map.tiles.map((t) => [`${t.col},${t.row}`, t]));
+  const towns = countyTowns(map);
+  for (const region of BRITAIN.regions) {
+    const town = towns.get(region.id)!;
+    const movable = hexNeighbours(town.col, town.row).some(([c, r]) => {
+      const n = byKey.get(`${c},${r}`);
+      return !!n && n.countyId !== null && isPassable(n.terrain);
+    });
+    assert(movable, `${region.id} town ${town.col},${town.row} has a passable neighbour`);
+  }
+});
+
+test('tiles: nearly every county shares one traversable landmass', () => {
+  const map = buildBritainTileMap();
+  const { comp, sizes } = passableComponents(map);
+  const main = sizes.indexOf(Math.max(...sizes));
+  const towns = countyTowns(map);
+  let onMain = 0;
+  for (const region of BRITAIN.regions) {
+    const t = towns.get(region.id)!;
+    if (comp.get(`${t.col},${t.row}`) === main) onMain += 1;
+  }
+  // A handful of genuinely sea-separated counties may await ferries; the rest
+  // must be mutually reachable by land (the carve/bridge connectivity pass).
+  assertGreater(onMain, BRITAIN.regions.length - 6, 'all but a few towns on one landmass');
 });
 
 test('tiles: generation is deterministic', () => {

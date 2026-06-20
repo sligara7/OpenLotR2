@@ -117,9 +117,17 @@ export function countyProfiles(map: TileMap): Map<string, ResourceCounts> {
   return profiles;
 }
 
-/** The "county town" tile for each county: the passable tile nearest the
- *  county's centroid (where its castle and starting army sit). */
+/** The "county town" tile for each county: a passable tile nearest the county's
+ *  centroid that an army can actually march off of (i.e. with a passable
+ *  neighbour) — never a stranded one-tile island. */
 export function countyTowns(map: TileMap): Map<string, { col: number; row: number }> {
+  const byKey = new Map(map.tiles.map((t) => [`${t.col},${t.row}`, t]));
+  const movable = (t: HexTile): boolean =>
+    hexNeighbours(t.col, t.row).some(([c, r]) => {
+      const n = byKey.get(`${c},${r}`);
+      return !!n && n.countyId !== null && isPassable(n.terrain);
+    });
+
   const groups = new Map<string, HexTile[]>();
   for (const tile of map.tiles) {
     if (tile.countyId === null) continue;
@@ -127,12 +135,16 @@ export function countyTowns(map: TileMap): Map<string, { col: number; row: numbe
     list.push(tile);
     groups.set(tile.countyId, list);
   }
+
   const towns = new Map<string, { col: number; row: number }>();
   for (const [id, tiles] of groups) {
     const aCol = tiles.reduce((s, t) => s + t.col, 0) / tiles.length;
     const aRow = tiles.reduce((s, t) => s + t.row, 0) / tiles.length;
-    const pool = tiles.filter((t) => isPassable(t.terrain));
-    const candidates = pool.length ? pool : tiles;
+    // Prefer passable tiles an army can leave; fall back to any passable, then
+    // any tile, so every county still names a town.
+    const passable = tiles.filter((t) => isPassable(t.terrain));
+    const candidates = passable.filter(movable).length ? passable.filter(movable)
+      : passable.length ? passable : tiles;
     let best = candidates[0];
     let bestD = Infinity;
     for (const t of candidates) {

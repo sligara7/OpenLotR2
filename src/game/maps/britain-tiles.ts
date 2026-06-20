@@ -16,6 +16,7 @@ import {
   TileResource,
   edgeKey,
   hexNeighbours,
+  isPassable,
   type HexTile,
   type TileMap,
 } from './tiles.ts';
@@ -118,6 +119,17 @@ export function buildBritainTileMap(): TileMap {
     if (coastal) tile.terrain = Terrain.Coast;
   }
 
+  // Pass 2.5: make the land traversable. The relief pass can wall off whole
+  // regions (the Highlands) and even strand a single coastal tile, leaving armies
+  // unable to march. First carve the fewest mountains to join land-reachable
+  // pockets; then bridge any one-tile straits (Voronoi near-touches, e.g. the
+  // south-west); then carve again now those bridges have merged masses. Wider sea
+  // gaps stay open water — true islands await ferries.
+  carvePasses(byKey, key);
+  bridgeNarrowStraits(byKey, key);
+  carvePasses(byKey, key);
+  fixCoastInvariant(byKey, key);
+
   // Pass 3: resources.
   for (const tile of byKey.values()) {
     tile.resource = resourceFor(tile.terrain, tile.col, tile.row);
@@ -128,6 +140,127 @@ export function buildBritainTileMap(): TileMap {
 
   cached = { id: 'britain-tiles', name: 'Great Britain', cols, rows, tiles: [...byKey.values()], rivers };
   return cached;
+}
+
+type Key = (c: number, r: number) => string;
+
+const isLandTile = (t: HexTile | undefined): t is HexTile => !!t && t.countyId !== null;
+const isPassTile = (t: HexTile | undefined): t is HexTile => isLandTile(t) && isPassable(t.terrain);
+
+/** Label every passable land tile with its connected-component id. */
+function passableComponents(byKey: Map<string, HexTile>, key: Key): { comp: Map<string, number>; sizes: number[] } {
+  const comp = new Map<string, number>();
+  const sizes: number[] = [];
+  for (const t of byKey.values()) {
+    if (!isPassTile(t) || comp.has(key(t.col, t.row))) continue;
+    const id = sizes.length;
+    let size = 0;
+    const stack = [t];
+    comp.set(key(t.col, t.row), id);
+    while (stack.length) {
+      const cur = stack.pop()!;
+      size += 1;
+      for (const [nc, nr] of hexNeighbours(cur.col, cur.row)) {
+        const nb = byKey.get(key(nc, nr));
+        if (isPassTile(nb) && !comp.has(key(nc, nr))) { comp.set(key(nc, nr), id); stack.push(nb); }
+      }
+    }
+    sizes[id] = size;
+  }
+  return { comp, sizes };
+}
+
+/**
+ * Bridge SINGLE-tile straits: a sea tile wedged between two different passable
+ * landmasses becomes a Coast isthmus (assigned to a neighbouring county), so the
+ * masses join. Only one-tile gaps — wider channels stay sea (ferry crossings, a
+ * future feature). This repairs Voronoi near-touches (e.g. the south-west
+ * peninsula) without filling open water.
+ */
+function bridgeNarrowStraits(byKey: Map<string, HexTile>, key: Key): void {
+  const { comp } = passableComponents(byKey, key);
+
+  // Collect the straits to bridge first, so simultaneous bridges don't perturb
+  // each other's component test mid-pass.
+  const bridged: { tile: HexTile; donor: string }[] = [];
+  for (const t of byKey.values()) {
+    if (t.countyId !== null) continue; // only sea tiles
+    const masses = new Set<number>();
+    let donor: string | null = null;
+    for (const [nc, nr] of hexNeighbours(t.col, t.row)) {
+      const nb = byKey.get(key(nc, nr));
+      if (isPassTile(nb)) { masses.add(comp.get(key(nc, nr))!); donor = nb.countyId; }
+    }
+    if (masses.size >= 2 && donor) bridged.push({ tile: t, donor });
+  }
+  for (const { tile, donor } of bridged) { tile.countyId = donor; tile.terrain = Terrain.Coast; }
+}
+
+/**
+ * Restore the "Coast ⇒ borders sea" invariant after carving/bridging. Filling a
+ * strait can land-lock a tile that used to be coastline (the bridge itself, or an
+ * original Coast tile beside it); any Coast no longer touching open water becomes
+ * inland Plains. (We only downgrade — never invent new coastline.)
+ */
+function fixCoastInvariant(byKey: Map<string, HexTile>, key: Key): void {
+  for (const t of byKey.values()) {
+    if (t.terrain !== Terrain.Coast) continue;
+    const bordersSea = hexNeighbours(t.col, t.row).some(([c, r]) => {
+      const n = byKey.get(key(c, r));
+      return !n || n.countyId === null;
+    });
+    if (!bordersSea) t.terrain = Terrain.Plains;
+  }
+}
+
+/**
+ * Connect the passable land into one traversable mass by carving the fewest
+ * mountains. Repeatedly: find the largest passable component (the "trunk"), then
+ * the nearest passable tile in any OTHER component reachable over land (a
+ * least-mountains Dijkstra, never crossing water), and convert the mountains on
+ * that path into Hills. Stops when the only remaining components are across water
+ * (true islands). Deterministic — no RNG.
+ */
+function carvePasses(byKey: Map<string, HexTile>, key: Key): void {
+  const isLand = isLandTile;
+  const isPass = isPassTile;
+  const components = () => passableComponents(byKey, key);
+
+  for (let guard = 0; guard < 200; guard++) {
+    const { comp, sizes } = components();
+    if (sizes.length <= 1) break;
+    let trunk = 0;
+    for (let i = 1; i < sizes.length; i++) if (sizes[i] > sizes[trunk]) trunk = i;
+
+    // Least-mountains path from the trunk to the nearest other component.
+    const dist = new Map<string, number>();
+    const prev = new Map<string, string>();
+    const pq: { k: string; d: number }[] = [];
+    for (const [k, id] of comp) if (id === trunk) { dist.set(k, 0); pq.push({ k, d: 0 }); }
+
+    let target: string | null = null;
+    while (pq.length) {
+      let mi = 0;
+      for (let i = 1; i < pq.length; i++) if (pq[i].d < pq[mi].d) mi = i;
+      const { k: ck, d: cd } = pq.splice(mi, 1)[0];
+      if (cd > (dist.get(ck) ?? Infinity)) continue;
+      const here = byKey.get(ck)!;
+      if (isPass(here) && comp.get(ck) !== trunk) { target = ck; break; } // reached another mass
+      for (const [nc, nr] of hexNeighbours(here.col, here.row)) {
+        const nb = byKey.get(key(nc, nr));
+        if (!isLand(nb)) continue; // never bridge across water
+        const nk = key(nc, nr);
+        const nd = cd + (isPassable(nb.terrain) ? 0 : 1); // entering a mountain costs one carve
+        if (nd < (dist.get(nk) ?? Infinity)) { dist.set(nk, nd); prev.set(nk, ck); pq.push({ k: nk, d: nd }); }
+      }
+    }
+    if (!target) break; // everything left is across water — leave as islands
+
+    for (let cur: string | undefined = target; cur !== undefined; cur = prev.get(cur)) {
+      const t = byKey.get(cur)!;
+      if (isLand(t) && !isPassable(t.terrain)) t.terrain = Terrain.Hills; // carve a pass
+    }
+  }
 }
 
 const ELEVATION: Record<string, number> = {
