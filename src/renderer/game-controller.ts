@@ -18,6 +18,30 @@ import type { County } from '../game/types/county.ts';
 import type { GameState } from '../game/types/realm.ts';
 import type { UnitType } from '../game/types/enums.ts';
 import type { BattleResult } from '../game/systems/combat.ts';
+import type { TurnReport } from '../game/engine.ts';
+
+/** Notable, player-visible events from a turn report → log lines. */
+function turnEvents(r: TurnReport, state: GameState): string[] {
+  const cn = (id: string): string => state.counties[id]?.name ?? id;
+  const rn = (id: string): string => state.realms[id]?.name ?? id;
+  const ev: string[] = [];
+  for (const s of r.siege.sieges) {
+    if (s.status === 'stormed') ev.push(`${rn(s.attackerRealmId)} stormed ${cn(s.countyId)}`);
+    else if (s.status === 'starved') ev.push(`${rn(s.attackerRealmId)} starved out ${cn(s.countyId)}`);
+    else if (s.status === 'repulsed') ev.push(`assault on ${cn(s.countyId)} was repulsed`);
+  }
+  for (const c of r.convoys.convoys) {
+    if (c.status === 'delivered') ev.push(`${rn(c.ownerId)} resupplied an army`);
+    else if (c.status === 'intercepted') ev.push(`${rn(c.ownerId)}'s convoy was intercepted!`);
+    else if (c.status === 'lost') ev.push(`${rn(c.ownerId)}'s convoy was lost`);
+  }
+  for (const w of r.wages.realms) if (w.deserted > 0) ev.push(`${rn(w.realmId)} lost ${w.deserted} to desertion`);
+  for (const c of r.counties) {
+    if (c.plague) ev.push(`plague struck ${cn(c.countyId)}`);
+    if (c.revoltTriggered) ev.push(`${cn(c.countyId)} rose in revolt`);
+  }
+  return ev;
+}
 
 /** How many soldiers a single "Muster" raises (the minimum legal army size). */
 const MUSTER_BATCH = 50;
@@ -189,13 +213,14 @@ function buildCommand(county: County, kind: ControlKind, delta: number): Command
 
 async function act(command: Command): Promise<void> {
   const result = await api.sendCommand(gameId, command, meId);
-  let msg = result.ok ? `Applied ${command.type}.` : `Rejected: ${result.error ?? 'unknown'}`;
+  const msg = result.ok ? `Applied ${command.type}.` : `Rejected: ${result.error ?? 'unknown'}`;
+  const next = await api.getState(gameId);
   if (result.ok && command.type === 'EndTurn' && result.report) {
-    const deserted = result.report.wages.realms.reduce((s, r) => s + r.deserted, 0);
-    if (deserted > 0) msg += ` ${deserted} unpaid soldiers deserted.`;
+    const r = result.report;
+    hud.logTurn(`Year ${r.year} · ${r.season} · turn ${r.turn}`, turnEvents(r, next));
   }
   hud.setStatus(msg);
-  publish(await api.getState(gameId));
+  publish(next);
 }
 
 /** Apply a batch of commands, then refresh once. */

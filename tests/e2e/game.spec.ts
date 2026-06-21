@@ -67,6 +67,8 @@ test('End Turn advances the simulation', async ({ page }) => {
 
   await expect(page.getByTestId('hud-header')).toContainText('turn 1');
   await expect(page.getByTestId('status')).toContainText('Applied EndTurn');
+  // The turn-log section is present to report what happened.
+  await expect(page.getByTestId('turn-log')).toBeAttached();
 });
 
 test('selecting a county exposes tax/ration/labour controls that send commands', async ({ page }) => {

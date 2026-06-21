@@ -62,6 +62,7 @@ export class Hud {
   private banner!: HTMLDivElement;
   private endTurnBtn!: HTMLButtonElement;
   private status: HTMLDivElement;
+  private turnLog!: HTMLDivElement;
   private realmRows: HTMLDivElement;
   private counties: HTMLDivElement;
 
@@ -141,9 +142,35 @@ export class Hud {
     this.showArmy(null, null, 'p1');
 
     this.status = el('div', 'status', 'min-height:1.4em;color:#c8b890;margin:6px 0;');
+
+    // Turn log — what happened across the realm last turn.
+    const logBox = el('div', undefined, 'border:1px solid #4a3c28;padding:6px;margin-bottom:8px;');
+    const logTitle = el('div', undefined, 'font-weight:bold;margin-bottom:2px;');
+    logTitle.textContent = 'Turn Log';
+    this.turnLog = el('div', 'turn-log', 'max-height:160px;overflow:auto;');
+    logBox.append(logTitle, this.turnLog);
+
     this.counties = el('div', 'counties');
 
-    this.root.append(this.header, this.banner, endTurn, this.saveLoadRow(), realm, this.panel, this.armyPanel, this.status, this.counties);
+    this.root.append(this.header, this.banner, endTurn, this.saveLoadRow(), realm, this.panel, this.armyPanel, this.status, logBox, this.counties);
+  }
+
+  /** Prepend a turn's notable events to the log (skipped when nothing happened). */
+  logTurn(header: string, lines: string[]): void {
+    if (lines.length === 0) return;
+    const block = el('div', undefined, 'border-top:1px solid #332a1c;padding:3px 0;');
+    const h = el('div', undefined, 'color:#d8c89a;font-weight:bold;');
+    h.textContent = header;
+    block.appendChild(h);
+    for (const line of lines) {
+      const d = el('div', undefined, 'color:#c8b890;');
+      d.textContent = `· ${line}`;
+      block.appendChild(d);
+    }
+    this.turnLog.prepend(block);
+    while (this.turnLog.children.length > 12 && this.turnLog.lastChild) {
+      this.turnLog.removeChild(this.turnLog.lastChild);
+    }
   }
 
   /** Save (download) / Load (upload) controls. */
