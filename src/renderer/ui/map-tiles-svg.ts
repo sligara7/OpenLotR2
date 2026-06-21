@@ -27,8 +27,8 @@ const S = 10;
 const POP_PER_VILLAGE = 250;
 
 const TERRAIN_FILL: Record<Terrain, string> = {
-  Plains: '#6f8f3f', Forest: '#2f5a2a', Hills: '#9c8a52', Mountains: '#6f6f6f',
-  Moor: '#7d6f8a', Coast: '#c9b87f', Water: '#27496b',
+  Plains: '#7e9c4d', Forest: '#3a6230', Hills: '#a89254', Mountains: '#7c8086',
+  Moor: '#937e94', Coast: '#d8c489', Water: '#2d5e8a',
 };
 const OWNER_COLOR: Record<string, string> = { p1: '#3a6ea5', p2: '#a53a3a', p3: '#3aa55a' };
 
@@ -215,7 +215,8 @@ export class MapTilesSvg {
     this.root.setAttribute('data-testid', 'map');
     this.root.style.cssText =
       'position:fixed;left:0;top:0;bottom:0;width:calc(100% - 380px);' +
-      'background:#0b1420;display:flex;align-items:center;justify-content:center;z-index:5;overflow:hidden;';
+      'background:radial-gradient(circle at 50% 32%, #1c4061 0%, #0e2638 60%, #081722 100%);' +
+      'display:flex;align-items:center;justify-content:center;z-index:5;overflow:hidden;';
     this.svg = document.createElementNS(SVGNS, 'svg') as SVGSVGElement;
     this.svg.setAttribute('data-testid', 'map-svg');
     this.svg.style.cssText = 'height:97%;max-width:97%;cursor:grab;';
@@ -253,7 +254,20 @@ export class MapTilesSvg {
     const map = buildBritainTileMap();
     const names = new Map(BRITAIN.regions.map((r) => [r.id, r.name]));
     const grouped = new Map<string, HexTile[]>();
+
+    // A reusable radial shade gives every hex a lit-from-above, shadowed-edge
+    // look — the cheapest way to turn flat tiles into a map with depth.
+    const defs = document.createElementNS(SVGNS, 'defs');
+    const grad = el('radialGradient', { id: 'hexShade', cx: '50%', cy: '38%', r: '62%' });
+    grad.appendChild(el('stop', { offset: '0%', 'stop-color': '#ffffff', 'stop-opacity': 0.12 }));
+    grad.appendChild(el('stop', { offset: '55%', 'stop-color': '#ffffff', 'stop-opacity': 0 }));
+    grad.appendChild(el('stop', { offset: '100%', 'stop-color': '#000000', 'stop-opacity': 0.18 }));
+    defs.appendChild(grad);
+    this.svg.appendChild(defs);
+
     const terrainLayer = document.createElementNS(SVGNS, 'g');
+    const shadeLayer = document.createElementNS(SVGNS, 'g');
+    shadeLayer.setAttribute('pointer-events', 'none');
     const featuresLayer = document.createElementNS(SVGNS, 'g');
     const industryLayer = document.createElementNS(SVGNS, 'g');
     const labelLayer = document.createElementNS(SVGNS, 'g');
@@ -267,11 +281,14 @@ export class MapTilesSvg {
       minY = Math.min(minY, cy - S); maxY = Math.max(maxY, cy + S);
 
       const base = TERRAIN_FILL[tile.terrain];
-      const poly = el('polygon', { points: hexPoints(cx, cy), fill: base, stroke: '#10151c', 'stroke-width': 0.4 }) as SVGPolygonElement;
+      const points = hexPoints(cx, cy);
+      const poly = el('polygon', { points, fill: base, stroke: 'rgba(12,20,12,0.35)', 'stroke-width': 0.3 }) as SVGPolygonElement;
       if (tile.countyId) poly.style.cursor = 'pointer';
       const { col, row, countyId } = tile;
       poly.addEventListener('click', () => tileClicked(countyId, col, row));
       terrainLayer.appendChild(poly);
+      // Land gets the depth shade; the sea stays flat (a calmer surface).
+      if (tile.terrain !== Terrain.Water) shadeLayer.appendChild(el('polygon', { points, fill: 'url(#hexShade)' }));
       this.tiles.set(`${tile.col},${tile.row}`, { poly, base, countyId: tile.countyId });
 
       const feature = terrainFeature(tile.terrain, cx, cy);
@@ -303,7 +320,9 @@ export class MapTilesSvg {
       const label = el('text', {
         'data-testid': `county-${countyId}-label`,
         x: cx.toFixed(1), y: cy.toFixed(1),
-        'text-anchor': 'middle', 'font-size': 6, 'font-weight': 'bold', fill: '#0c0c0c',
+        'text-anchor': 'middle', 'font-size': 5.6, 'font-weight': 'bold',
+        fill: '#f6efdc', stroke: 'rgba(20,14,6,0.85)', 'stroke-width': 1.1, 'paint-order': 'stroke',
+        'letter-spacing': '0.2',
       });
       (label as SVGElement).style.cursor = 'pointer';
       label.textContent = (names.get(countyId) ?? countyId).slice(0, 5);
@@ -318,7 +337,7 @@ export class MapTilesSvg {
     // settlements → labels → paths → units. Borders are dynamic (owner-aware,
     // redrawn from state); they sit above the land but below structures/units.
     this.viewport.append(
-      terrainLayer, featuresLayer, riversLayer, this.farms, industryLayer, this.borders,
+      terrainLayer, shadeLayer, featuresLayer, riversLayer, this.farms, industryLayer, this.borders,
       this.castles, this.sieges, this.settle, labelLayer, this.paths, this.convoysLayer, this.units,
     );
 
