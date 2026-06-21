@@ -12,7 +12,7 @@
  * command per army per turn, so behaviour stays legible.
  */
 
-import { buildBritainTileMap, countyTowns, findTilePath, hexNeighbours } from '../maps/index.ts';
+import { buildBritainTileMap, countyTowns, findTilePath, hexNeighbours, isFerryLink } from '../maps/index.ts';
 import { countiesOfRealm } from '../state/world.ts';
 import { ARMED_UNITS, HAPPINESS, MIN_ARMY_SIZE } from '../constants.ts';
 import { UnitType } from '../types/enums.ts';
@@ -81,8 +81,15 @@ function planArmy(state: GameState, realm: Realm, army: Army): Command | null {
   const dest = countyTowns(map).get(targetId);
   if (!dest) return null;
   const path = findTilePath(map, { col: army.col, row: army.row }, dest);
-  if (!path || path.tiles.length < 2) return null; // already there / unreachable
-  return { type: 'MoveArmy', armyId: army.id, col: dest.col, row: dest.row };
+  if (path && path.tiles.length >= 2) {
+    return { type: 'MoveArmy', armyId: army.id, col: dest.col, row: dest.row };
+  }
+  // No land route: sail there if it is a ferry crossing from where we stand.
+  if (army.countyId && isFerryLink(army.countyId, targetId)) {
+    return { type: 'FerryArmy', armyId: army.id, toCountyId: targetId };
+  }
+  return null; // already there, or unreachable this turn
+
 }
 
 /** Most peasants a county can draft this turn without driving morale below half

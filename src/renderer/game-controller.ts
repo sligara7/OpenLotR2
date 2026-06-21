@@ -11,6 +11,7 @@ import { api } from './services/api.ts';
 import { Hud, cycleRation, type ControlKind } from './ui/hud.ts';
 import { MapTilesSvg } from './ui/map-tiles-svg.ts';
 import { composition } from './ui/units.ts';
+import { isFerryLink } from '../game/maps/index.ts';
 import { stateBus } from './state-bus.ts';
 import type { Command } from '../game/commands/types.ts';
 import type { County } from '../game/types/county.ts';
@@ -159,8 +160,13 @@ export function tileClicked(countyId: string | null, col: number, row: number): 
   if (selectedArmyId) {
     const army = stateBus.current?.armies[selectedArmyId];
     if (army) {
-      mapView.previewPath(army.col, army.row, col, row, army.movement);
-      void act({ type: 'MoveArmy', armyId: selectedArmyId, col, row });
+      // A sea-linked county is reached by ferry; everything else marches by land.
+      if (countyId && army.countyId && countyId !== army.countyId && isFerryLink(army.countyId, countyId)) {
+        void act({ type: 'FerryArmy', armyId: selectedArmyId, toCountyId: countyId });
+      } else {
+        mapView.previewPath(army.col, army.row, col, row, army.movement);
+        void act({ type: 'MoveArmy', armyId: selectedArmyId, col, row });
+      }
     }
     return;
   }

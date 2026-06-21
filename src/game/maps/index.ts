@@ -10,6 +10,7 @@ export { offsetToCube, cubeToOffset, hexDistance, hexLine, findPath } from './he
 export type { Offset, Cube } from './hex.ts';
 export { findTilePath, advanceWithinBudget, RIVER_CROSS_COST } from './movement.ts';
 export type { TilePath } from './movement.ts';
+export { ferryLinks, isFerryLink } from './ferries.ts';
 
 import type { GameMap } from './types.ts';
 import { BRITAIN } from './britain.ts';

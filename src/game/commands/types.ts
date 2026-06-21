@@ -49,6 +49,9 @@ export interface SendConvoy { type: 'SendConvoy'; fromCountyId: string; toArmyId
 /** Move one of your armies to a destination tile (must be reachable). Occupying
  *  a hostile, undefended county captures it; a garrisoned castle needs a siege. */
 export interface MoveArmy { type: 'MoveArmy'; armyId: string; col: number; row: number; }
+/** Sail an army across a sea crossing (ferry link) to an adjacent county it
+ *  can't reach by land. Spends the turn's movement; may capture on landing. */
+export interface FerryArmy { type: 'FerryArmy'; armyId: string; toCountyId: string; }
 /** Attack an enemy army with one of yours (auto-resolved field battle). */
 export interface AttackArmy { type: 'AttackArmy'; armyId: string; targetArmyId: string; }
 /** Lay (or keep up) a siege on the garrisoned-castle county your army occupies. */
@@ -83,6 +86,7 @@ export type Command =
   | BuyAle
   | SendConvoy
   | MoveArmy
+  | FerryArmy
   | AttackArmy
   | LaySiege
   | SetBlacksmith

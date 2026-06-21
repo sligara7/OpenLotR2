@@ -146,7 +146,14 @@ toward one of your armies; each turn `advanceConvoys` rolls it along the route,
 army is sitting on its tile (raid the supply line). It runs before foraging so
 fresh supply is eaten the same season.
 
-A few sea-isolated counties still await ferries (sea transport).
+**Ferries** (`maps/ferries.ts`, `FerryArmy`): some adjacency neighbours are
+separated by water, so tile pathfinding (land only) can't reach them — a *ferry
+link* is exactly such an edge. An army in a coastal county can `FerryArmy` across
+one to a sea-isolated county (Cornwall, Argyll, Caithness…), spending the turn's
+movement and landing at its town (capturing it if undefended). The client routes
+a click on a sea-linked county to a ferry automatically. This makes the whole
+adjacency graph traversable; combined with movement points and supply convoys,
+logistics is feature-complete.
 
 ## Running it
 
@@ -217,8 +224,9 @@ leaving state untouched). `ctx.actorRealmId` enforces ownership.
 
 Implemented commands: `SetTaxRate`, `SetRation`, `SetLabourPolicy`,
 `AssignField`, `BuildCastle`, `SendSupplies`, `BuyAle`, `SendConvoy`, `MoveArmy`,
-`AttackArmy`, `LaySiege`, `SetBlacksmith`, `Conscript`, `HireMercenaries`,
-`DisbandArmy`, `SplitArmy`, `CombineArmy`, `EndTurn`. `EndTurn` advances the world via
+`FerryArmy`, `AttackArmy`, `LaySiege`, `SetBlacksmith`, `Conscript`,
+`HireMercenaries`, `DisbandArmy`, `SplitArmy`, `CombineArmy`, `EndTurn`. `EndTurn`
+advances the world via
 `advanceSeason` and
 returns the `TurnReport`. `AttackArmy` (and `EndTurn`) need `ctx.rng`.
 

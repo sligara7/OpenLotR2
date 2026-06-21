@@ -1,9 +1,9 @@
 /* Army commands: move an army across the map. */
 
-import { buildBritainTileMap, findTilePath, advanceWithinBudget } from '../../maps/index.ts';
+import { buildBritainTileMap, findTilePath, advanceWithinBudget, countyTowns, isFerryLink } from '../../maps/index.ts';
 import { ok, err } from '../types.ts';
 import { captureOnOccupy } from './combat.ts';
-import type { MoveArmy, CommandContext, CommandResult } from '../types.ts';
+import type { MoveArmy, FerryArmy, CommandContext, CommandResult } from '../types.ts';
 import type { GameState } from '../../types/realm.ts';
 
 export function moveArmy(state: GameState, cmd: MoveArmy, ctx: CommandContext): CommandResult {
@@ -33,4 +33,26 @@ export function moveArmy(state: GameState, cmd: MoveArmy, ctx: CommandContext): 
   const captured = captureOnOccupy(state, army);
   const reached = index === path.tiles.length - 1;
   return ok(undefined, captured ? { captured, reached } : { reached });
+}
+
+export function ferryArmy(state: GameState, cmd: FerryArmy, ctx: CommandContext): CommandResult {
+  const army = state.armies[cmd.armyId];
+  if (!army) return err(`Unknown army: ${cmd.armyId}`);
+  if (army.ownerId !== ctx.actorRealmId) return err('That army is not yours');
+  if (!army.countyId) return err('The army must be in a coastal county to sail');
+  if (!state.counties[cmd.toCountyId]) return err(`Unknown county: ${cmd.toCountyId}`);
+  if (!isFerryLink(army.countyId, cmd.toCountyId)) return err('No ferry route to that county');
+  if (army.movement <= 0) return err('No movement left to sail this turn');
+
+  const town = countyTowns(buildBritainTileMap()).get(cmd.toCountyId);
+  if (!town) return err('Nowhere to land the army');
+
+  // The crossing takes the whole turn.
+  army.col = town.col;
+  army.row = town.row;
+  army.countyId = cmd.toCountyId;
+  army.movement = 0;
+
+  const captured = captureOnOccupy(state, army);
+  return ok(undefined, captured ? { captured } : undefined);
 }

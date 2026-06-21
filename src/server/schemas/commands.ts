@@ -69,6 +69,12 @@ export const MoveArmySchema = z.object({
   row: z.number().int().nonnegative(),
 });
 
+export const FerryArmySchema = z.object({
+  type: z.literal('FerryArmy'),
+  armyId: z.string(),
+  toCountyId: countyId,
+});
+
 export const AttackArmySchema = z.object({
   type: z.literal('AttackArmy'),
   armyId: z.string(),
@@ -139,6 +145,7 @@ export const CommandSchema = z
     BuyAleSchema,
     SendConvoySchema,
     MoveArmySchema,
+    FerryArmySchema,
     AttackArmySchema,
     LaySiegeSchema,
     SetBlacksmithSchema,

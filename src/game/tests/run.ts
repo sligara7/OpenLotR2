@@ -21,6 +21,7 @@ import './maps.test.ts';
 import './tiles.test.ts';
 import './hex.test.ts';
 import './movement.test.ts';
+import './ferries.test.ts';
 import './army.test.ts';
 import './foraging.test.ts';
 import './convoys.test.ts';
