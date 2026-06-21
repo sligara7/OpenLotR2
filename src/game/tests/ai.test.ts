@@ -7,8 +7,9 @@ import { createWorld } from '../state/world.ts';
 import { createBritainWorld } from '../scenarios.ts';
 import { CastleType, NoblePersonality } from '../types/enums.ts';
 import { planGovernance } from '../ai/governance.ts';
-import { planMilitary } from '../ai/military.ts';
+import { planMilitary, planReinforce } from '../ai/military.ts';
 import { takeAiTurns, planRealmTurn } from '../ai/planner.ts';
+import { createArmy } from '../state/army.ts';
 import { TRAITS_BY_PERSONALITY } from '../ai/traits.ts';
 import { createRng } from '../rng.ts';
 import type { Command } from '../commands/types.ts';
@@ -84,6 +85,28 @@ test('ai: takeAiTurns drives only AI realms and obeys ownership', () => {
   assertGreater(Math.abs(world.counties.midlothian.taxRate - scotTaxBefore), 0, 'AI adjusted its own tax');
   const armyAfter = `${world.armies['p2-army'].col},${world.armies['p2-army'].row}`;
   assert(armyAfter !== armyBefore, 'AI army marched');
+});
+
+test('ai: the army target scales with the realm (a big realm raises a big host)', () => {
+  const realm = createRealm({ id: 'p2', name: 'Big', personality: NoblePersonality.Baron });
+  const counties = Array.from({ length: 10 }, (_, i) =>
+    createCounty({ id: `c${i}`, name: `C${i}`, ownerId: 'p2', population: 400, happiness: 90 }));
+  const army = createArmy({ id: 'p2-army', ownerId: 'p2', col: 0, row: 0, countyId: 'c0', soldiers: 40 });
+  const world = createWorld({ realms: [realm], counties, armies: [army] });
+
+  const draft = planReinforce(world, realm).find((c) => c.type === 'Conscript' && c.armyId === 'p2-army');
+  assert(!!draft && draft.type === 'Conscript', 'reinforces the standing army');
+  assertGreater(draft.count, 50, 'drafts toward a host far larger than the old 50-man cap');
+});
+
+test('ai: a realm that has lost its army musters a fresh one', () => {
+  const realm = createRealm({ id: 'p2', name: 'Reborn', personality: NoblePersonality.Baron });
+  const county = createCounty({ id: 'home', name: 'Home', ownerId: 'p2', population: 400, happiness: 90 });
+  const world = createWorld({ realms: [realm], counties: [county] }); // no armies at all
+
+  const muster = planReinforce(world, realm).find((c) => c.type === 'Conscript');
+  assert(!!muster && muster.type === 'Conscript' && muster.armyId === undefined, 'raises a brand-new army');
+  assertGreater(muster.count, 49, 'a legal army of at least 50');
 });
 
 test('ai: planRealmTurn is read-only (planning does not mutate state)', () => {

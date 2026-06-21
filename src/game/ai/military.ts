@@ -24,8 +24,25 @@ import type { AiTraits } from './traits.ts';
 
 /** Numerical edge the AI wants before committing to a field battle. */
 const ATTACK_CONFIDENCE = 1.2;
-/** Army size the AI tops its forces back up to (the minimum legal army). */
-const REINFORCE_TARGET = MIN_ARMY_SIZE;
+/** Army the AI wants to field scales with the realm: a bigger empire raises a
+ *  bigger host (capped, so it never bankrupts itself on wages). */
+const ARMY_PER_COUNTY = 8;
+const MAX_ARMY_TARGET = 250;
+/** Treasury the AI keeps in reserve before spending gold on mercenaries. */
+const MERCENARY_GOLD_RESERVE = 300;
+
+/** The host size this realm aims to field, given how much land it holds. */
+function targetArmySize(state: GameState, realm: Realm): number {
+  const counties = countiesOfRealm(state, realm.id).length;
+  return Math.min(MAX_ARMY_TARGET, MIN_ARMY_SIZE + counties * ARMY_PER_COUNTY);
+}
+
+/** Total soldiers a realm has under arms across all its armies. */
+function totalSoldiers(state: GameState, realmId: string): number {
+  let n = 0;
+  for (const a of Object.values(state.armies)) if (a.ownerId === realmId) n += a.soldiers;
+  return n;
+}
 
 /** Pick the weakest non-owned county adjacent to the realm's territory. */
 function weakestBorderTarget(state: GameState, realm: Realm): string | null {
@@ -127,18 +144,41 @@ export function planReinforce(state: GameState, realm: Realm): Command[] {
     const have = realm.treasury.weapons[u] ?? 0;
     if (have > stock) { stock = have; armed = u; }
   }
+  const draftUnit = (n: number): { unit: UnitType; count: number } => {
+    if (armed && stock > 0) { const count = Math.min(n, stock); stock -= count; return { unit: armed, count }; }
+    return { unit: UnitType.Peasant, count: n };
+  };
 
-  // Reinforce under-strength armies standing on friendly soil.
-  for (const army of Object.values(state.armies)) {
-    if (army.ownerId !== realm.id || army.soldiers >= REINFORCE_TARGET) continue;
+  const target = targetArmySize(state, realm);
+  const armies = Object.values(state.armies).filter((a) => a.ownerId === realm.id);
+
+  // A realm that has lost its host raises a fresh one at the capital.
+  if (armies.length === 0) {
+    const start = Math.min(target, safeLevy(capital, target));
+    if (start >= MIN_ARMY_SIZE) {
+      const { unit, count } = draftUnit(start);
+      cmds.push({ type: 'Conscript', countyId: capital.id, unit, count });
+    }
+    return cmds;
+  }
+
+  // Reinforce each under-strength army standing on friendly soil toward the
+  // (size-scaled) target.
+  for (const army of armies) {
+    if (army.soldiers >= target) continue;
     const county = army.countyId ? state.counties[army.countyId] : undefined;
     if (!county || county.ownerId !== realm.id) continue;
-    const levy = safeLevy(county, REINFORCE_TARGET - army.soldiers);
+    const levy = safeLevy(county, target - army.soldiers);
     if (levy <= 0) continue;
-    const unit = armed && stock > 0 ? armed : UnitType.Peasant;
-    const count = unit === UnitType.Peasant ? levy : Math.min(levy, stock);
+    const { unit, count } = draftUnit(levy);
     cmds.push({ type: 'Conscript', countyId: county.id, unit, count, armyId: army.id });
-    if (unit !== UnitType.Peasant) stock -= count; // don't promise the same swords twice
+  }
+
+  // When conscription can't keep pace and the coffers are deep, hire a mercenary
+  // band — they cost no people or morale, only gold.
+  if (totalSoldiers(state, realm.id) < target - MIN_ARMY_SIZE
+      && realm.treasury.gold > MERCENARY_GOLD_RESERVE && armies.length < 4) {
+    cmds.push({ type: 'HireMercenaries', countyId: capital.id, unit: UnitType.Swordsman, count: MIN_ARMY_SIZE });
   }
   return cmds;
 }
