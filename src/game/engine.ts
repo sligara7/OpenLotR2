@@ -33,6 +33,8 @@ import { runImmigration } from './systems/immigration.ts';
 import type { MigrationLedger } from './systems/immigration.ts';
 import { forageArmies } from './systems/foraging.ts';
 import type { ForageLedger } from './systems/foraging.ts';
+import { advanceConvoys } from './systems/convoys.ts';
+import type { ConvoyLedger } from './systems/convoys.ts';
 import { advanceSieges } from './systems/siege.ts';
 import type { SiegeLedger } from './systems/siege.ts';
 import { armyMovementAllowance } from './state/army.ts';
@@ -62,6 +64,7 @@ export interface TurnReport {
   season: Season;
   counties: CountyTurnReport[];
   migration: MigrationLedger;
+  convoys: ConvoyLedger;
   forage: ForageLedger;
   siege: SiegeLedger;
   wages: WagesLedger;
@@ -119,6 +122,9 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
     reports.push(processCounty(state, county, rng));
   }
   const migration = runImmigration(state);
+  // Supply convoys roll in before foraging, so freshly delivered food can be
+  // eaten this same season.
+  const convoys = advanceConvoys(state);
   // Armies forage last: counties have already fed their own people, so an army
   // draws down whatever the occupied county has left in store (and starves if
   // that is not enough).
@@ -142,6 +148,7 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
     season: state.season,
     counties: reports,
     migration,
+    convoys,
     forage,
     siege,
     wages,

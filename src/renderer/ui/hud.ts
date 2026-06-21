@@ -45,6 +45,8 @@ export interface HudCallbacks {
   onMuster: (countyId: string, unit: UnitType) => void;
   /** Hire a mercenary band of `unit` at a county. */
   onHire: (countyId: string, unit: UnitType) => void;
+  /** Send a supply convoy from a county to the selected army. */
+  onSupply: (countyId: string) => void;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, testId?: string, css?: string): HTMLElementTagNameMap[K] {
@@ -229,7 +231,8 @@ export class Hud {
     const where = county ? county.name : army.countyId ?? 'open country';
     const mine = army.ownerId === meId;
     this.armyName.textContent = `Army [${army.ownerId}]${army.mercenary ? ' ⚔ mercenary' : ''} — ${army.soldiers} men`;
-    this.armyDetail.textContent = `${composition(army)} · at ${where} · move ${army.movement}/${armySpeed(army)}`;
+    this.armyDetail.textContent =
+      `${composition(army)} · at ${where} · move ${army.movement}/${armySpeed(army)} · supply ${Math.round(army.supply)}`;
     const canSiege = mine && !!county && county.ownerId !== meId && county.castle.garrison > 0;
     this.siegeBtn.style.display = canSiege ? 'inline-block' : 'none';
     // Disband only your own army, and only when it stands in your own county.
@@ -265,7 +268,14 @@ export class Hud {
     hBtn.onclick = () => { const id = this.selected?.id; if (id) this.cb.onHire(id, this.musterSel.value as UnitType); };
     muster.append(mLabel, this.musterSel, mBtn, hBtn);
 
-    row.append(forge, muster);
+    const supply = el('div', undefined, 'display:flex;align-items:center;gap:6px;');
+    const sBtn = el('button', 'supply-btn', 'cursor:pointer;padding:2px 8px;');
+    sBtn.textContent = 'Supply army';
+    sBtn.title = 'Send a grain convoy from here to the selected army';
+    sBtn.onclick = () => { const id = this.selected?.id; if (id) this.cb.onSupply(id); };
+    supply.append(sBtn);
+
+    row.append(forge, muster, supply);
     return row;
   }
 

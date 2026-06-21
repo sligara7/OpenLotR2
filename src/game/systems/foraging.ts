@@ -28,6 +28,8 @@ export interface ArmyForageResult {
   countyId: string | null;
   /** Food the army needed this season, in portions. */
   needed: number;
+  /** Food eaten from the army's own carried supply (convoys top this up). */
+  fromSupply: number;
   /** Food actually foraged from the occupied county, in portions. */
   foraged: number;
   /** Soldiers lost to starvation this season. */
@@ -70,15 +72,20 @@ export function forageArmies(state: GameState): ForageLedger {
 
   for (const army of Object.values(state.armies)) {
     const needed = army.soldiers * ARMY_FORAGE_PORTIONS_PER_SOLDIER;
-    const county = army.countyId ? state.counties[army.countyId] : undefined;
-    const foraged = county ? drawFood(county, needed) : 0;
 
-    const shortfall = needed - foraged;
+    // 1. Eat the carried supply (delivered by convoys); 2. forage the county.
+    const fromSupply = Math.min(army.supply, needed);
+    army.supply -= fromSupply;
+    let remaining = needed - fromSupply;
+    const county = army.countyId ? state.counties[army.countyId] : undefined;
+    const foraged = county ? drawFood(county, remaining) : 0;
+    remaining -= foraged;
+
     let starved = 0;
-    if (shortfall > 1e-9) {
+    if (remaining > 1e-9) {
       // Round UP so any genuine shortfall costs at least one soldier — an
       // unsupplied army always bleeds, and a tiny remnant eventually dies out.
-      const unfed = shortfall / ARMY_FORAGE_PORTIONS_PER_SOLDIER;
+      const unfed = remaining / ARMY_FORAGE_PORTIONS_PER_SOLDIER;
       starved = Math.min(army.soldiers, Math.ceil(unfed * ARMY_STARVE_FRACTION));
       army.soldiers -= starved;
     }
@@ -86,7 +93,7 @@ export function forageArmies(state: GameState): ForageLedger {
     const destroyed = army.soldiers <= 0;
     if (destroyed) delete state.armies[army.id];
 
-    results.push({ armyId: army.id, countyId: army.countyId, needed, foraged, starved, destroyed });
+    results.push({ armyId: army.id, countyId: army.countyId, needed, fromSupply, foraged, starved, destroyed });
   }
 
   return { armies: results };

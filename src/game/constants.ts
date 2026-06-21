@@ -140,6 +140,13 @@ export const MIN_ARMY_SIZE = 50; // "an army must have at least 50 soldiers"
 // constant is only the fallback for a (transient) empty army.
 export const ARMY_MOVEMENT_POINTS = 5;
 
+// Supply convoys (the other half of logistics, paired with foraging): a cart
+// carries food from a county toward one of your armies, moving this many points
+// per turn (slower than troops). It delivers on arrival, topping up the army's
+// carried supply so it need not forage; an enemy army sharing its tile destroys
+// it (raid the supply line).
+export const CONVOY_MOVEMENT_POINTS = 4;
+
 // Upkeep: a standing army draws seasonal wages from the realm treasury (Manual
 // Part-4). When a realm cannot pay in full, the unpaid share of every army
 // bleeds deserters — so militarism has to be financed.

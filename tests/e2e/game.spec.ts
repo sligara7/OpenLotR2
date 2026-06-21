@@ -174,5 +174,10 @@ test('combat & units: army composition, the armory, forging and mustering', asyn
   await page.getByTestId('hire-btn').click();
   await expect(page.getByTestId('status')).toContainText('Applied HireMercenaries');
 
+  // Dispatch a supply convoy from the county to the selected army.
+  await expect(page.getByTestId('army-detail')).toContainText('supply');
+  await page.getByTestId('supply-btn').click();
+  await expect(page.getByTestId('status')).toContainText('Applied SendConvoy');
+
   await page.screenshot({ path: 'test-results/combat-units.png', fullPage: true });
 });

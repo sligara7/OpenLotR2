@@ -118,8 +118,20 @@ export const ArmySchema = z
     soldiers: z.number(),
     movement: z.number(),
     mercenary: z.boolean(),
+    supply: z.number(),
   })
   .openapi('Army');
+
+export const ConvoySchema = z
+  .object({
+    id: z.string(),
+    ownerId: z.string(),
+    col: z.number(),
+    row: z.number(),
+    food: z.number(),
+    targetArmyId: z.string(),
+  })
+  .openapi('Convoy');
 
 // --- Siege ----------------------------------------------------------------
 export const SiegeSchema = z
@@ -151,6 +163,7 @@ export const GameStateSchema = z
     adjacency: z.record(z.string(), z.array(z.string())),
     armies: z.record(z.string(), ArmySchema),
     sieges: z.record(z.string(), SiegeSchema),
+    convoys: z.record(z.string(), ConvoySchema),
     outcome: GameOutcomeSchema.nullable(),
   })
   .openapi('GameState');
@@ -175,6 +188,7 @@ const ArmyForageResultSchema = z.object({
   armyId: z.string(),
   countyId: z.string().nullable(),
   needed: z.number(),
+  fromSupply: z.number(),
   foraged: z.number(),
   starved: z.number(),
   destroyed: z.boolean(),
@@ -182,6 +196,20 @@ const ArmyForageResultSchema = z.object({
 
 const ForageLedgerSchema = z.object({
   armies: z.array(ArmyForageResultSchema),
+});
+
+const ConvoyOutcomeSchema = z.object({
+  convoyId: z.string(),
+  ownerId: z.string(),
+  targetArmyId: z.string(),
+  food: z.number(),
+  status: z.enum(['enroute', 'delivered', 'intercepted', 'lost']),
+  col: z.number(),
+  row: z.number(),
+});
+
+const ConvoyLedgerSchema = z.object({
+  convoys: z.array(ConvoyOutcomeSchema),
 });
 
 const SiegeOutcomeSchema = z.object({
@@ -218,6 +246,7 @@ export const TurnReportSchema = z
     season: SeasonSchema,
     counties: z.array(CountyTurnReportSchema),
     migration: z.record(z.string(), z.number()),
+    convoys: ConvoyLedgerSchema,
     forage: ForageLedgerSchema,
     siege: SiegeLedgerSchema,
     wages: WagesLedgerSchema,

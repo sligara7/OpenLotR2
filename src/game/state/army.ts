@@ -49,6 +49,8 @@ export interface ArmyInit {
   soldiers?: number;
   /** Hired mercenaries (self-armed, costly). Defaults to a citizen army. */
   mercenary?: boolean;
+  /** Food portions carried at the start (default 0). */
+  supply?: number;
 }
 
 /** Create an army, deriving the `soldiers` total from its composition. */
@@ -64,6 +66,7 @@ export function createArmy(init: ArmyInit): Army {
     soldiers: unitsTotal(units),
     movement: unitsSpeed(units),
     mercenary: init.mercenary ?? false,
+    supply: init.supply ?? 0,
   };
 }
 

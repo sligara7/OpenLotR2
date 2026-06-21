@@ -145,6 +145,15 @@ export function hire(countyId: string, unit: UnitType): void {
   void act({ type: 'HireMercenaries', countyId, unit, count: MUSTER_BATCH });
 }
 
+/** Grain sent per supply convoy. */
+const CONVOY_GRAIN = 100;
+
+/** Dispatch a supply convoy from a county to the selected army. */
+export function supplyArmy(countyId: string): void {
+  if (!selectedArmyId) { hud.setStatus('Select one of your armies to supply first.'); return; }
+  void act({ type: 'SendConvoy', fromCountyId: countyId, toArmyId: selectedArmyId, grainSacks: CONVOY_GRAIN });
+}
+
 /** A tile was clicked: march the selected army there, else select the county. */
 export function tileClicked(countyId: string | null, col: number, row: number): void {
   if (selectedArmyId) {
@@ -242,6 +251,7 @@ export async function startGameUI(): Promise<void> {
     onBlacksmith: (countyId, product) => setBlacksmith(countyId, product),
     onMuster: (countyId, unit) => muster(countyId, unit),
     onHire: (countyId, unit) => hire(countyId, unit),
+    onSupply: (countyId) => supplyArmy(countyId),
   });
   mapView = new MapTilesSvg(); // canvas-free SVG map; subscribes to the state bus
   mapView.mount();

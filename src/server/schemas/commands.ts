@@ -55,6 +55,13 @@ export const SendSuppliesSchema = z.object({
 
 export const BuyAleSchema = z.object({ type: z.literal('BuyAle'), countyId });
 
+export const SendConvoySchema = z.object({
+  type: z.literal('SendConvoy'),
+  fromCountyId: z.string(),
+  toArmyId: z.string(),
+  grainSacks: z.number().positive(),
+});
+
 export const MoveArmySchema = z.object({
   type: z.literal('MoveArmy'),
   armyId: z.string(),
@@ -130,6 +137,7 @@ export const CommandSchema = z
     BuildCastleSchema,
     SendSuppliesSchema,
     BuyAleSchema,
+    SendConvoySchema,
     MoveArmySchema,
     AttackArmySchema,
     LaySiegeSchema,

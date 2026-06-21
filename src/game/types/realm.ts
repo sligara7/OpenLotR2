@@ -56,6 +56,8 @@ export interface GameState {
   armies: Record<string, import('./army.ts').Army>;
   /** Active sieges, keyed by the besieged county id (one siege per county). */
   sieges: Record<string, import('./siege.ts').Siege>;
+  /** Supply convoys in transit, keyed by id. */
+  convoys: Record<string, import('./convoy.ts').Convoy>;
   /** Set once the game has been decided; null while it is ongoing. */
   outcome: GameOutcome | null;
 }

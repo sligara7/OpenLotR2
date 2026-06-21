@@ -23,6 +23,9 @@ export interface Army {
   soldiers: number;
   /** Movement points left this turn; spent marching, reset each season. */
   movement: number;
+  /** Food portions the army carries (its baggage). Foraging eats this first, so
+   *  a well-supplied army need not pillage the land and won't starve. */
+  supply: number;
   /** True if this army is (or contains) hired mercenaries: self-armed, higher
    *  wages, and it cannot be combined with another mercenary army. */
   mercenary: boolean;

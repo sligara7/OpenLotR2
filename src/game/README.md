@@ -137,8 +137,16 @@ all counties (`VICTORY_COUNTY_FRACTION`, *conquest*), when only one realm surviv
 (*defeat*); no survivors is *extinction*. Once `outcome` is set, `EndTurn` is
 refused and the client shows a victory/defeat banner.
 
-Supply convoys (feeding armies across friendly tiles, intercepting enemy convoys)
-remain a queued logistics step; a few sea-isolated counties await ferries.
+**Supply convoys** (`systems/convoys.ts`, `SendConvoy`): the delivery half of
+logistics. An army carries a `supply` of food that foraging eats *first*, so a
+well-supplied force need not pillage and won't starve in barren or enemy land. A
+`SendConvoy` draws grain from one of your counties and sends a cart from its town
+toward one of your armies; each turn `advanceConvoys` rolls it along the route,
+**delivers** into the army's supply on arrival, and **destroys** it if an enemy
+army is sitting on its tile (raid the supply line). It runs before foraging so
+fresh supply is eaten the same season.
+
+A few sea-isolated counties still await ferries (sea transport).
 
 ## Running it
 
@@ -208,9 +216,9 @@ handler that **validates and applies** it (or returns `{ ok:false, error }`
 leaving state untouched). `ctx.actorRealmId` enforces ownership.
 
 Implemented commands: `SetTaxRate`, `SetRation`, `SetLabourPolicy`,
-`AssignField`, `BuildCastle`, `SendSupplies`, `BuyAle`, `MoveArmy`, `AttackArmy`,
-`LaySiege`, `SetBlacksmith`, `Conscript`, `HireMercenaries`, `DisbandArmy`,
-`SplitArmy`, `CombineArmy`, `EndTurn`. `EndTurn` advances the world via
+`AssignField`, `BuildCastle`, `SendSupplies`, `BuyAle`, `SendConvoy`, `MoveArmy`,
+`AttackArmy`, `LaySiege`, `SetBlacksmith`, `Conscript`, `HireMercenaries`,
+`DisbandArmy`, `SplitArmy`, `CombineArmy`, `EndTurn`. `EndTurn` advances the world via
 `advanceSeason` and
 returns the `TurnReport`. `AttackArmy` (and `EndTurn`) need `ctx.rng`.
 

@@ -198,6 +198,7 @@ export class MapTilesSvg {
   private borders: SVGGElement;
   private castles: SVGGElement;
   private sieges: SVGGElement;
+  private convoysLayer: SVGGElement;
   private units: SVGGElement;
   private paths: SVGGElement;
   /** Pan/zoom is applied to this group (all layers live inside it). */
@@ -230,6 +231,8 @@ export class MapTilesSvg {
     this.castles.setAttribute('data-testid', 'castles');
     this.sieges = document.createElementNS(SVGNS, 'g');
     this.sieges.setAttribute('data-testid', 'sieges');
+    this.convoysLayer = document.createElementNS(SVGNS, 'g');
+    this.convoysLayer.setAttribute('data-testid', 'convoys');
     this.units = document.createElementNS(SVGNS, 'g');
     this.units.setAttribute('data-testid', 'units');
     this.paths = document.createElementNS(SVGNS, 'g');
@@ -316,7 +319,7 @@ export class MapTilesSvg {
     // redrawn from state); they sit above the land but below structures/units.
     this.viewport.append(
       terrainLayer, featuresLayer, riversLayer, this.farms, industryLayer, this.borders,
-      this.castles, this.sieges, this.settle, labelLayer, this.paths, this.units,
+      this.castles, this.sieges, this.settle, labelLayer, this.paths, this.convoysLayer, this.units,
     );
 
     const pad = 6;
@@ -439,6 +442,7 @@ export class MapTilesSvg {
     this.drawBorders(state);
     this.drawCastles(state);
     this.drawSieges(state);
+    this.drawConvoys(state);
     this.drawUnits(state);
     while (this.paths.firstChild) this.paths.removeChild(this.paths.firstChild); // clear stale move preview
   }
@@ -473,6 +477,24 @@ export class MapTilesSvg {
       const owner = county.ownerId;
       const colour = owner && OWNER_COLOR[owner] ? OWNER_COLOR[owner] : '#888';
       this.castles.appendChild(castleIcon(view.spots[0][0], view.spots[0][1], colour));
+    }
+  }
+
+  /** Supply convoys in transit — a little cart in the owner's colour. */
+  private drawConvoys(state: GameState): void {
+    while (this.convoysLayer.firstChild) this.convoysLayer.removeChild(this.convoysLayer.firstChild);
+    for (const convoy of Object.values(state.convoys)) {
+      const [cx, cy] = hexCentre(convoy.col, convoy.row);
+      const x = cx * S;
+      const y = cy * S;
+      const colour = OWNER_COLOR[convoy.ownerId] ?? '#888';
+      const g = document.createElementNS(SVGNS, 'g');
+      g.setAttribute('data-testid', `convoy-${convoy.id}`);
+      g.setAttribute('pointer-events', 'none');
+      g.appendChild(el('rect', { x: x - 2.4, y: y - 1.6, width: 4.8, height: 3, fill: colour, stroke: '#15110a', 'stroke-width': 0.5 }));
+      g.appendChild(el('circle', { cx: x - 1.4, cy: y + 1.6, r: 0.9, fill: '#2e2a22' }));
+      g.appendChild(el('circle', { cx: x + 1.4, cy: y + 1.6, r: 0.9, fill: '#2e2a22' }));
+      this.convoysLayer.appendChild(g);
     }
   }
 

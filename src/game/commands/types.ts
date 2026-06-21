@@ -43,6 +43,9 @@ export interface SendSupplies {
   cows?: number;
 }
 export interface BuyAle { type: 'BuyAle'; countyId: string; }
+/** Dispatch a supply convoy carrying `grainSacks` of food from one of your
+ *  counties toward one of your armies; it travels (and can be intercepted). */
+export interface SendConvoy { type: 'SendConvoy'; fromCountyId: string; toArmyId: string; grainSacks: number; }
 /** Move one of your armies to a destination tile (must be reachable). Occupying
  *  a hostile, undefended county captures it; a garrisoned castle needs a siege. */
 export interface MoveArmy { type: 'MoveArmy'; armyId: string; col: number; row: number; }
@@ -78,6 +81,7 @@ export type Command =
   | BuildCastle
   | SendSupplies
   | BuyAle
+  | SendConvoy
   | MoveArmy
   | AttackArmy
   | LaySiege
