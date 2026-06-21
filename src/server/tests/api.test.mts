@@ -100,6 +100,14 @@ test('api: x-realm-id header lets the rival act on its own county', async () => 
   assertEqual((await body(res)).ok, true, 'p2 may tax Kent');
 });
 
+test('api: an EndTurn reports the counties that changed hands', async () => {
+  const created = await body(await post('/api/games', { seed: 1, scenario: 'britain' }));
+  const end = await body(await post(`/api/games/${created.gameId}/commands`, { type: 'EndTurn' }));
+  assert(Array.isArray(end.captures), 'captures array present on EndTurn');
+  assert(end.captures.length > 0, 'the AI rulers took ground on their first turn');
+  assert(typeof end.captures[0].countyId === 'string' && 'ownerId' in end.captures[0], 'capture shape');
+});
+
 test('api: save → load resumes the game deterministically (RNG state preserved)', async () => {
   const id = await newGame();
   // Advance two turns so the RNG has moved well past its seed.

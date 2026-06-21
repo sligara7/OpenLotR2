@@ -20,15 +20,21 @@ import type { UnitType } from '../game/types/enums.ts';
 import type { BattleResult } from '../game/systems/combat.ts';
 import type { TurnReport } from '../game/engine.ts';
 
-/** Notable, player-visible events from a turn report → log lines. */
-function turnEvents(r: TurnReport, state: GameState): string[] {
+interface Capture { countyId: string; ownerId: string | null }
+
+/** Notable, player-visible events from a turn → log lines. `captures` (counties
+ *  that changed hands, e.g. AI conquests) come on the result, the rest from the
+ *  report. */
+function turnEvents(r: TurnReport, captures: Capture[], state: GameState): string[] {
   const cn = (id: string): string => state.counties[id]?.name ?? id;
   const rn = (id: string): string => state.realms[id]?.name ?? id;
   const ev: string[] = [];
+  for (const cap of captures) {
+    ev.push(cap.ownerId ? `${rn(cap.ownerId)} took ${cn(cap.countyId)}` : `${cn(cap.countyId)} broke free`);
+  }
+  // Siege detail beyond the bare capture (captures already cover stormed/starved).
   for (const s of r.siege.sieges) {
-    if (s.status === 'stormed') ev.push(`${rn(s.attackerRealmId)} stormed ${cn(s.countyId)}`);
-    else if (s.status === 'starved') ev.push(`${rn(s.attackerRealmId)} starved out ${cn(s.countyId)}`);
-    else if (s.status === 'repulsed') ev.push(`assault on ${cn(s.countyId)} was repulsed`);
+    if (s.status === 'repulsed') ev.push(`assault on ${cn(s.countyId)} was repulsed`);
   }
   for (const c of r.convoys.convoys) {
     if (c.status === 'delivered') ev.push(`${rn(c.ownerId)} resupplied an army`);
@@ -217,7 +223,8 @@ async function act(command: Command): Promise<void> {
   const next = await api.getState(gameId);
   if (result.ok && command.type === 'EndTurn' && result.report) {
     const r = result.report;
-    hud.logTurn(`Year ${r.year} · ${r.season} · turn ${r.turn}`, turnEvents(r, next));
+    const captures = (result as { captures?: Capture[] }).captures ?? [];
+    hud.logTurn(`Year ${r.year} · ${r.season} · turn ${r.turn}`, turnEvents(r, captures, next));
   }
   hud.setStatus(msg);
   publish(next);

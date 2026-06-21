@@ -70,13 +70,27 @@ export function gamesRouter(store: GameStore): Router {
       return;
     }
     const actorRealmId = req.header('x-realm-id') ?? 'p1';
+    const isEndTurn = parsed.data.type === 'EndTurn';
+    // Snapshot county ownership so we can report what changed hands this turn.
+    const owners = isEndTurn
+      ? new Map(Object.values(game.state.counties).map((c) => [c.id, c.ownerId]))
+      : null;
     // Single-host turn order: when the human ends the turn, the AI rulers take
     // theirs first (through the same dispatcher, bound by the same rules), then
     // the world ticks once for everyone.
-    if (parsed.data.type === 'EndTurn') takeAiTurns(game.state, game.rng);
+    if (isEndTurn) takeAiTurns(game.state, game.rng);
     const result = dispatch(game.state, parsed.data, { actorRealmId, rng: game.rng });
     if (result.report) game.reports.push(result.report);
-    res.json(result);
+
+    if (owners) {
+      const captures: { countyId: string; ownerId: string | null }[] = [];
+      for (const c of Object.values(game.state.counties)) {
+        if (owners.get(c.id) !== c.ownerId) captures.push({ countyId: c.id, ownerId: c.ownerId });
+      }
+      res.json({ ...result, captures });
+    } else {
+      res.json(result);
+    }
   });
 
   // Fetch a past turn report.

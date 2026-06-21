@@ -4,12 +4,17 @@
 import { z } from './zod.ts';
 import { GameStateSchema, TurnReportSchema } from './state.ts';
 
-/** Result of dispatching a command. `report` is present for EndTurn. */
+/** Result of dispatching a command. `report` (and `captures`, the counties that
+ *  changed hands during the turn — AI conquests and fallen sieges) are present
+ *  for EndTurn. */
 export const CommandResultSchema = z
   .object({
     ok: z.boolean(),
     error: z.string().optional(),
     report: TurnReportSchema.optional(),
+    captures: z
+      .array(z.object({ countyId: z.string(), ownerId: z.string().nullable() }))
+      .optional(),
   })
   .openapi('CommandResult');
 
