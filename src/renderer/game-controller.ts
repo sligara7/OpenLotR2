@@ -194,6 +194,33 @@ async function actMany(commands: Command[], label: string): Promise<void> {
   publish(await api.getState(gameId));
 }
 
+/** Download the current game as a JSON save file. */
+export async function saveGame(): Promise<void> {
+  const save = await api.save(gameId);
+  const s = stateBus.current;
+  const name = s ? `kotl-y${s.year}-${s.season}-t${s.turn}.json` : 'kotl-save.json';
+  const blob = new Blob([JSON.stringify(save)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+  hud.setStatus(`Saved ${name}.`);
+}
+
+/** Load a save file the player chose, switching to the restored game. */
+export async function loadGame(file: File): Promise<void> {
+  let save: unknown;
+  try { save = JSON.parse(await file.text()); } catch { hud.setStatus('That is not a valid save file.'); return; }
+  const res = await api.load(save);
+  if (!res?.gameId) { hud.setStatus('Could not load that save.'); return; }
+  gameId = res.gameId;
+  selectedId = null;
+  selectedArmyId = null;
+  mapView.setSelectedArmy(null);
+  publish(res.state);
+  hud.setStatus(`Loaded — year ${res.state.year}, turn ${res.state.turn}.`);
+}
+
 export async function startGameUI(): Promise<void> {
   hud = new Hud({
     onEndTurn: () => void act({ type: 'EndTurn' }),
@@ -208,6 +235,8 @@ export async function startGameUI(): Promise<void> {
       const owned = Object.values(state.counties).filter((c) => c.ownerId === meId);
       void actMany(owned.map((c) => buildCommand(c, kind, delta)), `All ${kind}`);
     },
+    onSave: () => void saveGame(),
+    onLoad: (file) => void loadGame(file),
     onSiege: () => laySiege(),
     onDisband: () => disband(),
     onBlacksmith: (countyId, product) => setBlacksmith(countyId, product),

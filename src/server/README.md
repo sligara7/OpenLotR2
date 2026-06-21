@@ -25,6 +25,8 @@ Then open:
 | `GET`  | `/api/games/{id}/state` | Current authoritative `GameState`. |
 | `POST` | `/api/games/{id}/commands` | Submit a `Command`. `x-realm-id` header sets the acting realm (default `p1`). |
 | `GET`  | `/api/games/{id}/reports/{turn}` | A past turn's `TurnReport`. |
+| `GET`  | `/api/games/{id}/save` | Download a portable `SaveGame` blob (state + RNG state). |
+| `POST` | `/api/games/load` | Load a `SaveGame` blob as a new game; resumes deterministically. |
 
 **Status conventions:**
 - `400` — malformed request (failed Zod validation).

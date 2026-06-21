@@ -34,3 +34,13 @@ export const CreateGameResponseSchema = z
 export const ErrorResponseSchema = z
   .object({ error: z.string() })
   .openapi('ErrorResponse');
+
+/** A portable save: the full game state plus the RNG state to resume it. */
+export const SaveGameSchema = z
+  .object({
+    version: z.number().int(),
+    seed: z.number().int(),
+    rng: z.number().int(),
+    state: GameStateSchema,
+  })
+  .openapi('SaveGame');

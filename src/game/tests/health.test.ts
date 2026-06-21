@@ -6,8 +6,8 @@ import { updateHealth } from '../systems/health.ts';
 import { RationLevel } from '../types/enums.ts';
 import type { Rng } from '../rng.ts';
 
-const NO_PLAGUE: Rng = { next: () => 0.9, range: () => 0, int: () => 0, chance: () => false };
-const ALWAYS: Rng = { next: () => 0, range: () => 0, int: () => 0, chance: () => true };
+const NO_PLAGUE: Rng = { next: () => 0.9, range: () => 0, int: () => 0, chance: () => false, state: () => 0 };
+const ALWAYS: Rng = { next: () => 0, range: () => 0, int: () => 0, chance: () => true, state: () => 0 };
 
 test('health: poor rations drift health downward (capped per season)', () => {
   const c = createCounty({ id: 'a', name: 'A', health: 70 });

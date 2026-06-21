@@ -16,6 +16,9 @@ export interface Rng {
   int(min: number, max: number): number;
   /** True with probability p. */
   chance(p: number): boolean;
+  /** The generator's current internal state — pass it back to createRng() to
+   *  resume the exact sequence (used by save/load). */
+  state(): number;
 }
 
 export function createRng(seed: number): Rng {
@@ -32,5 +35,6 @@ export function createRng(seed: number): Rng {
     range: (min, max) => min + next() * (max - min),
     int: (min, max) => Math.floor(min + next() * (max - min + 1)),
     chance: (p) => next() < p,
+    state: () => a >>> 0,
   };
 }

@@ -6,7 +6,7 @@ import { updatePopulation } from '../systems/population.ts';
 import type { Rng } from '../rng.ts';
 
 // No baby boom, deterministic.
-const STEADY: Rng = { next: () => 0.9, range: () => 0, int: () => 0, chance: () => false };
+const STEADY: Rng = { next: () => 0.9, range: () => 0, int: () => 0, chance: () => false, state: () => 0 };
 
 test('population: a happy, healthy county grows', () => {
   const c = createCounty({ id: 'a', name: 'A', population: 1000, happiness: 100, health: 100 });

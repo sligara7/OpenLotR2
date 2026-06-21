@@ -39,4 +39,15 @@ export const api = {
       headers: { 'content-type': 'application/json', 'x-realm-id': realmId },
       body: JSON.stringify(command),
     }),
+
+  /** Download a portable save blob (opaque to the client — just shuttled back). */
+  save: (id: string): Promise<unknown> => http(`/games/${id}/save`),
+
+  /** Load a save blob as a new game. */
+  load: (save: unknown): Promise<CreatedGame> =>
+    http('/games/load', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(save),
+    }),
 };

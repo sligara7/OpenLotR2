@@ -8,7 +8,7 @@
 import { Router } from 'express';
 import { dispatch, takeAiTurns } from '../../game/index.ts';
 import { CommandSchema } from '../schemas/commands.ts';
-import { CreateGameRequestSchema } from '../schemas/api.ts';
+import { CreateGameRequestSchema, SaveGameSchema } from '../schemas/api.ts';
 import type { GameStore } from '../store.ts';
 
 export function gamesRouter(store: GameStore): Router {
@@ -23,6 +23,27 @@ export function gamesRouter(store: GameStore): Router {
     }
     const seed = parsed.data.seed ?? (Date.now() & 0x7fffffff);
     const game = store.create(seed, parsed.data.scenario);
+    res.status(201).json({ gameId: game.id, seed: game.seed, state: game.state });
+  });
+
+  // Download a portable save blob for a game.
+  router.get('/games/:id/save', (req, res) => {
+    const save = store.save(req.params.id);
+    if (!save) {
+      res.status(404).json({ error: 'No such game' });
+      return;
+    }
+    res.json(save);
+  });
+
+  // Load a save blob as a new game.
+  router.post('/games/load', (req, res) => {
+    const parsed = SaveGameSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const game = store.load(parsed.data);
     res.status(201).json({ gameId: game.id, seed: game.seed, state: game.state });
   });
 

@@ -24,6 +24,18 @@ export interface Game {
   reports: TurnReport[];
 }
 
+/** A self-contained, serialisable save: the plain GameState plus the RNG state
+ *  needed to resume deterministically. (Turn-report history is not saved.) */
+export interface SaveGame {
+  version: number;
+  seed: number;
+  /** The RNG's internal state at save time (see Rng.state()). */
+  rng: number;
+  state: GameState;
+}
+
+export const SAVE_VERSION = 1;
+
 export class GameStore {
   private games = new Map<string, Game>();
   private counter = 0;
@@ -53,5 +65,25 @@ export class GameStore {
 
   has(id: string): boolean {
     return this.games.has(id);
+  }
+
+  /** Snapshot a game as a portable save blob, or undefined if no such game. */
+  save(id: string): SaveGame | undefined {
+    const game = this.games.get(id);
+    if (!game) return undefined;
+    return { version: SAVE_VERSION, seed: game.seed, rng: game.rng.state(), state: game.state };
+  }
+
+  /** Load a save blob as a brand-new game (resumes the exact RNG sequence). */
+  load(save: SaveGame): Game {
+    const game: Game = {
+      id: this.nextId(),
+      seed: save.seed,
+      state: save.state,
+      rng: createRng(save.rng),
+      reports: [],
+    };
+    this.games.set(game.id, game);
+    return game;
   }
 }

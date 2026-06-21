@@ -14,6 +14,7 @@ import {
   CreateGameRequestSchema,
   CreateGameResponseSchema,
   ErrorResponseSchema,
+  SaveGameSchema,
 } from './schemas/api.ts';
 
 const json = <T>(schema: T) => ({ content: { 'application/json': { schema } } });
@@ -29,6 +30,7 @@ export function buildOpenApiDocument() {
   registry.register('CreateGameRequest', CreateGameRequestSchema);
   registry.register('CreateGameResponse', CreateGameResponseSchema);
   registry.register('ErrorResponse', ErrorResponseSchema);
+  registry.register('SaveGame', SaveGameSchema);
 
   const gameIdParam = z.object({ id: z.string().openapi({ example: 'g1', param: { name: 'id', in: 'path' } }) });
 
@@ -74,6 +76,30 @@ export function buildOpenApiDocument() {
       200: { description: 'Command processed (see ok/error)', ...json(CommandResultSchema) },
       400: { description: 'Malformed command', ...json(ErrorResponseSchema) },
       404: { description: 'No such game', ...json(ErrorResponseSchema) },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/games/{id}/save',
+    tags: ['games'],
+    summary: 'Download a portable save blob',
+    request: { params: gameIdParam },
+    responses: {
+      200: { description: 'The save blob', ...json(SaveGameSchema) },
+      404: { description: 'No such game', ...json(ErrorResponseSchema) },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/games/load',
+    tags: ['games'],
+    summary: 'Load a save blob as a new game',
+    request: { body: json(SaveGameSchema) },
+    responses: {
+      201: { description: 'Game loaded', ...json(CreateGameResponseSchema) },
+      400: { description: 'Malformed save', ...json(ErrorResponseSchema) },
     },
   });
 

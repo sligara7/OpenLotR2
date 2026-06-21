@@ -20,7 +20,9 @@ import { buildOpenApiDocument } from './openapi.ts';
 
 export function createApp(store: GameStore = new GameStore()): express.Express {
   const app = express();
-  app.use(express.json());
+  // A full game state (save blob) runs to a few hundred KB on the Britain map,
+  // past the body parser's 100kb default — raise the limit so /games/load works.
+  app.use(express.json({ limit: '8mb' }));
 
   const openapi = buildOpenApiDocument();
   app.get('/openapi.json', (_req, res) => {

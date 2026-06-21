@@ -31,6 +31,10 @@ export interface HudCallbacks {
   onCommand: (countyId: string, kind: ControlKind, delta: number) => void;
   /** Adjust every owned county at once. */
   onBulk: (kind: ControlKind, delta: number) => void;
+  /** Download the game as a save file. */
+  onSave: () => void;
+  /** Load a save file the player picked. */
+  onLoad: (file: File) => void;
   /** Besiege the garrisoned castle the selected army occupies. */
   onSiege: () => void;
   /** Disband the selected army. */
@@ -137,7 +141,25 @@ export class Hud {
     this.status = el('div', 'status', 'min-height:1.4em;color:#c8b890;margin:6px 0;');
     this.counties = el('div', 'counties');
 
-    this.root.append(this.header, this.banner, endTurn, realm, this.panel, this.armyPanel, this.status, this.counties);
+    this.root.append(this.header, this.banner, endTurn, this.saveLoadRow(), realm, this.panel, this.armyPanel, this.status, this.counties);
+  }
+
+  /** Save (download) / Load (upload) controls. */
+  private saveLoadRow(): HTMLElement {
+    const row = el('div', undefined, 'display:flex;gap:6px;margin-bottom:10px;');
+    const save = el('button', 'save-game', 'flex:1;padding:5px;cursor:pointer;');
+    save.textContent = 'Save';
+    save.onclick = () => this.cb.onSave();
+    const load = el('button', 'load-game', 'flex:1;padding:5px;cursor:pointer;');
+    load.textContent = 'Load';
+    const file = el('input', 'load-file');
+    file.type = 'file';
+    file.accept = 'application/json';
+    file.style.display = 'none';
+    file.onchange = () => { const f = file.files?.[0]; if (f) this.cb.onLoad(f); file.value = ''; };
+    load.onclick = () => file.click();
+    row.append(save, load, file);
+    return row;
   }
 
   /** Show the end-game banner (and lock End Turn) once the game is decided. */

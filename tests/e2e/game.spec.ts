@@ -112,6 +112,26 @@ test('realm overview manages all owned counties (per-county + bulk)', async ({ p
   await expect(page.getByTestId('realm-wiltshire-ration')).toContainText('Double');
 });
 
+test('save and load round-trips a game through the UI', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('hud-header')).toContainText('turn 0');
+
+  // Save the turn-0 game (triggers a file download).
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByTestId('save-game').click(),
+  ]);
+  const savePath = await download.path();
+
+  // Advance a turn, then load the earlier save → back to turn 0.
+  await page.getByTestId('end-turn').click();
+  await expect(page.getByTestId('hud-header')).toContainText('turn 1');
+
+  await page.getByTestId('load-file').setInputFiles(savePath as string);
+  await expect(page.getByTestId('status')).toContainText('Loaded');
+  await expect(page.getByTestId('hud-header')).toContainText('turn 0');
+});
+
 test('combat & units: army composition, the armory, forging and mustering', async ({ page }) => {
   await page.goto('/');
 

@@ -99,3 +99,37 @@ test('api: x-realm-id header lets the rival act on its own county', async () => 
   );
   assertEqual((await body(res)).ok, true, 'p2 may tax Kent');
 });
+
+test('api: save → load resumes the game deterministically (RNG state preserved)', async () => {
+  const id = await newGame();
+  // Advance two turns so the RNG has moved well past its seed.
+  for (let i = 0; i < 2; i++) await post(`/api/games/${id}/commands`, { type: 'EndTurn' });
+
+  const save = await body(await fetch(`${base}/api/games/${id}/save`));
+  assertEqual(save.version, 1, 'save carries a version');
+  assert(typeof save.rng === 'number', 'the RNG state is captured');
+
+  // Continue the ORIGINAL three more turns → the reference state.
+  for (let i = 0; i < 3; i++) await post(`/api/games/${id}/commands`, { type: 'EndTurn' });
+  const original = await body(await fetch(`${base}/api/games/${id}/state`));
+
+  // Load the snapshot as a NEW game and run the SAME three turns.
+  const loadRes = await post('/api/games/load', save);
+  assertEqual(loadRes.status, 201, 'save loaded as a new game');
+  const loadedId = (await body(loadRes)).gameId;
+  for (let i = 0; i < 3; i++) await post(`/api/games/${loadedId}/commands`, { type: 'EndTurn' });
+  const loaded = await body(await fetch(`${base}/api/games/${loadedId}/state`));
+
+  // Compare by value, not key order (the loaded state passed through Zod, which
+  // reorders keys; that's cosmetic — the simulation reproduced identically).
+  const canon = (o: unknown): string => JSON.stringify(o, (_k, v) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.keys(v as object).sort().map((k) => [k, (v as Record<string, unknown>)[k]]))
+      : v);
+  assertEqual(canon(loaded), canon(original), 'the resumed run matches the original exactly');
+});
+
+test('api: save 404s for an unknown game; load rejects a malformed blob', async () => {
+  assertEqual((await fetch(`${base}/api/games/nope/save`)).status, 404, 'unknown game has no save');
+  assertEqual((await post('/api/games/load', { version: 1, seed: 1, rng: 0 })).status, 400, 'a save without state is rejected');
+});
