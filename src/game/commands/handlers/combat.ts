@@ -8,6 +8,7 @@
  */
 
 import { hexNeighbours } from '../../maps/index.ts';
+import { DEFAULT_SIEGE_ENGINES } from '../../constants.ts';
 import { resolveBattle } from '../../systems/combat.ts';
 import { setUnits } from '../../state/army.ts';
 import { captureCounty, updateEliminations } from '../../systems/conquest.ts';
@@ -55,12 +56,17 @@ export function laySiege(state: GameState, cmd: LaySiege, ctx: CommandContext): 
     return err('No garrison to besiege — occupy the town to capture it');
   }
 
-  // Begin a new siege, or refresh an existing one (e.g. after re-issuing it).
+  // Begin a new siege, or refresh an existing one (keeping its build progress).
   const existing = state.sieges[cmd.countyId];
+  const sane = (n: number): number => Math.max(0, Math.floor(Number.isFinite(n) ? n : 0));
+  const engines = existing?.engines ?? (cmd.engines
+    ? { catapults: sane(cmd.engines.catapults), rams: sane(cmd.engines.rams), towers: sane(cmd.engines.towers) }
+    : { ...DEFAULT_SIEGE_ENGINES });
   state.sieges[cmd.countyId] = {
     countyId: cmd.countyId,
     attackerRealmId: ctx.actorRealmId,
     besiegerArmyId: army.id,
+    engines,
     progress: existing?.progress ?? 0,
     seasons: existing?.seasons ?? 0,
   };

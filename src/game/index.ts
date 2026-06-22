@@ -42,10 +42,10 @@ export type { WagesLedger, RealmWages } from './systems/wages.ts';
 export { advanceConvoys } from './systems/convoys.ts';
 export type { ConvoyLedger, ConvoyOutcome } from './systems/convoys.ts';
 export type { Convoy } from './types/convoy.ts';
-export { advanceSieges, garrisonStrength } from './systems/siege.ts';
+export { advanceSieges, garrisonStrength, engineBuildCost, engineBreach } from './systems/siege.ts';
 export type { SiegeLedger, SiegeOutcome, SiegeStatus } from './systems/siege.ts';
 export { captureCounty, updateEliminations, realmIsAlive, evaluateOutcome } from './systems/conquest.ts';
-export type { Siege } from './types/siege.ts';
+export type { Siege, SiegeEngines, SiegeEngineType } from './types/siege.ts';
 export type { GameOutcome } from './types/realm.ts';
 
 // AI rulers (drive non-human realms via the command protocol)

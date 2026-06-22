@@ -134,11 +134,18 @@ export const ConvoySchema = z
   .openapi('Convoy');
 
 // --- Siege ----------------------------------------------------------------
+const SiegeEnginesSchema = z.object({
+  catapults: z.number(),
+  rams: z.number(),
+  towers: z.number(),
+});
+
 export const SiegeSchema = z
   .object({
     countyId: z.string(),
     attackerRealmId: z.string(),
     besiegerArmyId: z.string(),
+    engines: SiegeEnginesSchema,
     progress: z.number(),
     seasons: z.number(),
   })

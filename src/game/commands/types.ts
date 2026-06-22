@@ -14,6 +14,7 @@
 
 import type { CastleType, FieldStatus, RationLevel, UnitType } from '../types/enums.ts';
 import type { UnitCounts } from '../types/army.ts';
+import type { SiegeEngines } from '../types/siege.ts';
 import type { Rng } from '../rng.ts';
 import type { TurnReport } from '../engine.ts';
 
@@ -54,8 +55,9 @@ export interface MoveArmy { type: 'MoveArmy'; armyId: string; col: number; row: 
 export interface FerryArmy { type: 'FerryArmy'; armyId: string; toCountyId: string; }
 /** Attack an enemy army with one of yours (auto-resolved field battle). */
 export interface AttackArmy { type: 'AttackArmy'; armyId: string; targetArmyId: string; }
-/** Lay (or keep up) a siege on the garrisoned-castle county your army occupies. */
-export interface LaySiege { type: 'LaySiege'; armyId: string; countyId: string; }
+/** Lay (or keep up) a siege on the garrisoned-castle county your army occupies.
+ *  Optionally choose the siege engines to build (defaults to a modest train). */
+export interface LaySiege { type: 'LaySiege'; armyId: string; countyId: string; engines?: SiegeEngines; }
 /** Set which weapon a county's blacksmith forges (null = idle). */
 export interface SetBlacksmith { type: 'SetBlacksmith'; countyId: string; product: UnitType | null; }
 /** Raise `count` soldiers of `unit` from a county's population into an army

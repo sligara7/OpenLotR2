@@ -10,6 +10,7 @@
  */
 
 import { CastleType, Industry, UnitType } from './types/enums.ts';
+import type { SiegeEngineType } from './types/siege.ts';
 
 // --- Food & rations -------------------------------------------------------
 // One "portion" feeds one peasant for one season at Normal ration.
@@ -187,17 +188,29 @@ export const UNIT_MATCHUP: Partial<Record<UnitType, Partial<Record<UnitType, num
 // per the manual) while foraging starves the garrison. The siege resolves to an
 // assault (or a starve-out surrender) that flips the county to the attacker.
 export const SIEGE = {
-  /** Breach progress per season when besieger size equals the wall-backed
-   *  garrison strength; scales with the army:defence ratio (bigger → faster). */
-  baseProgressPerSeason: 0.2,
-  /** Cap on how much the size ratio can accelerate a siege. */
-  maxProgressPerSeason: 0.6,
   /** Castle damage added per season under bombardment (persists until repaired). */
-  damagePerSeason: 0.15,
+  damagePerSeason: 0.12,
   /** Garrison soldiers raised per starting castle, as a fraction of its design
    *  garrison capacity (CASTLE_SPEC.garrison). */
   startingGarrisonFraction: 0.6,
+  /** Engine-build progress per besieging soldier per turn — a bigger army raises
+   *  the siege works faster ("the bigger your army, the less time it will take"). */
+  buildPerSoldier: 0.05,
+  /** Breach power that fully negates a castle's wall multiplier in the assault. */
+  breachToNegate: 8,
 } as const;
+
+/** Siege engines (Manual Part-6): `buildCost` is labour-units to construct one,
+ *  `breach` is how much it negates the castle's wall advantage in the assault. */
+export const SIEGE_ENGINE: Record<SiegeEngineType, { buildCost: number; breach: number }> = {
+  catapult: { buildCost: 14, breach: 3.5 }, // batters the walls from afar
+  ram: { buildCost: 8, breach: 2.5 }, // splinters the gate
+  tower: { buildCost: 12, breach: 3 }, // scales the walls
+};
+
+/** Engines a besieger raises by default when none are specified — a modest train
+ *  that breaches part of the walls (build more to negate a bigger castle). */
+export const DEFAULT_SIEGE_ENGINES = { catapults: 1, rams: 1, towers: 0 };
 
 // --- Conquest (a county changing hands) -----------------------------------
 export const CONQUEST = {

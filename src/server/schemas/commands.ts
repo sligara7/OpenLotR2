@@ -85,6 +85,13 @@ export const LaySiegeSchema = z.object({
   type: z.literal('LaySiege'),
   armyId: z.string(),
   countyId,
+  engines: z
+    .object({
+      catapults: z.number().int().nonnegative(),
+      rams: z.number().int().nonnegative(),
+      towers: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 
 export const SetBlacksmithSchema = z.object({

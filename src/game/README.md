@@ -93,13 +93,18 @@ strategy (a pure-cavalry force raids fast; a pikes-and-peasants column trudges).
 
 A county changes hands two ways. An **undefended** county (no castle, or a castle
 with no garrison) is captured simply by occupying its town — `MoveArmy` flips it.
-A **garrisoned castle** can only be taken by **siege** (`LaySiege`): the besieger
-invests the county for several seasons, battering the walls (faster the larger
-the army, per the manual) while foraging starves the garrison, until the castle
-is **stormed** (an assault, resolved as a battle with the defenders fighting at a
-wall-strength multiplier) or **starved** into surrender. Sieges run last in the
-pipeline, after foraging, so a county a besieger has stripped this season starves
-its garrison the same season. Field battles between armies (`AttackArmy`) and
+A **garrisoned castle** can only be taken by **siege** (`LaySiege`, Manual
+Part-6). The besieger chooses **siege engines** to build — catapults (batter
+walls), rams (splinter the gate), towers (scale walls), each with a build cost and
+breach power (`SIEGE_ENGINE`). The engines take seasons to raise, **faster the
+larger the army** ("the bigger your army, the less time…"); meanwhile foraging
+keeps starving the garrison. When the engines are ready the besieger **storms** the
+breach — an assault where the engines **negate part of the castle's wall
+advantage** (more/heavier engines → an easier assault) — or, if the garrison is
+starved to nothing first, the castle **surrenders**. An army can instead lay a
+pure **blockade** (no engines) and rely on starvation alone. A repulsed assault
+spends the engines (rebuild and try again). Sieges run last in the pipeline, after
+foraging, so a stripped county starves its garrison the same season. Field battles between armies (`AttackArmy`) and
 siege assaults share one **auto-resolved combined-arms** model
 (`systems/combat.ts`): an army is a **composition** of unit types (peasant,
 maceman, pikeman, archer, crossbowman, swordsman, knight — `UNIT_SPEC`), and each

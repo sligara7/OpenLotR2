@@ -24,6 +24,7 @@ import {
   ARMY_STARVE_FRACTION,
   CASTLE_SPEC,
   SIEGE,
+  SIEGE_ENGINE,
 } from '../constants.ts';
 import { resolveBattle, garrisonComposition } from './combat.ts';
 import { setUnits } from '../state/army.ts';
@@ -31,6 +32,7 @@ import { captureCounty } from './conquest.ts';
 import { drawFood } from './foraging.ts';
 import type { GameState } from '../types/realm.ts';
 import type { County } from '../types/county.ts';
+import type { SiegeEngines } from '../types/siege.ts';
 import type { Rng } from '../rng.ts';
 
 export type SiegeStatus = 'ongoing' | 'stormed' | 'starved' | 'repulsed' | 'lifted';
@@ -59,6 +61,29 @@ export function garrisonStrength(county: County): number {
   const mult = CASTLE_SPEC[county.castle.type].defenseMultiplier;
   const intact = 1 - county.castle.damage * 0.5; // battered walls defend worse
   return county.castle.garrison * mult * intact;
+}
+
+/** Total labour-units to build a siege train. */
+export function engineBuildCost(e: SiegeEngines): number {
+  return e.catapults * SIEGE_ENGINE.catapult.buildCost
+    + e.rams * SIEGE_ENGINE.ram.buildCost
+    + e.towers * SIEGE_ENGINE.tower.buildCost;
+}
+
+/** How much breach power a siege train delivers. */
+export function engineBreach(e: SiegeEngines): number {
+  return e.catapults * SIEGE_ENGINE.catapult.breach
+    + e.rams * SIEGE_ENGINE.ram.breach
+    + e.towers * SIEGE_ENGINE.tower.breach;
+}
+
+/** The per-defender combat multiplier once the engines have done their work: the
+ *  wall advantage, cut by how much the engines breach it, dimmed by damage. */
+function breachedWallModifier(county: County, engines: SiegeEngines): number {
+  const wall = CASTLE_SPEC[county.castle.type].defenseMultiplier;
+  const negated = Math.min(1, engineBreach(engines) / SIEGE.breachToNegate);
+  const intact = 1 - county.castle.damage * 0.5;
+  return (1 + (wall - 1) * (1 - negated)) * intact;
 }
 
 /** Starve the garrison on whatever food the besieger left behind this season. */
@@ -108,29 +133,28 @@ export function advanceSieges(state: GameState, rng: Rng): SiegeLedger {
     // 1. Starve the garrison on the stripped county.
     const garrisonStarved = starveGarrison(county);
 
-    // 2. Batter the walls — progress scales with army : defence size ratio.
-    const defence = Math.max(1, garrisonStrength(county));
-    const rate = Math.min(SIEGE.maxProgressPerSeason, SIEGE.baseProgressPerSeason * (army.soldiers / defence));
-    siege.progress = Math.min(1, siege.progress + rate);
-    county.castle.damage = Math.min(1, county.castle.damage + SIEGE.damagePerSeason);
+    // 2. Build the siege engines — a bigger army raises them faster, more engines
+    //    take longer. The walls take bombardment damage meanwhile (it persists).
+    const cost = engineBuildCost(siege.engines);
+    if (cost > 0) {
+      siege.progress = Math.min(1, siege.progress + (army.soldiers * SIEGE.buildPerSoldier) / cost);
+      county.castle.damage = Math.min(1, county.castle.damage + SIEGE.damagePerSeason);
+    }
 
     let status: SiegeStatus = 'ongoing';
     let captured = false;
 
     if (county.castle.garrison <= 0) {
-      // Starved or battered into surrender.
+      // Starved (or battered) into surrender — no assault needed.
       captureCounty(state, siege.countyId, siege.attackerRealmId);
       status = 'starved';
       captured = true;
-    } else if (siege.progress >= 1) {
-      // Breach! Storm the walls: the garrison (archers/crossbows behind walls)
-      // fights at the castle's wall multiplier.
+    } else if (cost > 0 && siege.progress >= 1) {
+      // The engines are ready: storm the breach. They negate part of the wall
+      // advantage, so the garrison fights at a reduced multiplier.
       const result = resolveBattle(
         { units: army.units },
-        {
-          units: garrisonComposition(county.castle.garrison),
-          modifier: garrisonStrength(county) / county.castle.garrison,
-        },
+        { units: garrisonComposition(county.castle.garrison), modifier: breachedWallModifier(county, siege.engines) },
         rng,
       );
       setUnits(army, result.attacker.unitsAfter);
@@ -141,7 +165,7 @@ export function advanceSieges(state: GameState, rng: Rng): SiegeLedger {
         status = 'stormed';
         captured = true;
       } else {
-        // Assault thrown back — the breach is held; rebuild and try again.
+        // Assault thrown back — the engines are spent; rebuild and try again.
         siege.progress = 0;
         status = 'repulsed';
         if (army.soldiers <= 0) { delete state.armies[army.id]; delete state.sieges[siege.countyId]; }

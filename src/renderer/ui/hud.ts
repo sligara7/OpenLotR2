@@ -296,8 +296,13 @@ export class Hud {
     const where = county ? county.name : army.countyId ?? 'open country';
     const mine = army.ownerId === meId;
     this.armyName.textContent = `Army [${army.ownerId}]${army.mercenary ? ' ⚔ mercenary' : ''} — ${army.soldiers} men`;
-    this.armyDetail.textContent =
-      `${composition(army)} · at ${where} · move ${army.movement}/${armySpeed(army)} · supply ${Math.round(army.supply)}`;
+    let detail = `${composition(army)} · at ${where} · move ${army.movement}/${armySpeed(army)} · supply ${Math.round(army.supply)}`;
+    const siege = state ? Object.values(state.sieges).find((s) => s.besiegerArmyId === army.id) : undefined;
+    if (siege) {
+      const e = siege.engines;
+      detail += ` · ⚙ siege ${e.catapults}cat ${e.rams}ram ${e.towers}twr (${Math.round(siege.progress * 100)}% built)`;
+    }
+    this.armyDetail.textContent = detail;
     const canSiege = mine && !!county && county.ownerId !== meId && county.castle.garrison > 0;
     this.siegeBtn.style.display = canSiege ? 'inline-block' : 'none';
     // Disband only your own army, and only when it stands in your own county.

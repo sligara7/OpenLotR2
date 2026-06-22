@@ -7,7 +7,8 @@ import { createWorld } from '../state/world.ts';
 import { createArmy } from '../state/army.ts';
 import { createRng } from '../rng.ts';
 import { dispatch } from '../commands/dispatch.ts';
-import { advanceSieges } from '../systems/siege.ts';
+import { advanceSieges, engineBuildCost, engineBreach } from '../systems/siege.ts';
+import { SIEGE_ENGINE } from '../constants.ts';
 import { CastleType } from '../types/enums.ts';
 import type { GameState } from '../types/realm.ts';
 
@@ -76,4 +77,40 @@ test('siege: marching the besieger away lifts the siege', () => {
   assertEqual(ledger.sieges[0]?.status, 'lifted', 'siege reported lifted');
   assert(!world.sieges['castle'], 'siege record removed');
   assertEqual(world.counties['castle'].ownerId, 'p2', 'county stays with the defender');
+});
+
+test('siege: engines carry build cost and breach power that scale with the train', () => {
+  assertEqual(engineBuildCost({ catapults: 2, rams: 1, towers: 1 }),
+    2 * SIEGE_ENGINE.catapult.buildCost + SIEGE_ENGINE.ram.buildCost + SIEGE_ENGINE.tower.buildCost, 'cost sums');
+  assertGreater(engineBreach({ catapults: 3, rams: 0, towers: 0 }),
+    engineBreach({ catapults: 1, rams: 1, towers: 0 }), 'a heavier train breaches more');
+});
+
+test('siege: LaySiege raises a default engine train', () => {
+  const world = siegeWorld({ soldiers: 80, garrison: 20, grainSacks: 500 });
+  assert(lay(world).ok, 'siege laid');
+  const e = world.sieges['castle'].engines;
+  assertGreater(e.catapults + e.rams + e.towers, 0, 'a default siege train is built');
+});
+
+test('siege: a bigger army raises its engines (and storms) sooner', () => {
+  const turnsToStorm = (soldiers: number): number => {
+    const world = siegeWorld({ soldiers, garrison: 10, grainSacks: 9_999_999 }); // well-fed: no starve-out
+    lay(world);
+    for (let i = 0; i < 80; i++) {
+      const o = advanceSieges(world, createRng(i)).sieges[0];
+      if (o?.status === 'stormed') return i + 1;
+      if (!world.sieges['castle']) return 999;
+    }
+    return 999;
+  };
+  assertGreater(turnsToStorm(60), turnsToStorm(400), 'a smaller army takes longer to build its siege works');
+});
+
+test('siege: a pure blockade (no engines) never assaults a well-fed castle', () => {
+  const world = siegeWorld({ soldiers: 300, garrison: 10, grainSacks: 9_999_999 });
+  dispatch(world, { type: 'LaySiege', armyId: 'a', countyId: 'castle', engines: { catapults: 0, rams: 0, towers: 0 } },
+    { actorRealmId: 'p1' });
+  for (let i = 0; i < 20; i++) advanceSieges(world, createRng(i));
+  assertEqual(world.counties['castle'].ownerId, 'p2', 'with no engines and no famine, the castle holds');
 });
