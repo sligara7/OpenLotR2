@@ -46,8 +46,8 @@ export class GameStore {
     return `g${this.counter}`;
   }
 
-  create(seed: number, scenario: 'demo' | 'britain' = 'demo'): Game {
-    const state = scenario === 'britain' ? createBritainWorld() : createDemoWorld();
+  create(seed: number, scenario: 'demo' | 'britain' = 'demo', options?: { advancedFarming?: boolean }): Game {
+    const state = scenario === 'britain' ? createBritainWorld(options) : createDemoWorld(options);
     const game: Game = {
       id: this.nextId(),
       seed,

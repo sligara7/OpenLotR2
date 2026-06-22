@@ -2,7 +2,7 @@
 
 import { Season } from '../types/enums.ts';
 import { emptyDiplomacy } from '../systems/diplomacy.ts';
-import type { Adjacency, GameState, Realm } from '../types/realm.ts';
+import type { Adjacency, GameOptions, GameState, Realm } from '../types/realm.ts';
 import type { County } from '../types/county.ts';
 import type { Army } from '../types/army.ts';
 
@@ -14,6 +14,8 @@ export interface WorldInit {
   armies?: Army[];
   year?: number;
   season?: Season;
+  /** Optional advanced rules; defaults to easy play (all off). */
+  options?: Partial<GameOptions>;
 }
 
 export function createWorld(init: WorldInit): GameState {
@@ -44,6 +46,7 @@ export function createWorld(init: WorldInit): GameState {
     sieges: {},
     convoys: {},
     diplomacy: emptyDiplomacy(),
+    options: { advancedFarming: init.options?.advancedFarming ?? false },
     outcome: null,
   };
 }

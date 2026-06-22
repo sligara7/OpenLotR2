@@ -32,6 +32,14 @@ export interface Realm {
 /** Static adjacency between counties; drives immigration & contiguity rules. */
 export type Adjacency = Record<string, string[]>;
 
+/** Optional advanced rules a game can be created with. (Manual Part-8 "Advanced
+ *  Play".) Off by default — easy play. Army foraging is always on in this
+ *  remake, so it is not a toggle here. */
+export interface GameOptions {
+  /** Seasonal grain labour, weather, and fertility all come into play. */
+  advancedFarming: boolean;
+}
+
 /** How a game ended (null while it is still being played).
  *  - conquest:      a realm holds a supermajority of all counties
  *  - last-standing: every rival realm has been eliminated
@@ -60,6 +68,8 @@ export interface GameState {
   convoys: Record<string, import('./convoy.ts').Convoy>;
   /** Standing between realms — opinion, alliances, enemies, pending offers. */
   diplomacy: import('./diplomacy.ts').DiplomacyState;
+  /** Optional advanced rules in force for this game. */
+  options: GameOptions;
   /** Set once the game has been decided; null while it is ongoing. */
   outcome: GameOutcome | null;
 }

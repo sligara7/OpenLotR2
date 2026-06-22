@@ -72,6 +72,16 @@ test('api: a diplomacy command moves opinion and shows in state', async () => {
   assert(state.diplomacy.opinions.p2.p1 > 0, 'p2 now regards p1 more warmly');
 });
 
+test('api: a game can be created with Advanced Farming enabled', async () => {
+  const res = await post('/api/games', { seed: 5, scenario: 'britain', advancedFarming: true });
+  assertEqual(res.status, 201, 'created');
+  const state = (await body(res)).state;
+  assertEqual(state.options.advancedFarming, true, 'option recorded');
+  // A default game leaves it off.
+  const plain = await post('/api/games', { seed: 5, scenario: 'britain' });
+  assertEqual((await body(plain)).state.options.advancedFarming, false, 'off by default');
+});
+
 test('api: a malformed command is rejected with 400 (Zod validation)', async () => {
   const id = await newGame();
   const res = await post(`/api/games/${id}/commands`, { type: 'SetTaxRate', countyId: 'york', rate: 999 });

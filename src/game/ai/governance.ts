@@ -6,6 +6,7 @@
 
 import { CastleType, FieldStatus, RationLevel } from '../types/enums.ts';
 import {
+  ADVANCED_FARMING,
   ALE_COST,
   BEEF_PORTIONS_PER_COW,
   CASTLE_SPEC,
@@ -67,10 +68,16 @@ export function planGovernance(state: GameState, realm: Realm, traits: AiTraits)
     }
 
     // Put idle land to work — grain first (it both feeds people and stores).
+    // Under Advanced Farming, keep ~a third of the usable fields fallow so the
+    // soil stays fertile (the manual's rule); otherwise crop everything.
+    const usable = county.fields.filter((f) => f.status !== FieldStatus.Barren).length;
+    const keepFallow = state.options?.advancedFarming ? Math.floor(usable * ADVANCED_FARMING.idealFallow) : 0;
+    let fallowSeen = 0;
     county.fields.forEach((f, i) => {
-      if (f.status === FieldStatus.Fallow) {
-        cmds.push({ type: 'AssignField', countyId: county.id, fieldIndex: i, use: FieldStatus.Grain });
-      }
+      if (f.status !== FieldStatus.Fallow) return;
+      fallowSeen += 1;
+      if (fallowSeen <= keepFallow) return; // leave this one resting
+      cmds.push({ type: 'AssignField', countyId: county.id, fieldIndex: i, use: FieldStatus.Grain });
     });
 
     // Buy ale to quell unrest when it's affordable and not already in effect.

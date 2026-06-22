@@ -113,6 +113,17 @@ export const UNIT_TYPES: readonly UnitType[] = [
   UnitType.Knight,
 ];
 
+/** Each season's weather under Advanced Farming (Manual Part-8). Drought and
+ *  poor seasons undercut the grain harvest; fair and sunny ones improve it. */
+export const Weather = {
+  Drought: 'Drought',
+  Poor: 'Poor',
+  Mild: 'Mild',
+  Fair: 'Fair',
+  Sunny: 'Sunny',
+} as const;
+export type Weather = (typeof Weather)[keyof typeof Weather];
+
 /** Computer-ruler personalities. (Manual Part-7 "The Players".) */
 export const NoblePersonality = {
   Knight: 'Knight',

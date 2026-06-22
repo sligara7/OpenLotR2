@@ -36,6 +36,8 @@ export interface HudCallbacks {
   onSave: () => void;
   /** Load a save file the player picked. */
   onLoad: (file: File) => void;
+  /** Start a fresh game, optionally with Advanced Farming (Manual Part-8). */
+  onNewGame: (advancedFarming: boolean) => void;
   /** Besiege the garrisoned castle the selected army occupies. */
   onSiege: () => void;
   /** Disband the selected army. */
@@ -80,6 +82,9 @@ export class Hud {
 
   /** Military: armory readout, the army panel, and per-county forge/muster. */
   private meId = 'p1';
+  /** Whether Advanced Farming is in force (drives the weather/fertility readout). */
+  private advancedFarming = false;
+  private advFarmCheck!: HTMLInputElement;
   private armory!: HTMLDivElement;
   private armyPanel!: HTMLDivElement;
   private armyName!: HTMLDivElement;
@@ -190,9 +195,10 @@ export class Hud {
     }
   }
 
-  /** Save (download) / Load (upload) controls. */
+  /** Save (download) / Load (upload) / New Game controls. */
   private saveLoadRow(): HTMLElement {
-    const row = el('div', undefined, 'display:flex;gap:6px;margin-bottom:10px;');
+    const wrap = el('div', undefined, 'margin-bottom:10px;');
+    const row = el('div', undefined, 'display:flex;gap:6px;');
     const save = el('button', 'save-game', 'flex:1;padding:5px;cursor:pointer;');
     save.textContent = 'Save';
     save.onclick = () => this.cb.onSave();
@@ -204,8 +210,20 @@ export class Hud {
     file.style.display = 'none';
     file.onchange = () => { const f = file.files?.[0]; if (f) this.cb.onLoad(f); file.value = ''; };
     load.onclick = () => file.click();
-    row.append(save, load, file);
-    return row;
+    const newGame = el('button', 'new-game', 'flex:1;padding:5px;cursor:pointer;');
+    newGame.textContent = 'New Game';
+    newGame.onclick = () => this.cb.onNewGame(this.advFarmCheck.checked);
+    row.append(save, load, newGame, file);
+
+    // Advanced Farming toggle (applies to the next New Game).
+    const opts = el('label', undefined, 'display:flex;align-items:center;gap:5px;margin-top:5px;color:#d8c89a;cursor:pointer;');
+    this.advFarmCheck = el('input', 'adv-farming');
+    this.advFarmCheck.type = 'checkbox';
+    const lbl = el('span'); lbl.textContent = 'Advanced Farming (next new game)';
+    opts.append(this.advFarmCheck, lbl);
+
+    wrap.append(row, opts);
+    return wrap;
   }
 
   /** Show the end-game banner (and lock End Turn) once the game is decided. */
@@ -282,9 +300,13 @@ export class Hud {
     this.selName.textContent = `${county.name} [${county.ownerId ?? 'unowned'}]`;
     const garrison = county.castle.garrison > 0 ? ` · garrison ${county.castle.garrison}` : '';
     const forging = county.blacksmithProduct ? ` · forging ${county.blacksmithProduct}` : '';
+    // Under Advanced Farming, surface this county's weather and soil fertility.
+    const farming = this.advancedFarming
+      ? ` · ${county.weather}, soil ${Math.round(county.fertility * 100)}%`
+      : '';
     this.selDetail.textContent =
       `pop ${county.population} · happy ${Math.round(county.happiness)} · ${county.healthLabel} · ` +
-      `getting ${county.achievedRation}${garrison}${forging}`;
+      `getting ${county.achievedRation}${garrison}${forging}${farming}`;
     this.selTax.textContent = `${county.taxRate}%`;
     this.selRation.textContent = county.wantedRation;
     this.selInd.textContent = `${Math.round(county.labour.industryShare * 100)}%`;
@@ -365,7 +387,9 @@ export class Hud {
   /** @param meId the human player's realm id (owned counties are listed). */
   render(state: GameState, meId: string): void {
     this.meId = meId;
-    this.header.textContent = `Year ${state.year} · ${state.season} · turn ${state.turn}`;
+    this.advancedFarming = state.options?.advancedFarming ?? false;
+    const farmFlag = this.advancedFarming ? ' · ⛅ Advanced Farming' : '';
+    this.header.textContent = `Year ${state.year} · ${state.season} · turn ${state.turn}${farmFlag}`;
     const t = state.realms[meId]?.treasury;
     this.treasury.textContent = t
       ? `Treasury: ${Math.round(t.gold)} gold · ${Math.round(t.wood)} wood · ${Math.round(t.stone)} stone · ${Math.round(t.iron)} iron`

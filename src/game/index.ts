@@ -9,7 +9,7 @@
 // Types
 export * from './types/enums.ts';
 export type { County, Field, CountyFood, Castle, LabourPolicy, HappinessDelta } from './types/county.ts';
-export type { Realm, Treasury, GameState, Adjacency } from './types/realm.ts';
+export type { Realm, Treasury, GameState, Adjacency, GameOptions } from './types/realm.ts';
 export type { Army } from './types/army.ts';
 
 // State construction
@@ -30,6 +30,16 @@ export { advanceSeason } from './engine.ts';
 export type { TurnReport, CountyTurnReport } from './engine.ts';
 export { forageArmies } from './systems/foraging.ts';
 export type { ForageLedger, ArmyForageResult } from './systems/foraging.ts';
+
+// Advanced Farming (Manual Part-8 option): weather, fertility, seasonal labour
+export {
+  rollWeather,
+  weatherYieldFactor,
+  seasonalGrainDemand,
+  updateFertility,
+  fertilityYieldFactor,
+  advanceFarming,
+} from './systems/farming.ts';
 
 // Combat & siege (auto-resolved combined-arms battles; multi-season sieges)
 export { resolveBattle, garrisonComposition } from './systems/combat.ts';

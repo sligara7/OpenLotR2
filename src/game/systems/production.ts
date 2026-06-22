@@ -32,9 +32,14 @@ import {
   UNIT_SPEC,
   WEAPON_LABOUR_PER_UNIT,
 } from '../constants.ts';
+import { seasonalGrainDemand, weatherYieldFactor, fertilityYieldFactor } from './farming.ts';
 import type { County } from '../types/county.ts';
 import type { Treasury } from '../types/realm.ts';
 import type { LabourAllocation } from './labour.ts';
+
+/** Expected total grainGrowth across a mild growing season (sow + spring +
+ *  summer) — the divisor that normalises advanced-farming yield to ~1.0. */
+const NOMINAL_GROWTH = 0.25 + 0.37 + 0.37;
 
 export interface ProductionSummary {
   /** People that this season's dairy alone can feed (consumed in food.ts). */
@@ -58,6 +63,7 @@ function runAgriculture(
   county: County,
   alloc: LabourAllocation,
   season: Season,
+  advanced: boolean,
   summary: ProductionSummary,
 ): void {
   const grainFields = county.fields.filter((f) => f.status === FieldStatus.Grain);
@@ -65,22 +71,36 @@ function runAgriculture(
   const barrenFields = county.fields.filter((f) => f.status === FieldStatus.Barren);
 
   // --- Grain seasonal cycle -------------------------------------------------
-  const grainNeed = grainFields.length * GRAIN_WORKERS_PER_FIELD;
+  // Under advanced farming grain wants different head-counts each season, and
+  // weather (folded into grainGrowth) plus soil fertility scale the harvest.
+  const seasonDemand = advanced ? seasonalGrainDemand(season) : 1;
+  const grainNeed = grainFields.length * GRAIN_WORKERS_PER_FIELD * seasonDemand;
   const grainLabour = labourRatio(alloc.grainFarming, grainNeed);
+  const weatherStep = advanced ? weatherYieldFactor(county.weather) : 1;
   if (season === Season.Winter) {
     // Sow: draw sacks from the local store, up to capacity & labour.
     for (const f of grainFields) {
       const want = Math.round(GRAIN_SACKS_PER_FIELD * grainLabour);
       const sown = Math.min(want, county.food.grainSacks);
       f.sacksPlanted = sown;
-      f.grainGrowth = sown > 0 ? 0.25 : 0;
+      f.grainGrowth = sown > 0 ? 0.25 * weatherStep : 0;
       county.food.grainSacks -= sown;
     }
   } else if (season === Season.Spring || season === Season.Summer) {
-    for (const f of grainFields) if (f.sacksPlanted > 0) f.grainGrowth = Math.min(1, f.grainGrowth + 0.37);
+    for (const f of grainFields) {
+      if (f.sacksPlanted <= 0) continue;
+      // Easy play caps growth at 1 (cosmetic); advanced lets weather push it
+      // above or below so the autumn harvest reflects the whole season.
+      f.grainGrowth = advanced ? f.grainGrowth + 0.37 * weatherStep : Math.min(1, f.grainGrowth + 0.37);
+    }
   } else if (season === Season.Fall) {
     for (const f of grainFields) {
-      const harvest = f.sacksPlanted * GRAIN_YIELD_MULTIPLIER * grainLabour;
+      let harvest = f.sacksPlanted * GRAIN_YIELD_MULTIPLIER * grainLabour;
+      if (advanced) {
+        // grainGrowth carries the growing-season weather; normalise it to ~1
+        // under mild conditions, then weight by soil fertility.
+        harvest *= (f.grainGrowth / NOMINAL_GROWTH) * fertilityYieldFactor(county);
+      }
       summary.grainHarvested += harvest;
       county.food.grainSacks += harvest;
       f.sacksPlanted = 0;
@@ -179,6 +199,7 @@ export function runProduction(
   alloc: LabourAllocation,
   treasury: Treasury,
   season: Season,
+  advanced = false,
 ): ProductionSummary {
   const summary: ProductionSummary = {
     dairyPortions: 0,
@@ -189,7 +210,7 @@ export function runProduction(
     weapons: 0,
     castleCompleted: false,
   };
-  runAgriculture(county, alloc, season, summary);
+  runAgriculture(county, alloc, season, advanced, summary);
   runIndustry(county, alloc, treasury, summary);
   return summary;
 }

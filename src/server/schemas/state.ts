@@ -12,6 +12,7 @@ import {
   RationLevelSchema,
   SeasonSchema,
   UnitTypeSchema,
+  WeatherSchema,
 } from './enums.ts';
 import type { GameState } from '../../game/types/realm.ts';
 import type { TurnReport } from '../../game/engine.ts';
@@ -75,6 +76,8 @@ export const CountySchema = z
     revolting: z.boolean(),
     unrestSeasons: z.number(),
     lastHappinessDelta: HappinessDeltaSchema,
+    weather: WeatherSchema,
+    fertility: z.number(),
   })
   .openapi('County');
 
@@ -205,6 +208,7 @@ export const GameStateSchema = z
     sieges: z.record(z.string(), SiegeSchema),
     convoys: z.record(z.string(), ConvoySchema),
     diplomacy: DiplomacyStateSchema,
+    options: z.object({ advancedFarming: z.boolean() }).openapi('GameOptions'),
     outcome: GameOutcomeSchema.nullable(),
   })
   .openapi('GameState');

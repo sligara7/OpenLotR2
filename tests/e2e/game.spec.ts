@@ -95,6 +95,24 @@ test('diplomacy: the panel lists rivals and sends messages that move opinion', a
   await page.screenshot({ path: 'test-results/diplomacy.png', fullPage: true });
 });
 
+test('advanced farming: a new game surfaces weather and soil fertility', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('hud-header')).toContainText('turn 0');
+  // By default the option is off — no weather flag in the header.
+  await expect(page.getByTestId('hud-header')).not.toContainText('Advanced Farming');
+
+  // Start a fresh game with Advanced Farming enabled.
+  await page.getByTestId('adv-farming').check();
+  await page.getByTestId('new-game').click();
+  await expect(page.getByTestId('hud-header')).toContainText('Advanced Farming');
+
+  // The selected county now reports its weather and soil fertility.
+  await page.getByTestId('county-hampshire-info').click();
+  await expect(page.getByTestId('sel-detail')).toContainText('soil');
+
+  await page.screenshot({ path: 'test-results/advanced-farming.png', fullPage: true });
+});
+
 test('selecting a county exposes tax/ration/labour controls that send commands', async ({ page }) => {
   await page.goto('/');
 

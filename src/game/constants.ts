@@ -313,6 +313,32 @@ export const PLAGUE = {
 /** Industries that always physically exist in every county. */
 export const UNIVERSAL_INDUSTRIES: Industry[] = [Industry.Blacksmith];
 
+// --- Advanced Farming (Manual Part-8 "Advanced Play") ---------------------
+// Only in force when GameOptions.advancedFarming is on. Weather and fertility
+// scale the grain harvest around the easy-play baseline (both ~1.0 on average),
+// and grain labour demand swings with the planting cycle.
+export const ADVANCED_FARMING = {
+  /** Weather draw: each weather's relative likelihood and its yield factor.
+   *  Mild dominates; drought is the painful tail, sunny the lucky one. */
+  weather: {
+    Drought: { weight: 1, yield: 0.45 },
+    Poor:    { weight: 2, yield: 0.8 },
+    Mild:    { weight: 4, yield: 1.0 },
+    Fair:    { weight: 2, yield: 1.12 },
+    Sunny:   { weight: 1, yield: 1.3 },
+  },
+  /** Grain workers needed per field, by season, as a multiple of the flat
+   *  GRAIN_WORKERS_PER_FIELD: light in growing seasons, heavy at harvest,
+   *  moderate to ready the ground for sowing in winter. */
+  seasonalLabour: { Spring: 0.4, Summer: 0.4, Fall: 1.6, Winter: 1.0 },
+  /** Keep at least this fraction of usable fields fallow to hold fertility. */
+  idealFallow: 1 / 3,
+  /** Fertility eases this far toward its target each season. */
+  fertilityStep: 0.12,
+  /** Fertility floor when fields are badly over-cropped. */
+  fertilityFloor: 0.4,
+} as const;
+
 // --- Diplomacy (Manual Part-7 "Diplomacy") --------------------------------
 // Opinion is a directional -100..+100 score; gifts/compliments raise it,
 // insults and attacks lower it. The bands below colour the relationship bar.

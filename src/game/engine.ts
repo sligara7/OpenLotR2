@@ -23,6 +23,7 @@ import type { Treasury } from './types/realm.ts';
 
 import { allocateLabour } from './systems/labour.ts';
 import { runProduction } from './systems/production.ts';
+import { advanceFarming } from './systems/farming.ts';
 import { feedPopulation } from './systems/food.ts';
 import { updateHealth } from './systems/health.ts';
 import { updateHappiness } from './systems/happiness.ts';
@@ -81,9 +82,13 @@ function processCounty(state: GameState, county: County, rng: Rng): CountyTurnRe
   const realm = county.ownerId ? state.realms[county.ownerId] : undefined;
   const treasury = realm ? realm.treasury : scratchTreasury();
   const season = state.season;
+  const advanced = state.options?.advancedFarming ?? false;
 
+  // Advanced Farming: set this season's weather and ease fertility before the
+  // harvest is worked out.
+  if (advanced) advanceFarming(county, rng);
   const alloc = allocateLabour(county);
-  const prod = runProduction(county, alloc, treasury, season);
+  const prod = runProduction(county, alloc, treasury, season, advanced);
   const food = feedPopulation(county, prod.dairyPortions);
   const health = updateHealth(county, food.achievedRation, rng);
   updateHappiness(county);

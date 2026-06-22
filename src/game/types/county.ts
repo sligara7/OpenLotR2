@@ -7,6 +7,7 @@ import type {
   Industry,
   RationLevel,
   UnitType,
+  Weather,
 } from './enums.ts';
 
 /** A single field that can be farmed, grazed, or reclaimed. */
@@ -108,4 +109,10 @@ export interface County {
   unrestSeasons: number;
 
   lastHappinessDelta: HappinessDelta;
+
+  /** This season's weather (Advanced Farming). Mild when the option is off. */
+  weather: Weather;
+  /** Soil fertility 0..1 (Advanced Farming): rises while a third of fields stay
+   *  fallow, declines when over-cropped. 1 when the option is off. */
+  fertility: number;
 }

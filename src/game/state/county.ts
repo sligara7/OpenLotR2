@@ -6,6 +6,7 @@ import {
   HealthLevel,
   Industry,
   RationLevel,
+  Weather,
 } from '../types/enums.ts';
 import { HEALTH_BANDS } from '../constants.ts';
 import type { County, Field, IndustrySite } from '../types/county.ts';
@@ -79,6 +80,8 @@ export function createCounty(init: CountyInit): County {
     revolting: false,
     unrestSeasons: 0,
     lastHappinessDelta: { taxes: 0, health: 0, rations: 0, conscription: 0, events: 0, ale: 0 },
+    weather: Weather.Mild,
+    fertility: 1,
   };
 }
 

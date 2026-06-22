@@ -15,10 +15,10 @@ import {
   WOOD_PER_TILE, STONE_PER_TILE, IRON_PER_TILE,
   GRAIN_SACKS_PER_FIELD, GRAIN_YIELD_MULTIPLIER,
   FOOD_SURPLUS_TARGET, STARTING_FOOD_SEASONS,
-  CASTLE_SPEC, SIEGE,
+  CASTLE_SPEC, SIEGE, ADVANCED_FARMING,
 } from './constants.ts';
 import type { County } from './types/county.ts';
-import type { GameState } from './types/realm.ts';
+import type { GameOptions, GameState } from './types/realm.ts';
 import type { Army } from './types/army.ts';
 
 /** Put a working farm in place: assign fields to grain/cattle and lean labour
@@ -54,7 +54,7 @@ function retinue(total: number): Partial<UnitCounts> {
  * thriving), an AI baron holds the over-taxed Kent (primed to revolt). Three
  * counties in a line so immigration flows along the happiness gradient.
  */
-export function createDemoWorld(): GameState {
+export function createDemoWorld(options?: Partial<GameOptions>): GameState {
   const player = createRealm({ id: 'p1', name: 'You', isHuman: true, gold: 200 });
   const rival = createRealm({ id: 'p2', name: 'Baron de Vere' });
 
@@ -85,6 +85,7 @@ export function createDemoWorld(): GameState {
     armies: [invader],
     edges: [['york', 'lancaster'], ['lancaster', 'kent']],
     season: Season.Spring,
+    options,
   });
 }
 
@@ -93,7 +94,7 @@ export function createDemoWorld(): GameState {
  * two AI rivals each begin with a small home cluster; the rest start neutral
  * (unowned), to be won by conquest. Adjacency comes from the map graph.
  */
-export function createBritainWorld(): GameState {
+export function createBritainWorld(options?: Partial<GameOptions>): GameState {
   const player = createRealm({ id: 'p1', name: 'You', isHuman: true, gold: 200 });
   const scots = createRealm({ id: 'p2', name: 'The Bruce', personality: NoblePersonality.Baron });
   const welsh = createRealm({ id: 'p3', name: 'Llywelyn', personality: NoblePersonality.Knight });
@@ -113,6 +114,10 @@ export function createBritainWorld(): GameState {
 
   // People one fully-worked grain field feeds per season (annual yield / 4).
   const peoplePerGrainField = (GRAIN_SACKS_PER_FIELD * GRAIN_YIELD_MULTIPLIER) / 4;
+  // Under Advanced Farming a third of fields must lie fallow to hold fertility,
+  // so provision extra fallow headroom on top of the working grain fields.
+  const fallowRatio = ADVANCED_FARMING.idealFallow / (1 - ADVANCED_FARMING.idealFallow); // = 0.5
+  const advanced = options?.advancedFarming ?? false;
 
   const counties = BRITAIN.regions.map((region) => {
     const ownerId = starts[region.id] ?? null;
@@ -126,6 +131,8 @@ export function createBritainWorld(): GameState {
     const grainFields = Math.max(2, Math.ceil((population * FOOD_SURPLUS_TARGET) / peoplePerGrainField))
       + (p?.wheat ?? 0);
     const cattleFields = p?.pasture ?? 0;
+    // Extra fields left fallow so the working third stays fertile (advanced only).
+    const fallowFields = advanced ? Math.ceil(grainFields * fallowRatio) : 0;
 
     const county = createCounty({
       id: region.id,
@@ -136,7 +143,7 @@ export function createBritainWorld(): GameState {
       taxRate: 18,
       grainSacks: Math.round(population * STARTING_FOOD_SEASONS),
       cows: cattleFields * 8,
-      fieldCount: grainFields + cattleFields + 1,
+      fieldCount: grainFields + cattleFields + 1 + fallowFields,
       industries: {
         Lumber: (p?.wood ?? 0) > 0,
         Quarry: (p?.stone ?? 0) > 0,
@@ -173,5 +180,6 @@ export function createBritainWorld(): GameState {
     armies,
     edges: mapEdges(BRITAIN),
     season: Season.Spring,
+    options,
   });
 }
