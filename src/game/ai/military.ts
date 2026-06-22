@@ -21,10 +21,17 @@ import type { GameState, Realm } from '../types/realm.ts';
 import type { Army } from '../types/army.ts';
 import type { County } from '../types/county.ts';
 import type { Command } from '../commands/types.ts';
+import type { Rng } from '../rng.ts';
 import type { AiTraits } from './traits.ts';
 
 /** Numerical edge the AI wants before committing to a field battle. */
 const ATTACK_CONFIDENCE = 1.2;
+/** Edge the AI will gamble on when it "explores" instead of playing it safe. */
+const ATTACK_GAMBLE = 0.9;
+/** Exploration rate: how often the AI eschews the greedy choice for a different
+ *  front or a riskier fight (exploration vs exploitation). Breaks the standoffs
+ *  that arise when every realm always nibbles its single softest border. */
+const EXPLORE_EPSILON = 0.3;
 /** Army the AI wants to field scales with the realm: a bigger empire raises a
  *  bigger host (capped, so it never bankrupts itself on wages). */
 const ARMY_PER_COUNTY = 8;
@@ -49,25 +56,42 @@ function totalSoldiers(state: GameState, realmId: string): number {
   return n;
 }
 
-/** Pick the weakest non-owned county adjacent to the realm's territory. */
-function weakestBorderTarget(state: GameState, realm: Realm): string | null {
+/** Every non-owned, non-ally county bordering the realm, each with a softness
+ *  score (lower = easier: small population, ungarrisoned). */
+function borderTargets(state: GameState, realm: Realm): { id: string; score: number }[] {
   const owned = new Set(countiesOfRealm(state, realm.id).map((c) => c.id));
-  let best: string | null = null;
-  let bestScore = Infinity;
+  const seen = new Set<string>();
+  const out: { id: string; score: number }[] = [];
   for (const id of owned) {
     for (const nb of state.adjacency[id] ?? []) {
-      if (owned.has(nb)) continue;
+      if (owned.has(nb) || seen.has(nb)) continue;
+      seen.add(nb);
       const c = state.counties[nb];
       if (!c) continue;
-      // Never march on an ally's land (the manual's "safer route" is to break
-      // the pact first — handled elsewhere).
+      // Never march on an ally's land (the "safer route" is to break the pact
+      // first — handled elsewhere).
       if (c.ownerId && areAllied(state, realm.id, c.ownerId)) continue;
-      // Prefer soft targets: small population, and undefended over garrisoned.
-      const score = c.population + c.castle.garrison * 10;
-      if (score < bestScore) { bestScore = score; best = nb; }
+      out.push({ id: nb, score: c.population + c.castle.garrison * 10 });
     }
   }
-  return best;
+  return out;
+}
+
+/**
+ * Choose a county to march on. EXPLOIT (the common case): the softest border —
+ * the greedy pick. EXPLORE (with EXPLORE_EPSILON): a random border instead, so
+ * the realm commits to a fresh front rather than forever oscillating toward
+ * whichever single county happens to be weakest this turn. The randomness draws
+ * from the seeded game RNG, so games stay deterministic; without an RNG (unit
+ * tests) the choice is the deterministic greedy one.
+ */
+function chooseBorderTarget(state: GameState, realm: Realm, rng?: Rng): string | null {
+  const targets = borderTargets(state, realm);
+  if (targets.length === 0) return null;
+  if (rng && rng.chance(EXPLORE_EPSILON)) {
+    return targets[rng.int(0, targets.length - 1)].id;
+  }
+  return targets.reduce((a, b) => (b.score < a.score ? b : a)).id;
 }
 
 /** An enemy army within reach (same or adjacent tile) of `army`, if any. */
@@ -98,7 +122,7 @@ function requestedTarget(state: GameState, realm: Realm, traits: AiTraits): stri
 }
 
 /** One command for this army (siege / attack / march), or null to stand fast. */
-function planArmy(state: GameState, realm: Realm, army: Army, traits: AiTraits): Command | null {
+function planArmy(state: GameState, realm: Realm, army: Army, traits: AiTraits, rng?: Rng): Command | null {
   const county = army.countyId ? state.counties[army.countyId] : undefined;
 
   // 1. Besiege a garrisoned enemy castle we already sit on (never an ally's).
@@ -107,17 +131,22 @@ function planArmy(state: GameState, realm: Realm, army: Army, traits: AiTraits):
     return { type: 'LaySiege', armyId: army.id, countyId: county.id };
   }
 
-  // 2. Smash an adjacent enemy army we clearly outnumber.
+  // 2. Strike an adjacent enemy army. EXPLOIT: only with a clear edge. EXPLORE:
+  // occasionally gamble on a closer fight, which breaks the frozen standoffs
+  // that form when two evenly-matched hosts each wait for an advantage.
   const foe = enemyInReach(state, army);
-  if (foe && army.soldiers > foe.soldiers * ATTACK_CONFIDENCE) {
-    return { type: 'AttackArmy', armyId: army.id, targetArmyId: foe.id };
+  if (foe) {
+    const edge = rng && rng.chance(EXPLORE_EPSILON) ? ATTACK_GAMBLE : ATTACK_CONFIDENCE;
+    if (army.soldiers > foe.soldiers * edge) {
+      return { type: 'AttackArmy', armyId: army.id, targetArmyId: foe.id };
+    }
   }
 
-  // 3. March on an ally's requested target if there is one, else the weakest
-  // border county (the move handler advances as far as movement allows; it
-  // captures the town on arrival if hostile and undefended).
+  // 3. March on an ally's requested target if there is one, else a border county
+  // (greedy-softest, or — when exploring — a fresh front). The move handler
+  // advances as far as movement allows and captures an undefended town on arrival.
   if (army.movement <= 0) return null;
-  const targetId = requestedTarget(state, realm, traits) ?? weakestBorderTarget(state, realm);
+  const targetId = requestedTarget(state, realm, traits) ?? chooseBorderTarget(state, realm, rng);
   if (!targetId) return null;
   const map = buildBritainTileMap();
   const dest = countyTowns(map).get(targetId);
@@ -208,13 +237,15 @@ export function planReinforce(state: GameState, realm: Realm): Command[] {
   return cmds;
 }
 
-/** All military commands for this ruler (empty if too timid or armyless). */
-export function planMilitary(state: GameState, realm: Realm, traits: AiTraits): Command[] {
+/** All military commands for this ruler (empty if too timid or armyless). The
+ *  seeded `rng`, when supplied, drives the AI's exploration-vs-exploitation
+ *  choices; without it the AI plays the deterministic greedy line. */
+export function planMilitary(state: GameState, realm: Realm, traits: AiTraits, rng?: Rng): Command[] {
   if (traits.aggression < 0.3) return [];
   const cmds: Command[] = [];
   for (const army of Object.values(state.armies)) {
     if (army.ownerId !== realm.id) continue;
-    const cmd = planArmy(state, realm, army, traits);
+    const cmd = planArmy(state, realm, army, traits, rng);
     if (cmd) cmds.push(cmd);
   }
   return cmds;

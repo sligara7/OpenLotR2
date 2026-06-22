@@ -18,6 +18,14 @@ export interface RevoltResult {
 }
 
 export function updateRevolt(county: County): RevoltResult {
+  // A newly conquered county is held under occupation: order is kept (no revolt)
+  // while the new lord has a few seasons to win the people over.
+  if (county.pacifiedSeasons > 0) {
+    county.pacifiedSeasons -= 1;
+    county.unrestSeasons = 0;
+    return { revoltTriggered: false };
+  }
+
   if (county.happiness <= REVOLT_THRESHOLD) {
     county.unrestSeasons += 1;
   } else {

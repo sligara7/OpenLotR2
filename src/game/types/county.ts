@@ -107,6 +107,9 @@ export interface County {
   revolting: boolean;
   /** Consecutive seasons spent at/near zero happiness (revolt countdown). */
   unrestSeasons: number;
+  /** Seasons of post-conquest occupation during which the county cannot revolt
+   *  (the garrison keeps order while the new lord wins the people over). */
+  pacifiedSeasons: number;
 
   lastHappinessDelta: HappinessDelta;
 

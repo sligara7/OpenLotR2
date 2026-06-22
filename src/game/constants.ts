@@ -216,7 +216,11 @@ export const DEFAULT_SIEGE_ENGINES = { catapults: 1, rams: 1, towers: 0 };
 export const CONQUEST = {
   /** A freshly conquered populace resents its new lord — happiness is capped
    *  to this until the conqueror wins them over. */
-  conqueredHappiness: 25,
+  conqueredHappiness: 30,
+  /** Seasons a newly taken county is held under occupation and cannot revolt,
+   *  giving the conqueror time to lower taxes and feed the people (otherwise a
+   *  brief post-conquest dip flips it straight back to neutral). */
+  pacifySeasons: 4,
 } as const;
 
 /** Share of ALL counties a realm must hold to win by conquest (dominating the

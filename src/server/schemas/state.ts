@@ -75,6 +75,7 @@ export const CountySchema = z
     aleSeasons: z.number(),
     revolting: z.boolean(),
     unrestSeasons: z.number(),
+    pacifiedSeasons: z.number(),
     lastHappinessDelta: HappinessDeltaSchema,
     weather: WeatherSchema,
     fertility: z.number(),

@@ -10,6 +10,7 @@ import { resolveBattle } from '../systems/combat.ts';
 import { captureOnOccupy } from '../commands/handlers/combat.ts';
 import { dispatch } from '../commands/dispatch.ts';
 import { CastleType } from '../types/enums.ts';
+import { CONQUEST } from '../constants.ts';
 import type { UnitCounts } from '../types/army.ts';
 
 const rng = () => createRng(42);
@@ -108,7 +109,8 @@ test('combat: occupying an undefended hostile county captures it', () => {
   const captured = captureOnOccupy(world, army);
   assertEqual(captured, 'n', 'the county is taken');
   assertEqual(world.counties['n'].ownerId, 'p1', 'ownership flips to the occupier');
-  assertLess(world.counties['n'].happiness, 30, 'the conquered populace resents it');
+  assert(world.counties['n'].happiness <= CONQUEST.conqueredHappiness, 'the conquered populace resents it');
+  assertGreater(world.counties['n'].pacifiedSeasons, 0, 'and is held under occupation at first');
 });
 
 test('combat: a garrisoned castle is NOT captured by mere occupation', () => {

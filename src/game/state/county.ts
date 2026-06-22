@@ -79,6 +79,7 @@ export function createCounty(init: CountyInit): County {
     aleSeasons: 0,
     revolting: false,
     unrestSeasons: 0,
+    pacifiedSeasons: 0,
     lastHappinessDelta: { taxes: 0, health: 0, rations: 0, conscription: 0, events: 0, ale: 0 },
     weather: Weather.Mild,
     fertility: 1,

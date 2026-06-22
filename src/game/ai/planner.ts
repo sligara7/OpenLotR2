@@ -35,8 +35,9 @@ export function isAiRealm(realm: Realm): boolean {
   return !realm.isHuman && realm.personality !== null && !realm.eliminated;
 }
 
-/** All commands an AI ruler wants to issue this turn (governance + maneuver). */
-export function planRealmTurn(state: GameState, realm: Realm): Command[] {
+/** All commands an AI ruler wants to issue this turn (governance + maneuver).
+ *  The seeded `rng`, when supplied, drives the AI's exploration choices. */
+export function planRealmTurn(state: GameState, realm: Realm, rng?: Rng): Command[] {
   const traits = realm.personality ? TRAITS_BY_PERSONALITY[realm.personality] : DEFAULT_TRAITS;
   // Order: conduct diplomacy, govern the economy, raise/forge troops, then
   // maneuver (so alliances settle before armies pick targets, and fresh
@@ -45,7 +46,7 @@ export function planRealmTurn(state: GameState, realm: Realm): Command[] {
     ...planDiplomacy(state, realm, traits),
     ...planGovernance(state, realm, traits),
     ...planReinforce(state, realm),
-    ...planMilitary(state, realm, traits),
+    ...planMilitary(state, realm, traits, rng),
   ];
 }
 
@@ -63,7 +64,7 @@ export function takeAiTurns(state: GameState, rng?: Rng): AiTurnLog {
   for (const realm of Object.values(state.realms)) {
     if (!isAiRealm(realm)) continue;
 
-    const commands = planRealmTurn(state, realm);
+    const commands = planRealmTurn(state, realm, rng);
     const log: AiRealmLog = { realmId: realm.id, commands, rejected: [] };
     for (const command of commands) {
       const result = dispatch(state, command, { actorRealmId: realm.id, rng });

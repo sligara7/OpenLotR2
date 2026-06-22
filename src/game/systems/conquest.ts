@@ -24,6 +24,9 @@ export function captureCounty(state: GameState, countyId: string, newOwnerId: st
   county.happiness = Math.min(county.happiness, CONQUEST.conqueredHappiness);
   county.revolting = false;
   county.unrestSeasons = 0;
+  // Occupy: held under the garrison's order for a few seasons, so a brief
+  // post-conquest dip can't immediately flip the county back to neutral.
+  county.pacifiedSeasons = CONQUEST.pacifySeasons;
 
   delete state.sieges[countyId];
 }
