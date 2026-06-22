@@ -14,7 +14,7 @@
 
 import { buildBritainTileMap, countyTowns, findTilePath, hexNeighbours, isFerryLink } from '../maps/index.ts';
 import { countiesOfRealm } from '../state/world.ts';
-import { areAllied } from '../systems/diplomacy.ts';
+import { areAllied, requestsTo } from '../systems/diplomacy.ts';
 import { ARMED_UNITS, HAPPINESS, MIN_ARMY_SIZE } from '../constants.ts';
 import { UnitType } from '../types/enums.ts';
 import type { GameState, Realm } from '../types/realm.ts';
@@ -78,8 +78,23 @@ function enemyInReach(state: GameState, army: Army): Army | null {
   return null;
 }
 
+/** A county an ally has asked this realm to march on (attack) or shore up
+ *  (defend), if any — honoured over the realm's own border ambitions. */
+function requestedTarget(state: GameState, realm: Realm, traits: AiTraits): string | null {
+  const reqs = requestsTo(state, realm.id);
+  // Defence comes first — an ally in trouble is worth the detour. Attacks need
+  // a ruler with at least some appetite for war.
+  const defend = reqs.find((r) => r.kind === 'defend' && state.counties[r.countyId]);
+  if (defend) return defend.countyId;
+  if (traits.aggression < 0.3) return null;
+  const attack = reqs.find(
+    (r) => r.kind === 'attack' && state.counties[r.countyId] && state.counties[r.countyId].ownerId !== realm.id,
+  );
+  return attack ? attack.countyId : null;
+}
+
 /** One command for this army (siege / attack / march), or null to stand fast. */
-function planArmy(state: GameState, realm: Realm, army: Army): Command | null {
+function planArmy(state: GameState, realm: Realm, army: Army, traits: AiTraits): Command | null {
   const county = army.countyId ? state.counties[army.countyId] : undefined;
 
   // 1. Besiege a garrisoned enemy castle we already sit on (never an ally's).
@@ -94,11 +109,11 @@ function planArmy(state: GameState, realm: Realm, army: Army): Command | null {
     return { type: 'AttackArmy', armyId: army.id, targetArmyId: foe.id };
   }
 
-  // 3. March on the weakest border county (the move handler advances the army as
-  // far as its movement points allow; it captures the town if it arrives and the
-  // county is undefended).
+  // 3. March on an ally's requested target if there is one, else the weakest
+  // border county (the move handler advances as far as movement allows; it
+  // captures the town on arrival if hostile and undefended).
   if (army.movement <= 0) return null;
-  const targetId = weakestBorderTarget(state, realm);
+  const targetId = requestedTarget(state, realm, traits) ?? weakestBorderTarget(state, realm);
   if (!targetId) return null;
   const map = buildBritainTileMap();
   const dest = countyTowns(map).get(targetId);
@@ -195,7 +210,7 @@ export function planMilitary(state: GameState, realm: Realm, traits: AiTraits): 
   const cmds: Command[] = [];
   for (const army of Object.values(state.armies)) {
     if (army.ownerId !== realm.id) continue;
-    const cmd = planArmy(state, realm, army);
+    const cmd = planArmy(state, realm, army, traits);
     if (cmd) cmds.push(cmd);
   }
   return cmds;

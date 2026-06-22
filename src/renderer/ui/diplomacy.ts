@@ -21,9 +21,13 @@ export interface DiplomacyCallbacks {
   onOffer: (toRealmId: string) => void;
   onBreak: (toRealmId: string) => void;
   onRespond: (proposalId: string, accept: boolean) => void;
+  /** Ask an ally to defend your currently selected county. */
+  onRequestDefend: (allyRealmId: string) => void;
+  /** Ask an ally to attack your currently selected county. */
+  onRequestAttack: (allyRealmId: string) => void;
 }
 
-/** Gold sent by the one-click Gift button. */
+/** Default gold in the gift amount field. */
 export const GIFT_AMOUNT = 100;
 
 const BAND_COLOUR: Record<string, string> = {
@@ -94,16 +98,25 @@ export function renderDiplomacy(container: HTMLElement, state: GameState, meId: 
 
     const actions = el('div', undefined, 'display:flex;flex-wrap:wrap;gap:4px;margin-top:3px;');
     if (allied) {
-      actions.appendChild(btn(`diplo-break-${r.id}`, 'Break alliance', 'Honourably terminate the alliance', () => cb.onBreak(r.id)));
+      actions.append(
+        btn(`diplo-break-${r.id}`, 'Break alliance', 'Honourably terminate the alliance', () => cb.onBreak(r.id)),
+        btn(`diplo-defend-${r.id}`, 'Ask defend', 'Ask them to defend the selected county of yours', () => cb.onRequestDefend(r.id)),
+        btn(`diplo-attack-${r.id}`, 'Ask attack', 'Ask them to march on the selected county', () => cb.onRequestAttack(r.id)));
     } else if (!enemy) {
       actions.appendChild(
         offered
           ? Object.assign(btn(`diplo-offer-${r.id}`, 'Offer sent', 'Awaiting their answer', () => {}), { disabled: true })
           : btn(`diplo-offer-${r.id}`, 'Offer alliance', 'Propose an alliance', () => cb.onOffer(r.id)));
     }
+    // Gift: an editable amount + dispatch button.
+    const giftAmt = el('input', `diplo-gift-amount-${r.id}`, 'width:48px;background:#221809;color:#f0e3c4;border:1px solid #6a5638;border-radius:3px;');
+    giftAmt.type = 'number';
+    giftAmt.min = '1';
+    giftAmt.value = String(GIFT_AMOUNT);
     actions.append(
-      btn(`diplo-compliment-${r.id}`, 'Compliment', 'Free goodwill (diminishing returns)', () => cb.onCompliment(r.id)),
-      btn(`diplo-gift-${r.id}`, `Gift ${GIFT_AMOUNT}`, `Send ${GIFT_AMOUNT} gold to win favour`, () => cb.onGift(r.id, GIFT_AMOUNT)),
+      btn(`diplo-compliment-${r.id}`, 'Compliment', 'Free goodwill (diminishing — and backfires if overdone)', () => cb.onCompliment(r.id)),
+      giftAmt,
+      btn(`diplo-gift-${r.id}`, 'Gift', 'Send the gold to win favour', () => cb.onGift(r.id, Math.max(1, Math.floor(Number(giftAmt.value) || 0)))),
       btn(`diplo-insult-${r.id}`, 'Insult', 'Vent hostility — can make a permanent enemy', () => cb.onInsult(r.id)));
 
     row.append(head, actions);

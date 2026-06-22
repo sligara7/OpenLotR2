@@ -174,6 +174,18 @@ export const BreakAllianceSchema = z.object({
   withRealmId: realmId,
 });
 
+export const RequestAllyDefendSchema = z.object({
+  type: z.literal('RequestAllyDefend'),
+  allyRealmId: realmId,
+  countyId,
+});
+
+export const RequestAllyAttackSchema = z.object({
+  type: z.literal('RequestAllyAttack'),
+  allyRealmId: realmId,
+  targetCountyId: countyId,
+});
+
 export const EndTurnSchema = z.object({ type: z.literal('EndTurn') });
 
 export const CommandSchema = z
@@ -202,6 +214,8 @@ export const CommandSchema = z
     OfferAllianceSchema,
     RespondToAllianceSchema,
     BreakAllianceSchema,
+    RequestAllyDefendSchema,
+    RequestAllyAttackSchema,
     EndTurnSchema,
   ])
   .openapi('Command');

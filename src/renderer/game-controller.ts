@@ -210,6 +210,14 @@ export function breakAlliance(toRealmId: string): void {
 export function respondToAlliance(proposalId: string, accept: boolean): void {
   void act({ type: 'RespondToAlliance', proposalId, accept });
 }
+export function requestAllyDefend(allyRealmId: string): void {
+  if (!selectedId) { hud.setStatus('Select one of your counties to defend first.'); return; }
+  void act({ type: 'RequestAllyDefend', allyRealmId, countyId: selectedId });
+}
+export function requestAllyAttack(allyRealmId: string): void {
+  if (!selectedId) { hud.setStatus('Select the county to attack first.'); return; }
+  void act({ type: 'RequestAllyAttack', allyRealmId, targetCountyId: selectedId });
+}
 
 /** A tile was clicked: march the selected army there, else select the county. */
 export function tileClicked(countyId: string | null, col: number, row: number): void {
@@ -324,6 +332,8 @@ export async function startGameUI(): Promise<void> {
       onOffer: (toRealmId) => offerAlliance(toRealmId),
       onBreak: (toRealmId) => breakAlliance(toRealmId),
       onRespond: (proposalId, accept) => respondToAlliance(proposalId, accept),
+      onRequestDefend: (allyRealmId) => requestAllyDefend(allyRealmId),
+      onRequestAttack: (allyRealmId) => requestAllyAttack(allyRealmId),
     },
   });
   mapView = new MapTilesSvg(); // canvas-free SVG map; subscribes to the state bus

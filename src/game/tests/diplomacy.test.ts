@@ -15,7 +15,11 @@ import {
   registerHostility,
   runDiplomacy,
   opinionBand,
+  requestsTo,
 } from '../systems/diplomacy.ts';
+import { captureOnOccupy } from '../commands/handlers/combat.ts';
+import { buildBritainTileMap, countyTowns, findTilePath } from '../maps/index.ts';
+import { planMilitary } from '../ai/military.ts';
 import { OpinionBand } from '../types/diplomacy.ts';
 import { DIPLOMACY } from '../constants.ts';
 import { createRng } from '../rng.ts';
@@ -192,6 +196,67 @@ test('AI: a diplomatic ruler accepts an alliance from a realm it likes', () => {
   // And applying the plan actually seals the pact.
   for (const c of plan) dispatch(w, c, { actorRealmId: 'p2' });
   assert(areAllied(w, 'p2', 'p3'), 'alliance sealed through the AI plan');
+});
+
+test('compliment: flattering the same realm too often backfires', () => {
+  const w = trio();
+  const r1 = dispatch(w, { type: 'SendCompliment', toRealmId: 'p2' }, ctx);
+  assert((r1.data as { backfired: boolean }).backfired === false, 'first compliment is sincere');
+  const afterFirst = opinionOf(w, 'p2', 'p1');
+  const r2 = dispatch(w, { type: 'SendCompliment', toRealmId: 'p2' }, ctx);
+  assert((r2.data as { backfired: boolean }).backfired === true, 'an immediate repeat reads as manipulation');
+  assertLess(opinionOf(w, 'p2', 'p1'), afterFirst, 'the empty flattery sours them');
+});
+
+test('ally request: only an ally may be asked, and only to defend your own county', () => {
+  const w = trio();
+  // Not allied yet → refused.
+  assert(!dispatch(w, { type: 'RequestAllyDefend', allyRealmId: 'p2', countyId: 'a' }, ctx).ok, 'must be allied');
+  formAlliance(w, 'p1', 'p2');
+  // Defend must name one of MY counties.
+  assert(!dispatch(w, { type: 'RequestAllyDefend', allyRealmId: 'p2', countyId: 'c' }, ctx).ok, 'can only defend your own');
+  assert(dispatch(w, { type: 'RequestAllyDefend', allyRealmId: 'p2', countyId: 'a' }, ctx).ok, 'defend my county');
+  // Attack a third party's county.
+  assert(dispatch(w, { type: 'RequestAllyAttack', allyRealmId: 'p2', targetCountyId: 'c' }, ctx).ok, 'attack a rival');
+  assertEqual(requestsTo(w, 'p2').length, 2, 'both requests stand for the ally');
+});
+
+test('ally-capture guard: marching into an ally\'s county does not seize it', () => {
+  const realms = [
+    createRealm({ id: 'p1', name: 'You', isHuman: true }),
+    createRealm({ id: 'p2', name: 'Ally' }),
+  ];
+  const counties = [createCounty({ id: 'b', name: 'B', ownerId: 'p2' })];
+  const army = createArmy({ id: 'mine', ownerId: 'p1', col: 0, row: 0, countyId: 'b', units: { Swordsman: 80 } });
+  const w = createWorld({ realms, counties, armies: [army] });
+  formAlliance(w, 'p1', 'p2');
+  const captured = captureOnOccupy(w, w.armies.mine);
+  assertEqual(captured, null, 'an ally\'s land is not captured');
+  assertEqual(w.counties.b.ownerId, 'p2', 'still the ally\'s');
+});
+
+test('AI honours an ally\'s attack request, marching on the named county', () => {
+  const w = createBritainWorld(); // p2 = Baron with an army at its capital
+  formAlliance(w, 'p2', 'p3');
+  const army = Object.values(w.armies).find((a) => a.ownerId === 'p2');
+  assert(!!army, 'the Baron has an army');
+
+  // Find an enemy county the Baron can actually march to.
+  const map = buildBritainTileMap();
+  const towns = countyTowns(map);
+  let target: string | null = null;
+  for (const c of Object.values(w.counties)) {
+    if (c.ownerId === 'p2') continue;
+    const dest = towns.get(c.id);
+    if (dest && findTilePath(map, { col: army!.col, row: army!.row }, dest)) { target = c.id; break; }
+  }
+  assert(!!target, 'a reachable enemy county exists');
+
+  dispatch(w, { type: 'RequestAllyAttack', allyRealmId: 'p2', targetCountyId: target! }, { actorRealmId: 'p3' });
+  const plan = planMilitary(w, w.realms.p2, TRAITS_BY_PERSONALITY[NoblePersonality.Baron]);
+  const dest = towns.get(target!)!;
+  const march = plan.find((c) => c.type === 'MoveArmy' && c.col === dest.col && c.row === dest.row);
+  assert(!!march, 'the Baron marches on the county its ally named');
 });
 
 test('AI: the war-loving Knight refuses an alliance even from a realm it likes', () => {

@@ -12,7 +12,7 @@
  */
 
 import { DIPLOMACY } from '../constants.ts';
-import { areAllied, areEnemies, opinionOf } from '../systems/diplomacy.ts';
+import { areAllied, areEnemies, complimentReady, opinionOf } from '../systems/diplomacy.ts';
 import { countiesOfRealm } from '../state/world.ts';
 import type { GameState, Realm } from '../types/realm.ts';
 import type { Command } from '../commands/types.ts';
@@ -80,11 +80,14 @@ function overture(state: GameState, realm: Realm, traits: AiTraits): Command | n
   if (threat && military(state, threat.id) > ownStrength * 1.3) {
     const standing = opinionOf(state, threat.id, realm.id);
     if (standing < DIPLOMACY.friendlyBand) {
-      // Gold talks if the coffers allow; otherwise flattery is free.
+      // Gold talks if the coffers allow; otherwise flattery — but only when it
+      // won't backfire (the manual warns against laying it on too thick).
       if (realm.treasury.gold > 300 && traits.diplomacy >= 0.5) {
         return { type: 'SendGift', toRealmId: threat.id, gold: 150 };
       }
-      return { type: 'SendCompliment', toRealmId: threat.id };
+      if (complimentReady(state, realm.id, threat.id)) {
+        return { type: 'SendCompliment', toRealmId: threat.id };
+      }
     }
   }
   return null;

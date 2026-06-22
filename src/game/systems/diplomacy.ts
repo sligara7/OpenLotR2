@@ -14,12 +14,12 @@
 
 import { DIPLOMACY } from '../constants.ts';
 import { OpinionBand } from '../types/diplomacy.ts';
-import type { DiplomacyState, DiploProposal } from '../types/diplomacy.ts';
+import type { DiplomacyState, DiploProposal, AllyRequest } from '../types/diplomacy.ts';
 import type { GameState } from '../types/realm.ts';
 
 /** A fresh, empty diplomatic slate. */
 export function emptyDiplomacy(): DiplomacyState {
-  return { opinions: {}, alliances: {}, enemies: {}, proposals: [] };
+  return { opinions: {}, alliances: {}, enemies: {}, proposals: [], requests: [], recentCompliments: {} };
 }
 
 /** Tolerate states built before diplomacy existed (old saves / hand-made test
@@ -31,6 +31,8 @@ export function ensureDiplomacy(state: GameState): DiplomacyState {
   d.alliances ??= {};
   d.enemies ??= {};
   d.proposals ??= [];
+  d.requests ??= [];
+  d.recentCompliments ??= {};
   return d;
 }
 
@@ -120,6 +122,37 @@ export function takeProposal(state: GameState, id: string): DiploProposal | unde
   return d.proposals.splice(i, 1)[0];
 }
 
+/** Add an ally request, replacing any prior request of the same kind between
+ *  the same two realms (a new ask supersedes the old). */
+export function addRequest(state: GameState, r: AllyRequest): void {
+  const d = ensureDiplomacy(state);
+  d.requests = d.requests.filter(
+    (q) => !(q.fromRealmId === r.fromRealmId && q.toRealmId === r.toRealmId && q.kind === r.kind),
+  );
+  d.requests.push(r);
+}
+
+/** Standing requests addressed to `toRealmId` (from its allies). */
+export function requestsTo(state: GameState, toRealmId: string): AllyRequest[] {
+  return ensureDiplomacy(state).requests.filter((r) => r.toRealmId === toRealmId);
+}
+
+/** Would a compliment from `from` to `to` land sincerely (not backfire)?
+ *  False while the cooldown since the last one is still in effect. */
+export function complimentReady(state: GameState, from: string, to: string): boolean {
+  const last = ensureDiplomacy(state).recentCompliments[`${from}>${to}`];
+  return last === undefined || state.turn - last >= DIPLOMACY.complimentCooldown;
+}
+
+/** Record a compliment from `from` to `to`; returns whether it BACKFIRES
+ *  (the same realm was complimented within the cooldown — empty flattery). */
+export function noteCompliment(state: GameState, from: string, to: string): boolean {
+  const d = ensureDiplomacy(state);
+  const backfires = !complimentReady(state, from, to);
+  d.recentCompliments[`${from}>${to}`] = state.turn;
+  return backfires;
+}
+
 export interface HostilityResult {
   /** True if the aggressor betrayed a standing ally (a doublecross). */
   doublecross: boolean;
@@ -167,6 +200,8 @@ export function registerHostility(
 export interface DiplomacyLedger {
   /** Ids of alliance offers that expired unanswered this turn. */
   expiredProposals: string[];
+  /** Ids of ally requests that lapsed this turn. */
+  expiredRequests: string[];
 }
 
 /**
@@ -203,5 +238,20 @@ export function runDiplomacy(state: GameState): DiplomacyLedger {
     return true;
   });
 
-  return { expiredProposals };
+  // Lapse stale ally requests, and any from/to a realm no longer allied.
+  const expiredRequests: string[] = [];
+  d.requests = d.requests.filter((r) => {
+    if (state.turn - r.turn >= DIPLOMACY.requestTtl || !areAllied(state, r.fromRealmId, r.toRealmId)) {
+      expiredRequests.push(r.id);
+      return false;
+    }
+    return true;
+  });
+
+  // Forget compliment timestamps older than their cooldown (housekeeping).
+  for (const key of Object.keys(d.recentCompliments)) {
+    if (state.turn - d.recentCompliments[key] >= DIPLOMACY.complimentCooldown) delete d.recentCompliments[key];
+  }
+
+  return { expiredProposals, expiredRequests };
 }

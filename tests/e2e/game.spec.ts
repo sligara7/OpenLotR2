@@ -79,7 +79,8 @@ test('diplomacy: the panel lists rivals and sends messages that move opinion', a
   await expect(page.getByTestId('diplo-p2')).toBeVisible();
   const before = Number(await page.getByTestId('diplo-p2-opinion').textContent());
 
-  // A gift raises p2's regard for you.
+  // A gift of a chosen amount raises p2's regard for you.
+  await page.getByTestId('diplo-gift-amount-p2').fill('150');
   await page.getByTestId('diplo-gift-p2').click();
   await expect(page.getByTestId('status')).toContainText('Applied SendGift');
   await expect

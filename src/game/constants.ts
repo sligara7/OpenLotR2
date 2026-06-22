@@ -330,6 +330,10 @@ export const DIPLOMACY = {
   /** A compliment is free favour, but its value shrinks as opinion rises —
    *  "too many kind words can work against you". */
   complimentGain: 8,
+  /** Compliment the same realm again within this many turns and it reads as
+   *  transparent manipulation: the gesture BACKFIRES instead of charming. */
+  complimentCooldown: 3,
+  complimentBackfire: 6,
   /** Insults sting (and can tip a relationship into permanent enmity). */
   insultPenalty: 18,
   /** Attacking a realm lowers its opinion of you by this much. */
@@ -352,4 +356,6 @@ export const DIPLOMACY = {
   allianceWarmthPerTurn: 2,
   /** An unanswered alliance offer expires after this many turns. */
   proposalTtl: 4,
+  /** An ally request (help / attack) stands for this many turns before lapsing. */
+  requestTtl: 3,
 } as const;

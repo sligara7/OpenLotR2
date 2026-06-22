@@ -12,11 +12,13 @@
 import { DIPLOMACY } from '../../constants.ts';
 import {
   addProposal,
+  addRequest,
   adjustOpinion,
   areAllied,
   areEnemies,
   breakAlliance,
   formAlliance,
+  noteCompliment,
   opinionOf,
   takeProposal,
 } from '../../systems/diplomacy.ts';
@@ -28,6 +30,8 @@ import type {
   OfferAlliance,
   RespondToAlliance,
   BreakAlliance,
+  RequestAllyDefend,
+  RequestAllyAttack,
   CommandContext,
   CommandResult,
 } from '../types.ts';
@@ -61,12 +65,19 @@ export function sendGift(state: GameState, cmd: SendGift, ctx: CommandContext): 
 export function sendCompliment(state: GameState, cmd: SendCompliment, ctx: CommandContext): CommandResult {
   const { realm: target, error } = targetRealm(state, ctx.actorRealmId, cmd.toRealmId);
   if (error || !target) return err(error!);
-  // Diminishing returns: kind words buy less the warmer the relationship is.
-  const current = opinionOf(state, target.id, ctx.actorRealmId);
-  const headroom = Math.max(0, 1 - Math.max(0, current) / DIPLOMACY.opinionMax);
-  const gain = DIPLOMACY.complimentGain * headroom;
-  const opinion = adjustOpinion(state, target.id, ctx.actorRealmId, gain);
-  return ok(undefined, { opinion });
+  // Flattering the same realm too often reads as manipulation and backfires;
+  // otherwise it's free favour, worth less the warmer the relationship already is.
+  const backfired = noteCompliment(state, ctx.actorRealmId, target.id);
+  let delta: number;
+  if (backfired) {
+    delta = -DIPLOMACY.complimentBackfire;
+  } else {
+    const current = opinionOf(state, target.id, ctx.actorRealmId);
+    const headroom = Math.max(0, 1 - Math.max(0, current) / DIPLOMACY.opinionMax);
+    delta = DIPLOMACY.complimentGain * headroom;
+  }
+  const opinion = adjustOpinion(state, target.id, ctx.actorRealmId, delta);
+  return ok(undefined, { opinion, backfired });
 }
 
 export function sendInsult(state: GameState, cmd: SendInsult, ctx: CommandContext): CommandResult {
@@ -114,5 +125,55 @@ export function breakAllianceCmd(state: GameState, cmd: BreakAlliance, ctx: Comm
   if (!breakAlliance(state, ctx.actorRealmId, target.id)) return err('You have no alliance to break');
   // An honourable farewell costs only the former ally's regard — not the world's.
   adjustOpinion(state, target.id, ctx.actorRealmId, -DIPLOMACY.breakOpinionHit);
+  return ok();
+}
+
+/** Validate an ally request: the two must be allied and the county must exist. */
+function validateRequest(
+  state: GameState,
+  actorId: string,
+  allyId: string,
+  countyId: string,
+  ownedByActor: boolean,
+): string | null {
+  if (allyId === actorId) return 'Cannot ask yourself';
+  if (!state.realms[allyId] || state.realms[allyId].eliminated) return 'No such ally';
+  if (!areAllied(state, actorId, allyId)) return 'You are not allied with them';
+  const county = state.counties[countyId];
+  if (!county) return `Unknown county: ${countyId}`;
+  if (ownedByActor && county.ownerId !== actorId) return 'That county is not yours to defend';
+  return null;
+}
+
+export function requestAllyDefend(state: GameState, cmd: RequestAllyDefend, ctx: CommandContext): CommandResult {
+  const error = validateRequest(state, ctx.actorRealmId, cmd.allyRealmId, cmd.countyId, true);
+  if (error) return err(error);
+  addRequest(state, {
+    id: `req-defend-${ctx.actorRealmId}-${cmd.allyRealmId}-${state.turn}`,
+    fromRealmId: ctx.actorRealmId,
+    toRealmId: cmd.allyRealmId,
+    kind: 'defend',
+    countyId: cmd.countyId,
+    turn: state.turn,
+  });
+  return ok();
+}
+
+export function requestAllyAttack(state: GameState, cmd: RequestAllyAttack, ctx: CommandContext): CommandResult {
+  const error = validateRequest(state, ctx.actorRealmId, cmd.allyRealmId, cmd.targetCountyId, false);
+  if (error) return err(error);
+  const target = state.counties[cmd.targetCountyId];
+  if (target.ownerId === cmd.allyRealmId) return err('Your ally already holds that county');
+  if (target.ownerId && areAllied(state, cmd.allyRealmId, target.ownerId)) {
+    return err('You cannot ask an ally to attack their own ally');
+  }
+  addRequest(state, {
+    id: `req-attack-${ctx.actorRealmId}-${cmd.allyRealmId}-${state.turn}`,
+    fromRealmId: ctx.actorRealmId,
+    toRealmId: cmd.allyRealmId,
+    kind: 'attack',
+    countyId: cmd.targetCountyId,
+    turn: state.turn,
+  });
   return ok();
 }

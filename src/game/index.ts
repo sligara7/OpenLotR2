@@ -64,10 +64,14 @@ export {
   markEnemy,
   registerHostility,
   runDiplomacy,
+  addRequest,
+  requestsTo,
+  noteCompliment,
+  complimentReady,
 } from './systems/diplomacy.ts';
 export type { DiplomacyLedger, HostilityResult } from './systems/diplomacy.ts';
 export { DiploMessageType, OpinionBand } from './types/diplomacy.ts';
-export type { DiplomacyState, DiploProposal, Alliance } from './types/diplomacy.ts';
+export type { DiplomacyState, DiploProposal, Alliance, AllyRequest } from './types/diplomacy.ts';
 
 // AI rulers (drive non-human realms via the command protocol)
 export { takeAiTurns, planRealmTurn, isAiRealm, TRAITS_BY_PERSONALITY } from './ai/index.ts';

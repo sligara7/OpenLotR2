@@ -162,12 +162,25 @@ const DiploProposalSchema = z
   })
   .openapi('DiploProposal');
 
+const AllyRequestSchema = z
+  .object({
+    id: z.string(),
+    fromRealmId: z.string(),
+    toRealmId: z.string(),
+    kind: z.enum(['defend', 'attack']),
+    countyId: z.string(),
+    turn: z.number(),
+  })
+  .openapi('AllyRequest');
+
 export const DiplomacyStateSchema = z
   .object({
     opinions: z.record(z.string(), z.record(z.string(), z.number())),
     alliances: z.record(z.string(), z.object({ since: z.number() })),
     enemies: z.record(z.string(), z.literal(true)),
     proposals: z.array(DiploProposalSchema),
+    requests: z.array(AllyRequestSchema),
+    recentCompliments: z.record(z.string(), z.number()),
   })
   .openapi('DiplomacyState');
 
@@ -269,6 +282,7 @@ const WagesLedgerSchema = z.object({
 
 const DiplomacyLedgerSchema = z.object({
   expiredProposals: z.array(z.string()),
+  expiredRequests: z.array(z.string()),
 });
 
 export const TurnReportSchema = z

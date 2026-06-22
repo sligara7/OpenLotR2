@@ -89,6 +89,10 @@ export interface OfferAlliance { type: 'OfferAlliance'; toRealmId: string; }
 export interface RespondToAlliance { type: 'RespondToAlliance'; proposalId: string; accept: boolean; }
 /** Terminate a standing alliance — the honourable way to part. */
 export interface BreakAlliance { type: 'BreakAlliance'; withRealmId: string; }
+/** Ask an ally to send troops to defend one of your counties under threat. */
+export interface RequestAllyDefend { type: 'RequestAllyDefend'; allyRealmId: string; countyId: string; }
+/** Ask an ally to march on a target county. */
+export interface RequestAllyAttack { type: 'RequestAllyAttack'; allyRealmId: string; targetCountyId: string; }
 
 export interface EndTurn { type: 'EndTurn'; }
 
@@ -118,6 +122,8 @@ export type Command =
   | OfferAlliance
   | RespondToAlliance
   | BreakAlliance
+  | RequestAllyDefend
+  | RequestAllyAttack
   | EndTurn;
 
 /** Context the server supplies when dispatching: who is acting + the RNG used

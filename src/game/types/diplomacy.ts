@@ -43,6 +43,22 @@ export interface Alliance {
   since: number;
 }
 
+/** A favour one ally asks of another. (Manual Part-7: "Ask ally for help" sends
+ *  troops to a county under attack; "Ask ally to attack" points them at a
+ *  target.) The asked ally's AI honours it while it stands, or ignores it. */
+export interface AllyRequest {
+  id: string;
+  /** Realm making the request. */
+  fromRealmId: string;
+  /** The ally being asked. */
+  toRealmId: string;
+  kind: 'defend' | 'attack';
+  /** The county to defend (one of `from`'s) or to attack (the target). */
+  countyId: string;
+  /** Turn the request was made (requests lapse after DIPLOMACY.requestTtl). */
+  turn: number;
+}
+
 /** The complete diplomatic picture for a game. */
 export interface DiplomacyState {
   /** opinions[from][to] = how `from` regards `to` (-100..+100, 0 = neutral). */
@@ -53,6 +69,11 @@ export interface DiplomacyState {
   enemies: Record<string, true>;
   /** Outstanding alliance offers. */
   proposals: DiploProposal[];
+  /** Outstanding ally requests (help / attack). */
+  requests: AllyRequest[];
+  /** Last turn `from` complimented `to`, keyed "from>to" — drives the
+   *  diminishing/backfiring returns of flattery. */
+  recentCompliments: Record<string, number>;
 }
 
 /** A read-friendly band for the relationship bar. (Manual: red/blue/green.) */

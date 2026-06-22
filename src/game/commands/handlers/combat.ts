@@ -12,7 +12,7 @@ import { DEFAULT_SIEGE_ENGINES } from '../../constants.ts';
 import { resolveBattle } from '../../systems/combat.ts';
 import { setUnits } from '../../state/army.ts';
 import { captureCounty, updateEliminations } from '../../systems/conquest.ts';
-import { registerHostility } from '../../systems/diplomacy.ts';
+import { areAllied, registerHostility } from '../../systems/diplomacy.ts';
 import { ok, err } from '../types.ts';
 import type { AttackArmy, LaySiege, CommandContext, CommandResult } from '../types.ts';
 import type { GameState } from '../../types/realm.ts';
@@ -86,6 +86,8 @@ export function laySiege(state: GameState, cmd: LaySiege, ctx: CommandContext): 
 export function captureOnOccupy(state: GameState, army: Army): string | null {
   const county = army.countyId ? state.counties[army.countyId] : undefined;
   if (!county || county.ownerId === army.ownerId) return null;
+  // Marching into an ally's land is a friendly visit, not a conquest.
+  if (county.ownerId && areAllied(state, army.ownerId, county.ownerId)) return null;
   if (county.castle.garrison > 0) return null; // garrisoned → needs a siege
 
   // A defending field army (the current owner's) shields the county.

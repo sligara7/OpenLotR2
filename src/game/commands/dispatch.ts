@@ -29,6 +29,8 @@ import {
   offerAlliance,
   respondToAlliance,
   breakAllianceCmd,
+  requestAllyDefend,
+  requestAllyAttack,
 } from './handlers/diplomacy.ts';
 import { endTurn } from './handlers/turn.ts';
 
@@ -58,6 +60,8 @@ export function dispatch(state: GameState, command: Command, ctx: CommandContext
     case 'OfferAlliance': return offerAlliance(state, command, ctx);
     case 'RespondToAlliance': return respondToAlliance(state, command, ctx);
     case 'BreakAlliance': return breakAllianceCmd(state, command, ctx);
+    case 'RequestAllyDefend': return requestAllyDefend(state, command, ctx);
+    case 'RequestAllyAttack': return requestAllyAttack(state, command, ctx);
     case 'EndTurn': return endTurn(state, ctx);
     default: {
       // Exhaustiveness guard: if a Command variant is added without a case,
