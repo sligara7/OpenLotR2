@@ -36,6 +36,8 @@ export const CreateGameRequestSchema = z
     scenario: z.enum(['demo', 'britain']).optional().default('demo'),
     /** Advanced Farming (Manual Part-8): seasonal grain labour, weather, fertility. */
     advancedFarming: z.boolean().optional().default(false),
+    /** Exploration / fog of war (Manual Part-8): see only what you have explored. */
+    exploration: z.boolean().optional().default(false),
   })
   .openapi('CreateGameRequest');
 

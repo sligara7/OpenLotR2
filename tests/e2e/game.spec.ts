@@ -113,6 +113,24 @@ test('advanced farming: a new game surfaces weather and soil fertility', async (
   await page.screenshot({ path: 'test-results/advanced-farming.png', fullPage: true });
 });
 
+test('exploration: a new game with fog of war blacks out the unexplored map', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('hud-header')).toContainText('turn 0');
+  // No fog by default.
+  expect(await page.getByTestId('fog').locator('polygon').count()).toBe(0);
+
+  // Start a fresh game with Exploration enabled.
+  await page.getByTestId('exploration').check();
+  await page.getByTestId('new-game').click();
+  await expect(page.getByTestId('status')).toContainText('Exploration');
+
+  // Most of the island is now fogged (many dark hexes), but not all of it.
+  const fogged = await page.getByTestId('fog').locator('polygon').count();
+  expect(fogged).toBeGreaterThan(50);
+
+  await page.screenshot({ path: 'test-results/exploration.png', fullPage: true });
+});
+
 test('selecting a county exposes tax/ration/labour controls that send commands', async ({ page }) => {
   await page.goto('/');
 

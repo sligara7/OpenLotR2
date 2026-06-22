@@ -36,8 +36,8 @@ export interface HudCallbacks {
   onSave: () => void;
   /** Load a save file the player picked. */
   onLoad: (file: File) => void;
-  /** Start a fresh game, optionally with Advanced Farming (Manual Part-8). */
-  onNewGame: (advancedFarming: boolean) => void;
+  /** Start a fresh game with the chosen advanced options (Manual Part-8). */
+  onNewGame: (opts: { advancedFarming: boolean; exploration: boolean }) => void;
   /** Besiege the garrisoned castle the selected army occupies. */
   onSiege: () => void;
   /** Disband the selected army. */
@@ -85,6 +85,7 @@ export class Hud {
   /** Whether Advanced Farming is in force (drives the weather/fertility readout). */
   private advancedFarming = false;
   private advFarmCheck!: HTMLInputElement;
+  private explorationCheck!: HTMLInputElement;
   private armory!: HTMLDivElement;
   private armyPanel!: HTMLDivElement;
   private armyName!: HTMLDivElement;
@@ -212,17 +213,24 @@ export class Hud {
     load.onclick = () => file.click();
     const newGame = el('button', 'new-game', 'flex:1;padding:5px;cursor:pointer;');
     newGame.textContent = 'New Game';
-    newGame.onclick = () => this.cb.onNewGame(this.advFarmCheck.checked);
+    newGame.onclick = () => this.cb.onNewGame({
+      advancedFarming: this.advFarmCheck.checked,
+      exploration: this.explorationCheck.checked,
+    });
     row.append(save, load, newGame, file);
 
-    // Advanced Farming toggle (applies to the next New Game).
-    const opts = el('label', undefined, 'display:flex;align-items:center;gap:5px;margin-top:5px;color:#d8c89a;cursor:pointer;');
-    this.advFarmCheck = el('input', 'adv-farming');
-    this.advFarmCheck.type = 'checkbox';
-    const lbl = el('span'); lbl.textContent = 'Advanced Farming (next new game)';
-    opts.append(this.advFarmCheck, lbl);
+    // Advanced-play toggles (Manual Part-8) — applied to the next New Game.
+    const optWrap = el('div', undefined, 'margin-top:5px;color:#d8c89a;');
+    const note = el('div', undefined, 'font-size:11px;opacity:0.8;'); note.textContent = 'New game options:';
+    this.advFarmCheck = el('input', 'adv-farming'); this.advFarmCheck.type = 'checkbox';
+    this.explorationCheck = el('input', 'exploration'); this.explorationCheck.type = 'checkbox';
+    const farmLbl = el('label', undefined, 'display:flex;align-items:center;gap:5px;cursor:pointer;');
+    const fs = el('span'); fs.textContent = 'Advanced Farming'; farmLbl.append(this.advFarmCheck, fs);
+    const exLbl = el('label', undefined, 'display:flex;align-items:center;gap:5px;cursor:pointer;');
+    const es = el('span'); es.textContent = 'Exploration (fog of war)'; exLbl.append(this.explorationCheck, es);
+    optWrap.append(note, farmLbl, exLbl);
 
-    wrap.append(row, opts);
+    wrap.append(row, optWrap);
     return wrap;
   }
 

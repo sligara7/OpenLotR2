@@ -22,7 +22,10 @@ export function gamesRouter(store: GameStore): Router {
       return;
     }
     const seed = parsed.data.seed ?? (Date.now() & 0x7fffffff);
-    const game = store.create(seed, parsed.data.scenario, { advancedFarming: parsed.data.advancedFarming });
+    const game = store.create(seed, parsed.data.scenario, {
+      advancedFarming: parsed.data.advancedFarming,
+      exploration: parsed.data.exploration,
+    });
     res.status(201).json({ gameId: game.id, seed: game.seed, state: game.state });
   });
 

@@ -36,6 +36,7 @@ import './army-manage.test.ts';
 import './outcome.test.ts';
 import './diplomacy.test.ts';
 import './farming.test.ts';
+import './exploration.test.ts';
 
 import { run } from '../testing/harness.ts';
 

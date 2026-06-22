@@ -27,12 +27,12 @@ export const api = {
   createGame: (
     seed?: number,
     scenario: 'demo' | 'britain' = 'demo',
-    advancedFarming = false,
+    options?: { advancedFarming?: boolean; exploration?: boolean },
   ): Promise<CreatedGame> =>
     http('/games', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ seed, scenario, advancedFarming }),
+      body: JSON.stringify({ seed, scenario, ...options }),
     }),
 
   getState: (id: string): Promise<GameState> => http(`/games/${id}/state`),

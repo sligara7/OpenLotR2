@@ -2,6 +2,7 @@
 
 import { Season } from '../types/enums.ts';
 import { emptyDiplomacy } from '../systems/diplomacy.ts';
+import { emptyExploration, revealDisk } from '../systems/exploration.ts';
 import type { Adjacency, GameOptions, GameState, Realm } from '../types/realm.ts';
 import type { County } from '../types/county.ts';
 import type { Army } from '../types/army.ts';
@@ -35,7 +36,7 @@ export function createWorld(init: WorldInit): GameState {
   const armies: Record<string, Army> = {};
   for (const a of init.armies ?? []) armies[a.id] = a;
 
-  return {
+  const state: GameState = {
     year: init.year ?? 1,
     season: init.season ?? Season.Spring,
     turn: 0,
@@ -46,9 +47,20 @@ export function createWorld(init: WorldInit): GameState {
     sieges: {},
     convoys: {},
     diplomacy: emptyDiplomacy(),
-    options: { advancedFarming: init.options?.advancedFarming ?? false },
+    options: {
+      advancedFarming: init.options?.advancedFarming ?? false,
+      exploration: init.options?.exploration ?? false,
+    },
+    exploration: emptyExploration(),
     outcome: null,
   };
+
+  // Fog of war: each realm starts seeing the ground around its own armies.
+  if (state.options.exploration) {
+    for (const a of Object.values(armies)) revealDisk(state, a.ownerId, a.col, a.row);
+  }
+
+  return state;
 }
 
 export function neighboursOf(state: GameState, countyId: string): County[] {

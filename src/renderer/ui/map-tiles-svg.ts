@@ -201,6 +201,8 @@ export class MapTilesSvg {
   private convoysLayer: SVGGElement;
   private units: SVGGElement;
   private paths: SVGGElement;
+  /** Fog of war: dark hexes over tiles the human has not explored. */
+  private fog: SVGGElement;
   /** Pan/zoom is applied to this group (all layers live inside it). */
   private viewport: SVGGElement;
   private z = 1;
@@ -209,6 +211,11 @@ export class MapTilesSvg {
   private centre: Pt = [0, 0];
   private lastState: GameState | null = null;
   private selectedArmyId: string | null = null;
+  /** Fog-of-war cache, refreshed each update: whether it's on, who the human is,
+   *  and which tile keys they have explored. */
+  private fogOn = false;
+  private meId: string | null = null;
+  private explored: Record<string, true> = {};
 
   constructor() {
     this.root = document.createElement('div');
@@ -238,6 +245,9 @@ export class MapTilesSvg {
     this.units.setAttribute('data-testid', 'units');
     this.paths = document.createElementNS(SVGNS, 'g');
     this.paths.setAttribute('data-testid', 'paths');
+    this.fog = document.createElementNS(SVGNS, 'g');
+    this.fog.setAttribute('data-testid', 'fog');
+    this.fog.setAttribute('pointer-events', 'none');
 
     this.build();
     this.svg.appendChild(this.viewport);
@@ -362,7 +372,7 @@ export class MapTilesSvg {
     // redrawn from state); they sit above the land but below structures/units.
     this.viewport.append(
       terrainLayer, shadeLayer, coastLayer, featuresLayer, riversLayer, this.farms, industryLayer, this.borders,
-      this.castles, this.sieges, this.settle, labelLayer, this.paths, this.convoysLayer, this.units,
+      this.castles, this.sieges, this.settle, labelLayer, this.fog, this.paths, this.convoysLayer, this.units,
     );
 
     const pad = 6;
@@ -450,6 +460,11 @@ export class MapTilesSvg {
   }
 
   private update(state: GameState): void {
+    // Refresh the fog-of-war cache for this state.
+    this.fogOn = state.options?.exploration ?? false;
+    this.meId = Object.values(state.realms).find((r) => r.isHuman)?.id ?? null;
+    this.explored = (this.meId && state.exploration?.[this.meId]) || {};
+
     // Owner tint.
     for (const { poly, base, countyId } of this.tiles.values()) {
       const owner = countyId ? state.counties[countyId]?.ownerId ?? null : null;
@@ -487,7 +502,29 @@ export class MapTilesSvg {
     this.drawSieges(state);
     this.drawConvoys(state);
     this.drawUnits(state);
+    this.rebuildFog(state);
     while (this.paths.firstChild) this.paths.removeChild(this.paths.firstChild); // clear stale move preview
+  }
+
+  /** Is the tile at (col,row) visible to the human? Always true with fog off;
+   *  otherwise visible if its county is owned by the human or it's explored. */
+  private tileVisible(state: GameState, col: number, row: number, countyId: string | null): boolean {
+    if (!this.fogOn) return true;
+    if (countyId && state.counties[countyId]?.ownerId === this.meId) return true;
+    return this.explored[`${col},${row}`] === true;
+  }
+
+  /** Black out every tile the human has not explored (and does not own). */
+  private rebuildFog(state: GameState): void {
+    while (this.fog.firstChild) this.fog.removeChild(this.fog.firstChild);
+    if (!this.fogOn) return;
+    for (const [key, { poly, countyId }] of this.tiles) {
+      const [col, row] = key.split(',').map(Number);
+      if (this.tileVisible(state, col, row, countyId)) continue;
+      this.fog.appendChild(el('polygon', {
+        points: poly.getAttribute('points') ?? '', fill: '#0a0805', 'fill-opacity': 0.96,
+      }));
+    }
   }
 
   /** Mark besieged county towns with crossed swords + a progress %. */
@@ -527,6 +564,7 @@ export class MapTilesSvg {
   private drawConvoys(state: GameState): void {
     while (this.convoysLayer.firstChild) this.convoysLayer.removeChild(this.convoysLayer.firstChild);
     for (const convoy of Object.values(state.convoys)) {
+      if (convoy.ownerId !== this.meId && !this.tileVisible(state, convoy.col, convoy.row, null)) continue;
       const [cx, cy] = hexCentre(convoy.col, convoy.row);
       const x = cx * S;
       const y = cy * S;
@@ -544,6 +582,8 @@ export class MapTilesSvg {
   private drawUnits(state: GameState): void {
     while (this.units.firstChild) this.units.removeChild(this.units.firstChild);
     for (const army of Object.values(state.armies)) {
+      // Hide enemy armies sitting in the fog (your own are always shown).
+      if (army.ownerId !== this.meId && !this.tileVisible(state, army.col, army.row, army.countyId)) continue;
       const [ux, uy] = hexCentre(army.col, army.row);
       const colour = OWNER_COLOR[army.ownerId] ?? '#888';
       const g = armyIcon(ux * S, uy * S, colour, army.id === this.selectedArmyId);

@@ -1,6 +1,7 @@
 /* Army commands: move an army across the map. */
 
 import { buildBritainTileMap, findTilePath, advanceWithinBudget, countyTowns, isFerryLink } from '../../maps/index.ts';
+import { revealAlong, revealDisk } from '../../systems/exploration.ts';
 import { ok, err } from '../types.ts';
 import { captureOnOccupy } from './combat.ts';
 import type { MoveArmy, FerryArmy, CommandContext, CommandResult } from '../types.ts';
@@ -28,6 +29,9 @@ export function moveArmy(state: GameState, cmd: MoveArmy, ctx: CommandContext): 
   army.countyId = dest.countyId; // forage from the county now occupied
   army.movement -= spent;
 
+  // Fog of war: scout the ground covered along the march.
+  if (state.options?.exploration) revealAlong(state, army.ownerId, path.tiles.slice(0, index + 1));
+
   // Occupying a hostile, undefended county town takes it; a garrisoned castle
   // shrugs off the march and must be besieged instead.
   const captured = captureOnOccupy(state, army);
@@ -52,6 +56,7 @@ export function ferryArmy(state: GameState, cmd: FerryArmy, ctx: CommandContext)
   army.row = town.row;
   army.countyId = cmd.toCountyId;
   army.movement = 0;
+  if (state.options?.exploration) revealDisk(state, army.ownerId, army.col, army.row);
 
   const captured = captureOnOccupy(state, army);
   return ok(undefined, captured ? { captured } : undefined);

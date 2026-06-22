@@ -38,7 +38,13 @@ export type Adjacency = Record<string, string[]>;
 export interface GameOptions {
   /** Seasonal grain labour, weather, and fertility all come into play. */
   advancedFarming: boolean;
+  /** Fog of war: a realm sees only the land it has explored (plus its own). */
+  exploration: boolean;
 }
+
+/** Per-realm fog-of-war memory: the set of tile keys each realm has explored
+ *  ("`${col},${row}`" → true). Monotonic — explored land stays revealed. */
+export type ExplorationState = Record<string, Record<string, true>>;
 
 /** How a game ended (null while it is still being played).
  *  - conquest:      a realm holds a supermajority of all counties
@@ -70,6 +76,8 @@ export interface GameState {
   diplomacy: import('./diplomacy.ts').DiplomacyState;
   /** Optional advanced rules in force for this game. */
   options: GameOptions;
+  /** Per-realm explored-tile memory (fog of war); empty when not in use. */
+  exploration: ExplorationState;
   /** Set once the game has been decided; null while it is ongoing. */
   outcome: GameOutcome | null;
 }

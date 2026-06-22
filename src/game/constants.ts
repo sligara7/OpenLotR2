@@ -339,6 +339,12 @@ export const ADVANCED_FARMING = {
   fertilityFloor: 0.4,
 } as const;
 
+// --- Exploration / fog of war (Manual Part-8 "Advanced Play") -------------
+export const EXPLORATION = {
+  /** How many hexes around an army are revealed as it travels. */
+  visionRadius: 2,
+} as const;
+
 // --- Diplomacy (Manual Part-7 "Diplomacy") --------------------------------
 // Opinion is a directional -100..+100 score; gifts/compliments raise it,
 // insults and attacks lower it. The bands below colour the relationship bar.

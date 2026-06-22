@@ -82,6 +82,15 @@ test('api: a game can be created with Advanced Farming enabled', async () => {
   assertEqual((await body(plain)).state.options.advancedFarming, false, 'off by default');
 });
 
+test('api: a game can be created with Exploration (fog of war) enabled', async () => {
+  const res = await post('/api/games', { seed: 5, scenario: 'britain', exploration: true });
+  assertEqual(res.status, 201, 'created');
+  const state = (await body(res)).state;
+  assertEqual(state.options.exploration, true, 'option recorded');
+  // Each realm begins with some explored ground (around its armies).
+  assert(Object.keys(state.exploration.p1 ?? {}).length > 0, 'p1 starts with vision around its army');
+});
+
 test('api: a malformed command is rejected with 400 (Zod validation)', async () => {
   const id = await newGame();
   const res = await post(`/api/games/${id}/commands`, { type: 'SetTaxRate', countyId: 'york', rate: 999 });

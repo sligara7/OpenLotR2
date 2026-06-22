@@ -9,7 +9,7 @@
 // Types
 export * from './types/enums.ts';
 export type { County, Field, CountyFood, Castle, LabourPolicy, HappinessDelta } from './types/county.ts';
-export type { Realm, Treasury, GameState, Adjacency, GameOptions } from './types/realm.ts';
+export type { Realm, Treasury, GameState, Adjacency, GameOptions, ExplorationState } from './types/realm.ts';
 export type { Army } from './types/army.ts';
 
 // State construction
@@ -40,6 +40,17 @@ export {
   fertilityYieldFactor,
   advanceFarming,
 } from './systems/farming.ts';
+
+// Exploration / fog of war (Manual Part-8 option)
+export {
+  emptyExploration,
+  ensureExploration,
+  tileKey,
+  isExplored,
+  revealTile,
+  revealDisk,
+  revealAlong,
+} from './systems/exploration.ts';
 
 // Combat & siege (auto-resolved combined-arms battles; multi-season sieges)
 export { resolveBattle, garrisonComposition } from './systems/combat.ts';

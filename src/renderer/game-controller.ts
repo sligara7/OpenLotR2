@@ -303,16 +303,17 @@ export async function loadGame(file: File): Promise<void> {
   hud.setStatus(`Loaded — year ${res.state.year}, turn ${res.state.turn}.`);
 }
 
-/** Start a fresh Britain game, optionally with Advanced Farming. */
-export async function newGame(advancedFarming: boolean): Promise<void> {
+/** Start a fresh Britain game with the chosen advanced options. */
+export async function newGame(opts: { advancedFarming: boolean; exploration: boolean }): Promise<void> {
   hud.setStatus('Creating game…');
-  const { gameId: id, state } = await api.createGame(1, 'britain', advancedFarming);
+  const { gameId: id, state } = await api.createGame(1, 'britain', opts);
   gameId = id;
   selectedId = null;
   selectedArmyId = null;
   mapView.setSelectedArmy(null);
   publish(state);
-  hud.setStatus(`New game ${id} ready${advancedFarming ? ' — Advanced Farming on' : ''}.`);
+  const on = [opts.advancedFarming && 'Advanced Farming', opts.exploration && 'Exploration'].filter(Boolean).join(', ');
+  hud.setStatus(`New game ${id} ready${on ? ` — ${on}` : ''}.`);
 }
 
 export async function startGameUI(): Promise<void> {
@@ -331,7 +332,7 @@ export async function startGameUI(): Promise<void> {
     },
     onSave: () => void saveGame(),
     onLoad: (file) => void loadGame(file),
-    onNewGame: (advancedFarming) => void newGame(advancedFarming),
+    onNewGame: (opts) => void newGame(opts),
     onSiege: () => laySiege(),
     onDisband: () => disband(),
     onBlacksmith: (countyId, product) => setBlacksmith(countyId, product),
