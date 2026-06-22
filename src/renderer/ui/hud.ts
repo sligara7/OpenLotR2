@@ -12,10 +12,11 @@
  * Every control carries a data-testid so Playwright can drive it.
  */
 
-import { RationLevel, UNIT_TYPES } from '../../game/types/enums.ts';
+import { CastleType, RationLevel, UNIT_TYPES } from '../../game/types/enums.ts';
 import type { UnitType } from '../../game/types/enums.ts';
 import type { County } from '../../game/types/county.ts';
 import type { GameState } from '../../game/types/realm.ts';
+import type { GameSetup } from '../../game/scenarios.ts';
 import type { Army } from '../../game/types/army.ts';
 import { composition, armoryLine, armySpeed, FORGEABLE } from './units.ts';
 import { renderDiplomacy, type DiplomacyCallbacks } from './diplomacy.ts';
@@ -36,8 +37,8 @@ export interface HudCallbacks {
   onSave: () => void;
   /** Load a save file the player picked. */
   onLoad: (file: File) => void;
-  /** Start a fresh game with the chosen advanced options (Manual Part-8). */
-  onNewGame: (opts: { advancedFarming: boolean; exploration: boolean }) => void;
+  /** Start a fresh game with the chosen custom-game setup (Manual Part-8). */
+  onNewGame: (setup: GameSetup) => void;
   /** Besiege the garrisoned castle the selected army occupies. */
   onSiege: () => void;
   /** Disband the selected army. */
@@ -86,6 +87,12 @@ export class Hud {
   private advancedFarming = false;
   private advFarmCheck!: HTMLInputElement;
   private explorationCheck!: HTMLInputElement;
+  private noblesSel!: HTMLSelectElement;
+  private goldInput!: HTMLInputElement;
+  private armyInput!: HTMLInputElement;
+  private castleSel!: HTMLSelectElement;
+  private statusSel!: HTMLSelectElement;
+  private difficultySel!: HTMLSelectElement;
   private armory!: HTMLDivElement;
   private armyPanel!: HTMLDivElement;
   private armyName!: HTMLDivElement;
@@ -213,25 +220,71 @@ export class Hud {
     load.onclick = () => file.click();
     const newGame = el('button', 'new-game', 'flex:1;padding:5px;cursor:pointer;');
     newGame.textContent = 'New Game';
-    newGame.onclick = () => this.cb.onNewGame({
-      advancedFarming: this.advFarmCheck.checked,
-      exploration: this.explorationCheck.checked,
-    });
+    newGame.onclick = () => this.cb.onNewGame(this.readSetup());
     row.append(save, load, newGame, file);
 
-    // Advanced-play toggles (Manual Part-8) — applied to the next New Game.
-    const optWrap = el('div', undefined, 'margin-top:5px;color:#d8c89a;');
-    const note = el('div', undefined, 'font-size:11px;opacity:0.8;'); note.textContent = 'New game options:';
+    wrap.append(row, this.setupForm());
+    return wrap;
+  }
+
+  /** The custom-game setup form (Manual Part-8) — read on each New Game. */
+  private setupForm(): HTMLElement {
+    const form = el('div', 'setup-form', 'margin-top:6px;color:#d8c89a;display:grid;grid-template-columns:auto auto;gap:3px 10px;align-items:center;');
+    const note = el('div', undefined, 'grid-column:1 / -1;font-size:11px;opacity:0.8;'); note.textContent = 'New game setup:';
+    form.appendChild(note);
+
+    this.noblesSel = this.pickRow(form, 'nobles', 'Nobles', ['2', '3', '4', '5'], '3');
+    this.difficultySel = this.pickRow(form, 'difficulty', 'Difficulty', ['easy', 'normal', 'hard'], 'normal');
+    this.statusSel = this.pickRow(form, 'county-status', 'County status', ['weak', 'normal', 'strong'], 'normal');
+    this.castleSel = this.pickRow(form, 'start-castle', 'Start castle',
+      [CastleType.None, CastleType.WoodenPalisade, CastleType.MotteAndBailey, CastleType.NormanKeep, CastleType.StoneCastle, CastleType.RoyalCastle],
+      CastleType.MotteAndBailey);
+    this.goldInput = this.numRow(form, 'start-gold', 'Start gold', 200);
+    this.armyInput = this.numRow(form, 'army-size', 'Army size', 40);
+
+    // Advanced-play toggles.
     this.advFarmCheck = el('input', 'adv-farming'); this.advFarmCheck.type = 'checkbox';
     this.explorationCheck = el('input', 'exploration'); this.explorationCheck.type = 'checkbox';
-    const farmLbl = el('label', undefined, 'display:flex;align-items:center;gap:5px;cursor:pointer;');
-    const fs = el('span'); fs.textContent = 'Advanced Farming'; farmLbl.append(this.advFarmCheck, fs);
-    const exLbl = el('label', undefined, 'display:flex;align-items:center;gap:5px;cursor:pointer;');
-    const es = el('span'); es.textContent = 'Exploration (fog of war)'; exLbl.append(this.explorationCheck, es);
-    optWrap.append(note, farmLbl, exLbl);
+    form.append(this.checkLabel('Advanced Farming', this.advFarmCheck), this.checkLabel('Exploration (fog)', this.explorationCheck));
+    return form;
+  }
 
-    wrap.append(row, optWrap);
-    return wrap;
+  /** Read the current setup form into a GameSetup. */
+  private readSetup(): GameSetup {
+    return {
+      advancedFarming: this.advFarmCheck.checked,
+      exploration: this.explorationCheck.checked,
+      difficulty: this.difficultySel.value as GameSetup['difficulty'],
+      nobles: Number(this.noblesSel.value),
+      startingGold: Math.max(0, Math.floor(Number(this.goldInput.value) || 0)),
+      armySize: Math.max(0, Math.floor(Number(this.armyInput.value) || 0)),
+      startingCastle: this.castleSel.value as GameSetup['startingCastle'],
+      countyStatus: this.statusSel.value as GameSetup['countyStatus'],
+    };
+  }
+
+  private pickRow(form: HTMLElement, testId: string, label: string, opts: string[], value: string): HTMLSelectElement {
+    const lbl = el('span'); lbl.textContent = label;
+    const sel = el('select', `setup-${testId}`);
+    for (const o of opts) { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; sel.appendChild(opt); }
+    sel.value = value;
+    form.append(lbl, sel);
+    return sel;
+  }
+
+  private numRow(form: HTMLElement, testId: string, label: string, value: number): HTMLInputElement {
+    const lbl = el('span'); lbl.textContent = label;
+    const input = el('input', `setup-${testId}`, 'width:64px;') as HTMLInputElement;
+    input.type = 'number'; input.min = '0'; input.value = String(value);
+    form.append(lbl, input);
+    return input;
+  }
+
+  private checkLabel(text: string, check: HTMLInputElement): HTMLElement {
+    const lbl = el('label', undefined, 'display:flex;align-items:center;gap:5px;cursor:pointer;');
+    const s = el('span'); s.textContent = text;
+    lbl.append(check, s);
+    return lbl;
   }
 
   /** Show the end-game banner (and lock End Turn) once the game is decided. */

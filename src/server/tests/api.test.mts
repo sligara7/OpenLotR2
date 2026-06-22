@@ -91,6 +91,23 @@ test('api: a game can be created with Exploration (fog of war) enabled', async (
   assert(Object.keys(state.exploration.p1 ?? {}).length > 0, 'p1 starts with vision around its army');
 });
 
+test('api: a custom game honours nobles, gold and difficulty', async () => {
+  const res = await post('/api/games', {
+    seed: 5, scenario: 'britain', nobles: 4, startingGold: 500, difficulty: 'hard',
+  });
+  assertEqual(res.status, 201, 'created');
+  const state = (await body(res)).state;
+  assertEqual(Object.keys(state.realms).length, 4, 'four nobles compete');
+  assertEqual(state.realms.p1.treasury.gold, 500, 'the human gets the set gold');
+  assertEqual(state.options.difficulty, 'hard', 'difficulty recorded');
+  assert(state.realms.p2.treasury.gold > 500, 'a hard AI starts richer');
+});
+
+test('api: out-of-range custom settings are rejected (Zod)', async () => {
+  const res = await post('/api/games', { scenario: 'britain', nobles: 9 });
+  assertEqual(res.status, 400, 'nobles capped at 5 by the schema');
+});
+
 test('api: a malformed command is rejected with 400 (Zod validation)', async () => {
   const id = await newGame();
   const res = await post(`/api/games/${id}/commands`, { type: 'SetTaxRate', countyId: 'york', rate: 999 });

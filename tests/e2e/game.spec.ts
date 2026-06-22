@@ -131,6 +131,25 @@ test('exploration: a new game with fog of war blacks out the unexplored map', as
   await page.screenshot({ path: 'test-results/exploration.png', fullPage: true });
 });
 
+test('custom game: the setup form starts a tailored game', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('hud-header')).toContainText('turn 0');
+
+  // Configure four nobles, a hard AI, and a fat treasury, then start.
+  await page.getByTestId('setup-nobles').selectOption('4');
+  await page.getByTestId('setup-difficulty').selectOption('hard');
+  await page.getByTestId('setup-start-gold').fill('500');
+  await page.getByTestId('new-game').click();
+
+  await expect(page.getByTestId('status')).toContainText('4 nobles');
+  // The human's treasury reflects the chosen starting gold.
+  await expect(page.getByTestId('treasury')).toContainText('500 gold');
+  // A fourth noble now competes (shows up in the diplomacy panel).
+  await expect(page.getByTestId('diplo-p4')).toBeVisible();
+
+  await page.screenshot({ path: 'test-results/custom-game.png', fullPage: true });
+});
+
 test('selecting a county exposes tax/ration/labour controls that send commands', async ({ page }) => {
   await page.goto('/');
 

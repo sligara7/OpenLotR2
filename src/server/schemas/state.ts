@@ -208,7 +208,11 @@ export const GameStateSchema = z
     sieges: z.record(z.string(), SiegeSchema),
     convoys: z.record(z.string(), ConvoySchema),
     diplomacy: DiplomacyStateSchema,
-    options: z.object({ advancedFarming: z.boolean(), exploration: z.boolean() }).openapi('GameOptions'),
+    options: z.object({
+      advancedFarming: z.boolean(),
+      exploration: z.boolean(),
+      difficulty: z.enum(['easy', 'normal', 'hard']),
+    }).openapi('GameOptions'),
     exploration: z.record(z.string(), z.record(z.string(), z.literal(true))).openapi('ExplorationState'),
     outcome: GameOutcomeSchema.nullable(),
   })

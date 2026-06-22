@@ -8,6 +8,7 @@
  */
 
 import type { GameState } from '../../game/types/realm.ts';
+import type { GameSetup } from '../../game/scenarios.ts';
 import type { Command, CommandResult } from '../../game/commands/types.ts';
 
 const BASE = '/api';
@@ -27,12 +28,12 @@ export const api = {
   createGame: (
     seed?: number,
     scenario: 'demo' | 'britain' = 'demo',
-    options?: { advancedFarming?: boolean; exploration?: boolean },
+    setup?: GameSetup,
   ): Promise<CreatedGame> =>
     http('/games', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ seed, scenario, ...options }),
+      body: JSON.stringify({ seed, scenario, ...setup }),
     }),
 
   getState: (id: string): Promise<GameState> => http(`/games/${id}/state`),

@@ -16,6 +16,7 @@ import { stateBus } from './state-bus.ts';
 import type { Command } from '../game/commands/types.ts';
 import type { County } from '../game/types/county.ts';
 import type { GameState } from '../game/types/realm.ts';
+import type { GameSetup } from '../game/scenarios.ts';
 import type { UnitType } from '../game/types/enums.ts';
 import type { BattleResult } from '../game/systems/combat.ts';
 import type { TurnReport } from '../game/engine.ts';
@@ -303,17 +304,17 @@ export async function loadGame(file: File): Promise<void> {
   hud.setStatus(`Loaded — year ${res.state.year}, turn ${res.state.turn}.`);
 }
 
-/** Start a fresh Britain game with the chosen advanced options. */
-export async function newGame(opts: { advancedFarming: boolean; exploration: boolean }): Promise<void> {
+/** Start a fresh Britain game with the chosen custom-game setup. */
+export async function newGame(setup: GameSetup): Promise<void> {
   hud.setStatus('Creating game…');
-  const { gameId: id, state } = await api.createGame(1, 'britain', opts);
+  const { gameId: id, state } = await api.createGame(1, 'britain', setup);
   gameId = id;
   selectedId = null;
   selectedArmyId = null;
   mapView.setSelectedArmy(null);
   publish(state);
-  const on = [opts.advancedFarming && 'Advanced Farming', opts.exploration && 'Exploration'].filter(Boolean).join(', ');
-  hud.setStatus(`New game ${id} ready${on ? ` — ${on}` : ''}.`);
+  const on = [setup.advancedFarming && 'Advanced Farming', setup.exploration && 'Exploration'].filter(Boolean).join(', ');
+  hud.setStatus(`New game ${id} ready — ${setup.nobles ?? 3} nobles, ${setup.difficulty ?? 'normal'}${on ? `, ${on}` : ''}.`);
 }
 
 export async function startGameUI(): Promise<void> {
@@ -332,7 +333,7 @@ export async function startGameUI(): Promise<void> {
     },
     onSave: () => void saveGame(),
     onLoad: (file) => void loadGame(file),
-    onNewGame: (opts) => void newGame(opts),
+    onNewGame: (setup) => void newGame(setup),
     onSiege: () => laySiege(),
     onDisband: () => disband(),
     onBlacksmith: (countyId, product) => setBlacksmith(countyId, product),

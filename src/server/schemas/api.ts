@@ -3,6 +3,7 @@
  */
 import { z } from './zod.ts';
 import { GameStateSchema, TurnReportSchema } from './state.ts';
+import { CastleTypeSchema } from './enums.ts';
 
 /** Result of dispatching a command. `report` (and `captures`, the counties that
  *  changed hands during the turn — AI conquests and fallen sieges) are present
@@ -38,6 +39,18 @@ export const CreateGameRequestSchema = z
     advancedFarming: z.boolean().optional().default(false),
     /** Exploration / fog of war (Manual Part-8): see only what you have explored. */
     exploration: z.boolean().optional().default(false),
+    /** AI difficulty. */
+    difficulty: z.enum(['easy', 'normal', 'hard']).optional().default('normal'),
+    /** Total nobles competing for the crown, human + AI (2..5). */
+    nobles: z.number().int().min(2).max(5).optional(),
+    /** Gold each realm starts with. */
+    startingGold: z.number().int().min(0).optional(),
+    /** Soldiers in each realm's starting army (0 = none). */
+    armySize: z.number().int().min(0).optional(),
+    /** Castle each realm starts with. */
+    startingCastle: CastleTypeSchema.optional(),
+    /** Strength of each player's starting county. */
+    countyStatus: z.enum(['weak', 'normal', 'strong']).optional(),
   })
   .openapi('CreateGameRequest');
 

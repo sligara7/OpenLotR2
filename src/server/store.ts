@@ -11,6 +11,7 @@
 
 import { createDemoWorld, createBritainWorld } from '../game/index.ts';
 import { createRng } from '../game/rng.ts';
+import type { GameSetup } from '../game/index.ts';
 import type { GameState } from '../game/types/realm.ts';
 import type { Rng } from '../game/rng.ts';
 import type { TurnReport } from '../game/engine.ts';
@@ -46,12 +47,8 @@ export class GameStore {
     return `g${this.counter}`;
   }
 
-  create(
-    seed: number,
-    scenario: 'demo' | 'britain' = 'demo',
-    options?: { advancedFarming?: boolean; exploration?: boolean },
-  ): Game {
-    const state = scenario === 'britain' ? createBritainWorld(options) : createDemoWorld(options);
+  create(seed: number, scenario: 'demo' | 'britain' = 'demo', setup?: GameSetup): Game {
+    const state = scenario === 'britain' ? createBritainWorld(setup) : createDemoWorld(setup);
     const game: Game = {
       id: this.nextId(),
       seed,

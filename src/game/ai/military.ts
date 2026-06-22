@@ -32,10 +32,14 @@ const MAX_ARMY_TARGET = 250;
 /** Treasury the AI keeps in reserve before spending gold on mercenaries. */
 const MERCENARY_GOLD_RESERVE = 300;
 
+/** Difficulty nudges how large a host the AI tries to keep. */
+const DIFFICULTY_HOST_MUL = { easy: 0.7, normal: 1, hard: 1.3 } as const;
+
 /** The host size this realm aims to field, given how much land it holds. */
 function targetArmySize(state: GameState, realm: Realm): number {
   const counties = countiesOfRealm(state, realm.id).length;
-  return Math.min(MAX_ARMY_TARGET, MIN_ARMY_SIZE + counties * ARMY_PER_COUNTY);
+  const mul = DIFFICULTY_HOST_MUL[state.options?.difficulty ?? 'normal'];
+  return Math.round(Math.min(MAX_ARMY_TARGET, MIN_ARMY_SIZE + counties * ARMY_PER_COUNTY) * mul);
 }
 
 /** Total soldiers a realm has under arms across all its armies. */

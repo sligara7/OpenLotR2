@@ -50,6 +50,7 @@ export function createWorld(init: WorldInit): GameState {
     options: {
       advancedFarming: init.options?.advancedFarming ?? false,
       exploration: init.options?.exploration ?? false,
+      difficulty: init.options?.difficulty ?? 'normal',
     },
     exploration: emptyExploration(),
     outcome: null,

@@ -9,7 +9,7 @@
 // Types
 export * from './types/enums.ts';
 export type { County, Field, CountyFood, Castle, LabourPolicy, HappinessDelta } from './types/county.ts';
-export type { Realm, Treasury, GameState, Adjacency, GameOptions, ExplorationState } from './types/realm.ts';
+export type { Realm, Treasury, GameState, Adjacency, GameOptions, ExplorationState, Difficulty } from './types/realm.ts';
 export type { Army } from './types/army.ts';
 
 // State construction
@@ -20,6 +20,7 @@ export type { RealmInit } from './state/realm.ts';
 export { createWorld, neighboursOf, countiesOfRealm } from './state/world.ts';
 export type { WorldInit } from './state/world.ts';
 export { createDemoWorld, createBritainWorld } from './scenarios.ts';
+export type { GameSetup } from './scenarios.ts';
 
 // Maps
 export { BRITAIN, MAPS, mapEdges, regionIds } from './maps/index.ts';

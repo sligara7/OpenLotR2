@@ -35,11 +35,15 @@ export type Adjacency = Record<string, string[]>;
 /** Optional advanced rules a game can be created with. (Manual Part-8 "Advanced
  *  Play".) Off by default — easy play. Army foraging is always on in this
  *  remake, so it is not a toggle here. */
+export type Difficulty = 'easy' | 'normal' | 'hard';
+
 export interface GameOptions {
   /** Seasonal grain labour, weather, and fertility all come into play. */
   advancedFarming: boolean;
   /** Fog of war: a realm sees only the land it has explored (plus its own). */
   exploration: boolean;
+  /** How hard the AI rulers push (scales their economy & host). */
+  difficulty: Difficulty;
 }
 
 /** Per-realm fog-of-war memory: the set of tile keys each realm has explored

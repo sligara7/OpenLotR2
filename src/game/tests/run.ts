@@ -37,6 +37,7 @@ import './outcome.test.ts';
 import './diplomacy.test.ts';
 import './farming.test.ts';
 import './exploration.test.ts';
+import './setup.test.ts';
 
 import { run } from '../testing/harness.ts';
 
