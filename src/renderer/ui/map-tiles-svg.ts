@@ -330,6 +330,30 @@ export class MapTilesSvg {
       labelLayer.appendChild(label);
     }
 
+    // Coastline — a soft foam line on every land/sea edge, so the island reads
+    // as a crisp shape against the ocean.
+    const coastLayer = document.createElementNS(SVGNS, 'g');
+    coastLayer.setAttribute('pointer-events', 'none');
+    const coastSeen = new Set<string>();
+    for (const [key, entry] of this.tiles) {
+      if (entry.countyId === null) continue; // start from land
+      const [col, row] = key.split(',').map(Number);
+      for (const [nc, nr] of hexNeighbours(col, row)) {
+        const n = this.tiles.get(`${nc},${nr}`);
+        if (n && n.countyId !== null) continue; // neighbour is land → not a shore
+        const dk = edgeKey(col, row, nc, nr);
+        if (coastSeen.has(dk)) continue;
+        coastSeen.add(dk);
+        const [acx, acy] = hexCentre(col, row);
+        const [bcx, bcy] = hexCentre(nc, nr);
+        const [p1, p2] = this.sharedEdge([acx * S, acy * S], [bcx * S, bcy * S]);
+        coastLayer.appendChild(el('line', {
+          x1: p1[0].toFixed(1), y1: p1[1].toFixed(1), x2: p2[0].toFixed(1), y2: p2[1].toFixed(1),
+          stroke: '#dce8ec', 'stroke-width': 1.1, 'stroke-opacity': 0.5, 'stroke-linecap': 'round',
+        }));
+      }
+    }
+
     // Rivers run along hex edges (Unciv-style), drawn from the generated edges.
     const riversLayer = this.buildRivers(map.rivers);
 
@@ -337,7 +361,7 @@ export class MapTilesSvg {
     // settlements → labels → paths → units. Borders are dynamic (owner-aware,
     // redrawn from state); they sit above the land but below structures/units.
     this.viewport.append(
-      terrainLayer, shadeLayer, featuresLayer, riversLayer, this.farms, industryLayer, this.borders,
+      terrainLayer, shadeLayer, coastLayer, featuresLayer, riversLayer, this.farms, industryLayer, this.borders,
       this.castles, this.sieges, this.settle, labelLayer, this.paths, this.convoysLayer, this.units,
     );
 
