@@ -91,10 +91,14 @@ export class Hud {
   constructor(private readonly cb: HudCallbacks) {
     this.root = el('div', 'hud',
       'position:fixed;top:0;right:0;width:400px;max-height:100vh;overflow:auto;' +
-      'background:rgba(20,16,10,0.94);color:#e8dcc0;font:12px/1.45 monospace;' +
+      'background:linear-gradient(180deg,#241b10,#19120a);color:#e8dcc0;font:12px/1.5 monospace;' +
+      'border-left:2px solid #5a4424;box-shadow:-5px 0 18px rgba(0,0,0,0.55);' +
       'padding:12px;box-sizing:border-box;z-index:10;');
+    this.root.appendChild(this.styleSheet());
 
-    this.header = el('div', 'hud-header', 'font-size:15px;font-weight:bold;margin-bottom:8px;');
+    this.header = el('div', 'hud-header',
+      'font-size:15px;font-weight:bold;margin-bottom:8px;color:#e9c87c;letter-spacing:0.5px;' +
+      'border-bottom:1px solid #5a4424;padding-bottom:6px;');
     this.banner = el('div', 'game-over',
       'display:none;padding:10px;margin-bottom:10px;text-align:center;font-size:15px;font-weight:bold;border-radius:3px;');
     this.endTurnBtn = el('button', 'end-turn', 'width:100%;padding:8px;margin-bottom:10px;cursor:pointer;');
@@ -213,6 +217,40 @@ export class Hud {
 
   mount(parent: HTMLElement = document.body): void {
     parent.appendChild(this.root);
+  }
+
+  /** Theme styling for the panel — scoped to the HUD so it touches nothing else.
+   *  Layout stays in the inline styles; this gives buttons, selects, scrollbars
+   *  and panels a cohesive leather-and-gold look. */
+  private styleSheet(): HTMLStyleElement {
+    const style = document.createElement('style');
+    style.textContent = `
+      [data-testid="hud"] { scrollbar-width: thin; scrollbar-color: #6a5532 #1a130a; }
+      [data-testid="hud"] ::-webkit-scrollbar { width: 9px; height: 9px; }
+      [data-testid="hud"] ::-webkit-scrollbar-thumb { background:#6a5532; border-radius:4px; }
+      [data-testid="hud"] ::-webkit-scrollbar-track { background:#140e07; }
+      [data-testid="hud"] button {
+        background: linear-gradient(#473823,#332715); color:#f0e3c4;
+        border:1px solid #6a5638; border-radius:3px; font: inherit; line-height:1.3;
+        transition: background .12s ease, border-color .12s ease;
+      }
+      [data-testid="hud"] button:hover { background: linear-gradient(#5b4a2e,#41331d); border-color:#a07f49; }
+      [data-testid="hud"] button:active { background:#2a2011; }
+      [data-testid="hud"] button:disabled { opacity:.4; cursor:default; filter:grayscale(.4); }
+      [data-testid="hud"] select {
+        background:#221809; color:#f0e3c4; border:1px solid #6a5638; border-radius:3px; font: inherit; padding:1px 2px;
+      }
+      [data-testid="realm"], [data-testid="county-panel"], [data-testid="army-panel"] {
+        background: rgba(44,33,18,0.45); border-radius:3px;
+      }
+      [data-testid="end-turn"] {
+        background: linear-gradient(#856629,#5a4214); border:1px solid #bd9742; color:#fdf3d2;
+        font-weight:bold; letter-spacing:.6px; font-size:13px;
+      }
+      [data-testid="end-turn"]:hover { background: linear-gradient(#a07c33,#6e5018); border-color:#e0b75c; }
+      [data-testid="counties"] > div:hover { background: rgba(120,96,52,0.18); }
+    `;
+    return style;
   }
 
   setStatus(message: string): void {
