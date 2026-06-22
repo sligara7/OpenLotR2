@@ -139,6 +139,41 @@ export const CombineArmySchema = z.object({
   intoArmyId: z.string(),
 });
 
+// --- Diplomacy (Manual Part-7) -------------------------------------------
+const realmId = z.string().openapi({ example: 'p2' });
+
+export const SendGiftSchema = z.object({
+  type: z.literal('SendGift'),
+  toRealmId: realmId,
+  gold: z.number().positive(),
+});
+
+export const SendComplimentSchema = z.object({
+  type: z.literal('SendCompliment'),
+  toRealmId: realmId,
+});
+
+export const SendInsultSchema = z.object({
+  type: z.literal('SendInsult'),
+  toRealmId: realmId,
+});
+
+export const OfferAllianceSchema = z.object({
+  type: z.literal('OfferAlliance'),
+  toRealmId: realmId,
+});
+
+export const RespondToAllianceSchema = z.object({
+  type: z.literal('RespondToAlliance'),
+  proposalId: z.string(),
+  accept: z.boolean(),
+});
+
+export const BreakAllianceSchema = z.object({
+  type: z.literal('BreakAlliance'),
+  withRealmId: realmId,
+});
+
 export const EndTurnSchema = z.object({ type: z.literal('EndTurn') });
 
 export const CommandSchema = z
@@ -161,6 +196,12 @@ export const CommandSchema = z
     DisbandArmySchema,
     SplitArmySchema,
     CombineArmySchema,
+    SendGiftSchema,
+    SendComplimentSchema,
+    SendInsultSchema,
+    OfferAllianceSchema,
+    RespondToAllianceSchema,
+    BreakAllianceSchema,
     EndTurnSchema,
   ])
   .openapi('Command');

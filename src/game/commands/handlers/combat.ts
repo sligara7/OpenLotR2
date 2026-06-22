@@ -12,6 +12,7 @@ import { DEFAULT_SIEGE_ENGINES } from '../../constants.ts';
 import { resolveBattle } from '../../systems/combat.ts';
 import { setUnits } from '../../state/army.ts';
 import { captureCounty, updateEliminations } from '../../systems/conquest.ts';
+import { registerHostility } from '../../systems/diplomacy.ts';
 import { ok, err } from '../types.ts';
 import type { AttackArmy, LaySiege, CommandContext, CommandResult } from '../types.ts';
 import type { GameState } from '../../types/realm.ts';
@@ -34,6 +35,9 @@ export function attackArmy(state: GameState, cmd: AttackArmy, ctx: CommandContex
   if (target.ownerId === ctx.actorRealmId) return err('That army is yours');
   if (!inReach(army, target)) return err('Target army is out of reach');
 
+  // Drawing blood costs you the victim's regard (and, if you were allied, your
+  // standing with everyone — the manual's doublecross).
+  const hostility = registerHostility(state, ctx.actorRealmId, target.ownerId);
   const result = resolveBattle({ units: army.units }, { units: target.units }, ctx.rng);
   setUnits(army, result.attacker.unitsAfter);
   setUnits(target, result.defender.unitsAfter);
@@ -41,7 +45,7 @@ export function attackArmy(state: GameState, cmd: AttackArmy, ctx: CommandContex
   if (result.defenderDestroyed) delete state.armies[target.id];
   updateEliminations(state);
 
-  return ok(undefined, { battle: result });
+  return ok(undefined, { battle: result, hostility });
 }
 
 export function laySiege(state: GameState, cmd: LaySiege, ctx: CommandContext): CommandResult {
@@ -58,6 +62,7 @@ export function laySiege(state: GameState, cmd: LaySiege, ctx: CommandContext): 
 
   // Begin a new siege, or refresh an existing one (keeping its build progress).
   const existing = state.sieges[cmd.countyId];
+  if (!existing) registerHostility(state, ctx.actorRealmId, county.ownerId ?? '');
   const sane = (n: number): number => Math.max(0, Math.floor(Number.isFinite(n) ? n : 0));
   const engines = existing?.engines ?? (cmd.engines
     ? { catapults: sane(cmd.engines.catapults), rams: sane(cmd.engines.rams), towers: sane(cmd.engines.towers) }
@@ -89,6 +94,7 @@ export function captureOnOccupy(state: GameState, army: Army): string | null {
   );
   if (defended) return null;
 
+  registerHostility(state, army.ownerId, county.ownerId ?? '');
   captureCounty(state, county.id, army.ownerId);
   updateEliminations(state);
   return county.id;

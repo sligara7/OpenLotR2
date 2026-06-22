@@ -41,6 +41,8 @@ import { armyMovementAllowance } from './state/army.ts';
 import { updateEliminations, evaluateOutcome } from './systems/conquest.ts';
 import { payWages } from './systems/wages.ts';
 import type { WagesLedger } from './systems/wages.ts';
+import { runDiplomacy } from './systems/diplomacy.ts';
+import type { DiplomacyLedger } from './systems/diplomacy.ts';
 import type { GameOutcome } from './types/realm.ts';
 
 export interface CountyTurnReport {
@@ -68,6 +70,7 @@ export interface TurnReport {
   forage: ForageLedger;
   siege: SiegeLedger;
   wages: WagesLedger;
+  diplomacy: DiplomacyLedger;
   /** Set the turn the game is decided; null while it continues. */
   outcome: GameOutcome | null;
 }
@@ -138,6 +141,9 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
   // Fresh movement budget for every surviving army next turn.
   for (const army of Object.values(state.armies)) army.movement = armyMovementAllowance(army);
 
+  // Relations cool toward neutral (allies warm), stale offers lapse.
+  const diplomacy = runDiplomacy(state);
+
   // Settle eliminations from this turn's fighting, then check for a winner.
   updateEliminations(state);
   state.outcome = evaluateOutcome(state);
@@ -152,6 +158,7 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
     forage,
     siege,
     wages,
+    diplomacy,
     outcome: state.outcome,
   };
   nextCalendar(state);

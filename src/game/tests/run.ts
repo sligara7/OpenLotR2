@@ -34,6 +34,7 @@ import './mercenaries.test.ts';
 import './wages.test.ts';
 import './army-manage.test.ts';
 import './outcome.test.ts';
+import './diplomacy.test.ts';
 
 import { run } from '../testing/harness.ts';
 

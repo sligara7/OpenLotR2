@@ -14,6 +14,7 @@
 
 import { buildBritainTileMap, countyTowns, findTilePath, hexNeighbours, isFerryLink } from '../maps/index.ts';
 import { countiesOfRealm } from '../state/world.ts';
+import { areAllied } from '../systems/diplomacy.ts';
 import { ARMED_UNITS, HAPPINESS, MIN_ARMY_SIZE } from '../constants.ts';
 import { UnitType } from '../types/enums.ts';
 import type { GameState, Realm } from '../types/realm.ts';
@@ -54,6 +55,9 @@ function weakestBorderTarget(state: GameState, realm: Realm): string | null {
       if (owned.has(nb)) continue;
       const c = state.counties[nb];
       if (!c) continue;
+      // Never march on an ally's land (the manual's "safer route" is to break
+      // the pact first — handled elsewhere).
+      if (c.ownerId && areAllied(state, realm.id, c.ownerId)) continue;
       // Prefer soft targets: small population, and undefended over garrisoned.
       const score = c.population + c.castle.garrison * 10;
       if (score < bestScore) { bestScore = score; best = nb; }
@@ -67,6 +71,7 @@ function enemyInReach(state: GameState, army: Army): Army | null {
   const adj = new Set(hexNeighbours(army.col, army.row).map(([c, r]) => `${c},${r}`));
   for (const other of Object.values(state.armies)) {
     if (other.ownerId === army.ownerId) continue;
+    if (other.ownerId && areAllied(state, army.ownerId, other.ownerId)) continue;
     const same = other.col === army.col && other.row === army.row;
     if (same || adj.has(`${other.col},${other.row}`)) return other;
   }
@@ -77,8 +82,9 @@ function enemyInReach(state: GameState, army: Army): Army | null {
 function planArmy(state: GameState, realm: Realm, army: Army): Command | null {
   const county = army.countyId ? state.counties[army.countyId] : undefined;
 
-  // 1. Besiege a garrisoned enemy castle we already sit on.
-  if (county && county.ownerId && county.ownerId !== realm.id && county.castle.garrison > 0) {
+  // 1. Besiege a garrisoned enemy castle we already sit on (never an ally's).
+  if (county && county.ownerId && county.ownerId !== realm.id && county.castle.garrison > 0
+      && !areAllied(state, realm.id, county.ownerId)) {
     return { type: 'LaySiege', armyId: army.id, countyId: county.id };
   }
 

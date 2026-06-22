@@ -21,17 +21,23 @@ import type { BattleResult } from '../game/systems/combat.ts';
 import type { TurnReport } from '../game/engine.ts';
 
 interface Capture { countyId: string; ownerId: string | null }
+interface DiploEvents { newAlliances: string[]; brokenAlliances: string[]; newEnemies: string[] }
 
 /** Notable, player-visible events from a turn → log lines. `captures` (counties
  *  that changed hands, e.g. AI conquests) come on the result, the rest from the
  *  report. */
-function turnEvents(r: TurnReport, captures: Capture[], state: GameState): string[] {
+function turnEvents(r: TurnReport, captures: Capture[], diplo: DiploEvents | undefined, state: GameState): string[] {
   const cn = (id: string): string => state.counties[id]?.name ?? id;
   const rn = (id: string): string => state.realms[id]?.name ?? id;
+  // A realm-pair key "a|b" → "Name & Name".
+  const pair = (key: string): string => key.split('|').map(rn).join(' & ');
   const ev: string[] = [];
   for (const cap of captures) {
     ev.push(cap.ownerId ? `${rn(cap.ownerId)} took ${cn(cap.countyId)}` : `${cn(cap.countyId)} broke free`);
   }
+  for (const k of diplo?.newAlliances ?? []) ev.push(`${pair(k)} formed an alliance`);
+  for (const k of diplo?.newEnemies ?? []) ev.push(`${pair(k)} are now sworn enemies`);
+  for (const k of diplo?.brokenAlliances ?? []) ev.push(`${pair(k)} ended their alliance`);
   // Siege detail beyond the bare capture (captures already cover stormed/starved).
   for (const s of r.siege.sieges) {
     if (s.status === 'repulsed') ev.push(`assault on ${cn(s.countyId)} was repulsed`);
@@ -185,6 +191,26 @@ export function supplyArmy(countyId: string): void {
   void act({ type: 'SendConvoy', fromCountyId: countyId, toArmyId: selectedArmyId, grainSacks: CONVOY_GRAIN });
 }
 
+// --- Diplomacy actions ---------------------------------------------------
+export function gift(toRealmId: string, gold: number): void {
+  void act({ type: 'SendGift', toRealmId, gold });
+}
+export function compliment(toRealmId: string): void {
+  void act({ type: 'SendCompliment', toRealmId });
+}
+export function insult(toRealmId: string): void {
+  void act({ type: 'SendInsult', toRealmId });
+}
+export function offerAlliance(toRealmId: string): void {
+  void act({ type: 'OfferAlliance', toRealmId });
+}
+export function breakAlliance(toRealmId: string): void {
+  void act({ type: 'BreakAlliance', withRealmId: toRealmId });
+}
+export function respondToAlliance(proposalId: string, accept: boolean): void {
+  void act({ type: 'RespondToAlliance', proposalId, accept });
+}
+
 /** A tile was clicked: march the selected army there, else select the county. */
 export function tileClicked(countyId: string | null, col: number, row: number): void {
   if (selectedArmyId) {
@@ -224,7 +250,8 @@ async function act(command: Command): Promise<void> {
   if (result.ok && command.type === 'EndTurn' && result.report) {
     const r = result.report;
     const captures = (result as { captures?: Capture[] }).captures ?? [];
-    hud.logTurn(`Year ${r.year} · ${r.season} · turn ${r.turn}`, turnEvents(r, captures, next));
+    const diplo = (result as { diplomacy?: DiploEvents }).diplomacy;
+    hud.logTurn(`Year ${r.year} · ${r.season} · turn ${r.turn}`, turnEvents(r, captures, diplo, next));
   }
   hud.setStatus(msg);
   publish(next);
@@ -290,6 +317,14 @@ export async function startGameUI(): Promise<void> {
     onMuster: (countyId, unit) => muster(countyId, unit),
     onHire: (countyId, unit) => hire(countyId, unit),
     onSupply: (countyId) => supplyArmy(countyId),
+    diplomacy: {
+      onGift: (toRealmId, gold) => gift(toRealmId, gold),
+      onCompliment: (toRealmId) => compliment(toRealmId),
+      onInsult: (toRealmId) => insult(toRealmId),
+      onOffer: (toRealmId) => offerAlliance(toRealmId),
+      onBreak: (toRealmId) => breakAlliance(toRealmId),
+      onRespond: (proposalId, accept) => respondToAlliance(proposalId, accept),
+    },
   });
   mapView = new MapTilesSvg(); // canvas-free SVG map; subscribes to the state bus
   mapView.mount();

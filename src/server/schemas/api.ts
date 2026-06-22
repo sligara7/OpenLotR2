@@ -15,6 +15,15 @@ export const CommandResultSchema = z
     captures: z
       .array(z.object({ countyId: z.string(), ownerId: z.string().nullable() }))
       .optional(),
+    /** Diplomatic shifts across an EndTurn — each entry is a realm-pair key
+     *  "a|b". Lets the client narrate alliances formed/broken and new enmities. */
+    diplomacy: z
+      .object({
+        newAlliances: z.array(z.string()),
+        brokenAlliances: z.array(z.string()),
+        newEnemies: z.array(z.string()),
+      })
+      .optional(),
   })
   .openapi('CommandResult');
 

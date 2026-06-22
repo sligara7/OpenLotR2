@@ -18,6 +18,7 @@ import type { County } from '../../game/types/county.ts';
 import type { GameState } from '../../game/types/realm.ts';
 import type { Army } from '../../game/types/army.ts';
 import { composition, armoryLine, armySpeed, FORGEABLE } from './units.ts';
+import { renderDiplomacy, type DiplomacyCallbacks } from './diplomacy.ts';
 
 export type ControlKind = 'tax' | 'ration' | 'industry' | 'diet';
 
@@ -47,6 +48,8 @@ export interface HudCallbacks {
   onHire: (countyId: string, unit: UnitType) => void;
   /** Send a supply convoy from a county to the selected army. */
   onSupply: (countyId: string) => void;
+  /** Diplomacy actions (gift / compliment / insult / offer / break / respond). */
+  diplomacy: DiplomacyCallbacks;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, testId?: string, css?: string): HTMLElementTagNameMap[K] {
@@ -87,6 +90,8 @@ export class Hud {
   private milRow!: HTMLDivElement;
   private forgeSel!: HTMLSelectElement;
   private musterSel!: HTMLSelectElement;
+  private diplo!: HTMLDivElement;
+  private diploPanel!: HTMLDivElement;
 
   constructor(private readonly cb: HudCallbacks) {
     this.root = el('div', 'hud',
@@ -145,6 +150,14 @@ export class Hud {
     this.armyPanel.append(this.armyName, this.armyDetail, this.siegeBtn, this.disbandBtn);
     this.showArmy(null, null, 'p1');
 
+    // --- Diplomacy -------------------------------------------------------
+    const diplo = el('div', 'diplomacy-panel', 'border:1px solid #4a3c28;padding:8px;margin-bottom:8px;');
+    const diploTitle = el('div', undefined, 'font-weight:bold;margin-bottom:4px;');
+    diploTitle.textContent = 'Diplomacy';
+    this.diploPanel = el('div', 'diplomacy-rows');
+    diplo.append(diploTitle, this.diploPanel);
+    this.diplo = diplo;
+
     this.status = el('div', 'status', 'min-height:1.4em;color:#c8b890;margin:6px 0;');
 
     // Turn log — what happened across the realm last turn.
@@ -156,7 +169,7 @@ export class Hud {
 
     this.counties = el('div', 'counties');
 
-    this.root.append(this.header, this.banner, endTurn, this.saveLoadRow(), realm, this.panel, this.armyPanel, this.status, logBox, this.counties);
+    this.root.append(this.header, this.banner, endTurn, this.saveLoadRow(), realm, this.panel, this.armyPanel, this.diplo, this.status, logBox, this.counties);
   }
 
   /** Prepend a turn's notable events to the log (skipped when nothing happened). */
@@ -240,7 +253,7 @@ export class Hud {
       [data-testid="hud"] select {
         background:#221809; color:#f0e3c4; border:1px solid #6a5638; border-radius:3px; font: inherit; padding:1px 2px;
       }
-      [data-testid="realm"], [data-testid="county-panel"], [data-testid="army-panel"] {
+      [data-testid="realm"], [data-testid="county-panel"], [data-testid="army-panel"], [data-testid="diplomacy-panel"] {
         background: rgba(44,33,18,0.45); border-radius:3px;
       }
       [data-testid="end-turn"] {
@@ -358,6 +371,8 @@ export class Hud {
       ? `Treasury: ${Math.round(t.gold)} gold · ${Math.round(t.wood)} wood · ${Math.round(t.stone)} stone · ${Math.round(t.iron)} iron`
       : 'Treasury: —';
     this.armory.textContent = `Armory: ${armoryLine(state.realms[meId]?.treasury.weapons ?? {})}`;
+
+    renderDiplomacy(this.diploPanel, state, meId, this.cb.diplomacy);
 
     // Realm overview: one editable row per owned county.
     const owned = Object.values(state.counties).filter((c) => c.ownerId === meId);

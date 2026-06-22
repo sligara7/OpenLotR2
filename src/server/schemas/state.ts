@@ -151,6 +151,26 @@ export const SiegeSchema = z
   })
   .openapi('Siege');
 
+// --- Diplomacy ------------------------------------------------------------
+const DiploProposalSchema = z
+  .object({
+    id: z.string(),
+    fromRealmId: z.string(),
+    toRealmId: z.string(),
+    kind: z.literal('alliance'),
+    turn: z.number(),
+  })
+  .openapi('DiploProposal');
+
+export const DiplomacyStateSchema = z
+  .object({
+    opinions: z.record(z.string(), z.record(z.string(), z.number())),
+    alliances: z.record(z.string(), z.object({ since: z.number() })),
+    enemies: z.record(z.string(), z.literal(true)),
+    proposals: z.array(DiploProposalSchema),
+  })
+  .openapi('DiplomacyState');
+
 // --- Outcome --------------------------------------------------------------
 export const GameOutcomeSchema = z
   .object({
@@ -171,6 +191,7 @@ export const GameStateSchema = z
     armies: z.record(z.string(), ArmySchema),
     sieges: z.record(z.string(), SiegeSchema),
     convoys: z.record(z.string(), ConvoySchema),
+    diplomacy: DiplomacyStateSchema,
     outcome: GameOutcomeSchema.nullable(),
   })
   .openapi('GameState');
@@ -246,6 +267,10 @@ const WagesLedgerSchema = z.object({
   realms: z.array(RealmWagesSchema),
 });
 
+const DiplomacyLedgerSchema = z.object({
+  expiredProposals: z.array(z.string()),
+});
+
 export const TurnReportSchema = z
   .object({
     turn: z.number(),
@@ -257,6 +282,7 @@ export const TurnReportSchema = z
     forage: ForageLedgerSchema,
     siege: SiegeLedgerSchema,
     wages: WagesLedgerSchema,
+    diplomacy: DiplomacyLedgerSchema,
     outcome: GameOutcomeSchema.nullable(),
   })
   .openapi('TurnReport');

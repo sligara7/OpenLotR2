@@ -63,6 +63,15 @@ test('api: a valid command is applied to state', async () => {
   assertEqual(state.counties.york.taxRate, 33, 'tax rate updated');
 });
 
+test('api: a diplomacy command moves opinion and shows in state', async () => {
+  const id = await newGame();
+  const res = await post(`/api/games/${id}/commands`, { type: 'SendGift', toRealmId: 'p2', gold: 100 });
+  assertEqual(res.status, 200, 'processed');
+  assertEqual((await body(res)).ok, true, 'gift accepted');
+  const state = await body(await fetch(`${base}/api/games/${id}/state`));
+  assert(state.diplomacy.opinions.p2.p1 > 0, 'p2 now regards p1 more warmly');
+});
+
 test('api: a malformed command is rejected with 400 (Zod validation)', async () => {
   const id = await newGame();
   const res = await post(`/api/games/${id}/commands`, { type: 'SetTaxRate', countyId: 'york', rate: 999 });

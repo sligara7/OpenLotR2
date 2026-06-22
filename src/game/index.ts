@@ -48,6 +48,27 @@ export { captureCounty, updateEliminations, realmIsAlive, evaluateOutcome } from
 export type { Siege, SiegeEngines, SiegeEngineType } from './types/siege.ts';
 export type { GameOutcome } from './types/realm.ts';
 
+// Diplomacy (realm-to-realm relations: opinion, alliances, enemies, offers)
+export {
+  emptyDiplomacy,
+  ensureDiplomacy,
+  relKey,
+  opinionOf,
+  adjustOpinion,
+  setOpinion,
+  opinionBand,
+  areAllied,
+  areEnemies,
+  formAlliance,
+  breakAlliance,
+  markEnemy,
+  registerHostility,
+  runDiplomacy,
+} from './systems/diplomacy.ts';
+export type { DiplomacyLedger, HostilityResult } from './systems/diplomacy.ts';
+export { DiploMessageType, OpinionBand } from './types/diplomacy.ts';
+export type { DiplomacyState, DiploProposal, Alliance } from './types/diplomacy.ts';
+
 // AI rulers (drive non-human realms via the command protocol)
 export { takeAiTurns, planRealmTurn, isAiRealm, TRAITS_BY_PERSONALITY } from './ai/index.ts';
 export type { AiTurnLog, AiRealmLog, AiTraits } from './ai/index.ts';

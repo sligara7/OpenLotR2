@@ -75,6 +75,21 @@ export interface DisbandArmy { type: 'DisbandArmy'; armyId: string; }
 export interface SplitArmy { type: 'SplitArmy'; armyId: string; units: Partial<UnitCounts>; }
 /** Merge one army into another of yours sharing the same tile. */
 export interface CombineArmy { type: 'CombineArmy'; armyId: string; intoArmyId: string; }
+
+// --- Diplomacy (Manual Part-7) -------------------------------------------
+/** Send gold to another realm, raising their regard for you. */
+export interface SendGift { type: 'SendGift'; toRealmId: string; gold: number; }
+/** A free compliment — small goodwill, with diminishing returns. */
+export interface SendCompliment { type: 'SendCompliment'; toRealmId: string; }
+/** An insult — vents hostility and can tip a realm into permanent enmity. */
+export interface SendInsult { type: 'SendInsult'; toRealmId: string; }
+/** Propose an alliance; creates a pending offer the recipient answers. */
+export interface OfferAlliance { type: 'OfferAlliance'; toRealmId: string; }
+/** Accept or reject an alliance offer made to you. */
+export interface RespondToAlliance { type: 'RespondToAlliance'; proposalId: string; accept: boolean; }
+/** Terminate a standing alliance — the honourable way to part. */
+export interface BreakAlliance { type: 'BreakAlliance'; withRealmId: string; }
+
 export interface EndTurn { type: 'EndTurn'; }
 
 /** The full set of commands a client may send. */
@@ -97,6 +112,12 @@ export type Command =
   | DisbandArmy
   | SplitArmy
   | CombineArmy
+  | SendGift
+  | SendCompliment
+  | SendInsult
+  | OfferAlliance
+  | RespondToAlliance
+  | BreakAlliance
   | EndTurn;
 
 /** Context the server supplies when dispatching: who is acting + the RNG used

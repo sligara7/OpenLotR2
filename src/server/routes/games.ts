@@ -71,10 +71,13 @@ export function gamesRouter(store: GameStore): Router {
     }
     const actorRealmId = req.header('x-realm-id') ?? 'p1';
     const isEndTurn = parsed.data.type === 'EndTurn';
-    // Snapshot county ownership so we can report what changed hands this turn.
+    // Snapshot county ownership + the diplomatic ledger so we can report what
+    // changed hands and how relations shifted across the turn.
     const owners = isEndTurn
       ? new Map(Object.values(game.state.counties).map((c) => [c.id, c.ownerId]))
       : null;
+    const alliancesBefore = isEndTurn ? new Set(Object.keys(game.state.diplomacy.alliances)) : null;
+    const enemiesBefore = isEndTurn ? new Set(Object.keys(game.state.diplomacy.enemies)) : null;
     // Single-host turn order: when the human ends the turn, the AI rulers take
     // theirs first (through the same dispatcher, bound by the same rules), then
     // the world ticks once for everyone.
@@ -82,12 +85,19 @@ export function gamesRouter(store: GameStore): Router {
     const result = dispatch(game.state, parsed.data, { actorRealmId, rng: game.rng });
     if (result.report) game.reports.push(result.report);
 
-    if (owners) {
+    if (owners && alliancesBefore && enemiesBefore) {
       const captures: { countyId: string; ownerId: string | null }[] = [];
       for (const c of Object.values(game.state.counties)) {
         if (owners.get(c.id) !== c.ownerId) captures.push({ countyId: c.id, ownerId: c.ownerId });
       }
-      res.json({ ...result, captures });
+      const allianceKeys = Object.keys(game.state.diplomacy.alliances);
+      const enemyKeys = Object.keys(game.state.diplomacy.enemies);
+      const diplomacy = {
+        newAlliances: allianceKeys.filter((k) => !alliancesBefore.has(k)),
+        brokenAlliances: [...alliancesBefore].filter((k) => !game.state.diplomacy.alliances[k]),
+        newEnemies: enemyKeys.filter((k) => !enemiesBefore.has(k)),
+      };
+      res.json({ ...result, captures, diplomacy });
     } else {
       res.json(result);
     }

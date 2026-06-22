@@ -1,6 +1,7 @@
 /* World construction and lookups (counties + realms + adjacency graph). */
 
 import { Season } from '../types/enums.ts';
+import { emptyDiplomacy } from '../systems/diplomacy.ts';
 import type { Adjacency, GameState, Realm } from '../types/realm.ts';
 import type { County } from '../types/county.ts';
 import type { Army } from '../types/army.ts';
@@ -42,6 +43,7 @@ export function createWorld(init: WorldInit): GameState {
     armies,
     sieges: {},
     convoys: {},
+    diplomacy: emptyDiplomacy(),
     outcome: null,
   };
 }

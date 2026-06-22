@@ -71,6 +71,29 @@ test('End Turn advances the simulation', async ({ page }) => {
   await expect(page.getByTestId('turn-log')).toBeAttached();
 });
 
+test('diplomacy: the panel lists rivals and sends messages that move opinion', async ({ page }) => {
+  await page.goto('/');
+
+  // The Diplomacy panel lists the AI rivals (p2, p3) with an opinion readout.
+  await expect(page.getByTestId('diplomacy-panel')).toContainText('Diplomacy');
+  await expect(page.getByTestId('diplo-p2')).toBeVisible();
+  const before = Number(await page.getByTestId('diplo-p2-opinion').textContent());
+
+  // A gift raises p2's regard for you.
+  await page.getByTestId('diplo-gift-p2').click();
+  await expect(page.getByTestId('status')).toContainText('Applied SendGift');
+  await expect
+    .poll(async () => Number(await page.getByTestId('diplo-p2-opinion').textContent()))
+    .toBeGreaterThan(before);
+
+  // Offering an alliance creates a pending offer (button reflects it).
+  await page.getByTestId('diplo-offer-p3').click();
+  await expect(page.getByTestId('status')).toContainText('Applied OfferAlliance');
+  await expect(page.getByTestId('diplo-offer-p3')).toContainText('Offer sent');
+
+  await page.screenshot({ path: 'test-results/diplomacy.png', fullPage: true });
+});
+
 test('selecting a county exposes tax/ration/labour controls that send commands', async ({ page }) => {
   await page.goto('/');
 

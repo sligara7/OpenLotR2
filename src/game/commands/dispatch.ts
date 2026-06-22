@@ -22,6 +22,14 @@ import { attackArmy, laySiege } from './handlers/combat.ts';
 import { setBlacksmith, conscript } from './handlers/conscription.ts';
 import { hireMercenaries } from './handlers/mercenaries.ts';
 import { disbandArmy, splitArmy, combineArmy } from './handlers/army-manage.ts';
+import {
+  sendGift,
+  sendCompliment,
+  sendInsult,
+  offerAlliance,
+  respondToAlliance,
+  breakAllianceCmd,
+} from './handlers/diplomacy.ts';
 import { endTurn } from './handlers/turn.ts';
 
 export function dispatch(state: GameState, command: Command, ctx: CommandContext): CommandResult {
@@ -44,6 +52,12 @@ export function dispatch(state: GameState, command: Command, ctx: CommandContext
     case 'DisbandArmy': return disbandArmy(state, command, ctx);
     case 'SplitArmy': return splitArmy(state, command, ctx);
     case 'CombineArmy': return combineArmy(state, command, ctx);
+    case 'SendGift': return sendGift(state, command, ctx);
+    case 'SendCompliment': return sendCompliment(state, command, ctx);
+    case 'SendInsult': return sendInsult(state, command, ctx);
+    case 'OfferAlliance': return offerAlliance(state, command, ctx);
+    case 'RespondToAlliance': return respondToAlliance(state, command, ctx);
+    case 'BreakAlliance': return breakAllianceCmd(state, command, ctx);
     case 'EndTurn': return endTurn(state, ctx);
     default: {
       // Exhaustiveness guard: if a Command variant is added without a case,

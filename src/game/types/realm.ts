@@ -58,6 +58,8 @@ export interface GameState {
   sieges: Record<string, import('./siege.ts').Siege>;
   /** Supply convoys in transit, keyed by id. */
   convoys: Record<string, import('./convoy.ts').Convoy>;
+  /** Standing between realms — opinion, alliances, enemies, pending offers. */
+  diplomacy: import('./diplomacy.ts').DiplomacyState;
   /** Set once the game has been decided; null while it is ongoing. */
   outcome: GameOutcome | null;
 }

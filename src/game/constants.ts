@@ -312,3 +312,44 @@ export const PLAGUE = {
 
 /** Industries that always physically exist in every county. */
 export const UNIVERSAL_INDUSTRIES: Industry[] = [Industry.Blacksmith];
+
+// --- Diplomacy (Manual Part-7 "Diplomacy") --------------------------------
+// Opinion is a directional -100..+100 score; gifts/compliments raise it,
+// insults and attacks lower it. The bands below colour the relationship bar.
+export const DIPLOMACY = {
+  /** Hard bounds on any opinion score. */
+  opinionMin: -100,
+  opinionMax: 100,
+  /** Opinion >= this reads "friendly" (green); <= -friendlyBand reads
+   *  "hostile" (red); in between is "indifferent" (blue). */
+  friendlyBand: 25,
+  /** Opinion gained per gold gifted, and the most a single gift can buy
+   *  (so you can't simply purchase devotion in one lump). */
+  giftOpinionPerGold: 0.05,
+  giftOpinionCap: 30,
+  /** A compliment is free favour, but its value shrinks as opinion rises —
+   *  "too many kind words can work against you". */
+  complimentGain: 8,
+  /** Insults sting (and can tip a relationship into permanent enmity). */
+  insultPenalty: 18,
+  /** Attacking a realm lowers its opinion of you by this much. */
+  attackOpinionHit: 25,
+  /** At/below this opinion a realm regards you as a permanent ENEMY. */
+  enemyThreshold: -75,
+  /** AI accepts an alliance offer when it likes the proposer at least this much. */
+  allianceMinOpinion: 20,
+  /** Forming an alliance warms both sides by this much immediately. */
+  allianceFormBonus: 15,
+  /** Breaking an alliance the honourable way costs only the other side's regard. */
+  breakOpinionHit: 15,
+  /** DOUBLECROSS: attacking an ally without terminating first. The victim's
+   *  regard craters and EVERY other realm trusts you less. */
+  doublecrossVictimHit: 80,
+  doublecrossReputationHit: 25,
+  /** Each season, opinion drifts this much back toward neutral (0)... */
+  opinionDecayPerTurn: 1,
+  /** ...except allies, who warm by this much per season instead. */
+  allianceWarmthPerTurn: 2,
+  /** An unanswered alliance offer expires after this many turns. */
+  proposalTtl: 4,
+} as const;
