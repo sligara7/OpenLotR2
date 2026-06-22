@@ -1,32 +1,35 @@
 /*
- *  `app` module
- *  ============
+ *  Renderer entry point.
+ *  =====================
  *
- *  Provides the game initialization routine.
+ *  The game is driven entirely by the API-backed SVG/DOM UI (game-controller →
+ *  Hud + MapTilesSvg). The original Phaser canvas (legacy menu/art scenes) is
+ *  NOT part of that loop, so it is now opt-in: pass `?phaser=1` to boot it. It
+ *  is dynamically imported so Phaser (~1MB) stays out of the default bundle, and
+ *  its WebGL initialisation never runs (and never errors) in the normal game.
  */
 
-//  Set up the global `Phaser` BEFORE importing config/scenes (they reference it
-//  at module-evaluation time). ES module ordering guarantees this runs first.
-import "./phaser-global";
-import * as config from "./config";
 import { startGameUI } from "./game-controller";
 
-declare const Phaser: typeof import("phaser").default;
-
-//  Start the API-driven control UI first — it must work regardless of whether
-//  the Phaser canvas can initialize (e.g. headless browsers).
+//  Start the API-driven control UI — this is the game.
 void startGameUI();
 
-//  Boot the Phaser canvas (visuals). Failure here must not take down the UI.
-export function boot() {
+//  Optionally boot the legacy Phaser canvas. Failure here must not take down the
+//  UI; the WebGL render loop can also throw asynchronously, hence the guard plus
+//  a global handler that swallows Phaser's framebuffer errors when it is on.
+async function bootPhaser(): Promise<void> {
+  await import("./phaser-global"); // sets the global `Phaser` the scenes expect
+  const config = await import("./config");
+  const Phaser = (globalThis as unknown as { Phaser: typeof import("phaser").default }).Phaser;
   try {
-    // Spread into a plain object: `import * as config` is an ES module namespace
-    // (null prototype), but Phaser's Config parser calls source.hasOwnProperty().
-    return new Phaser.Game({ ...config } as unknown as Phaser.Types.Core.GameConfig);
+    // Spread into a plain object: an ES module namespace has a null prototype,
+    // but Phaser's Config parser calls source.hasOwnProperty().
+    new Phaser.Game({ ...config } as unknown as Phaser.Types.Core.GameConfig);
   } catch (e) {
     console.error("Phaser failed to start (continuing with DOM UI):", e);
-    return null;
   }
 }
 
-boot();
+if (typeof location !== "undefined" && new URLSearchParams(location.search).has("phaser")) {
+  void bootPhaser();
+}
