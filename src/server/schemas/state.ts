@@ -192,7 +192,7 @@ export const DiplomacyStateSchema = z
 export const GameOutcomeSchema = z
   .object({
     winnerId: z.string().nullable(),
-    reason: z.enum(['conquest', 'last-standing', 'defeat', 'extinction']),
+    reason: z.enum(['last-standing', 'defeat', 'extinction']),
   })
   .openapi('GameOutcome');
 

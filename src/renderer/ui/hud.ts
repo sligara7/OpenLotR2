@@ -298,7 +298,7 @@ export class Hud {
     const winner = outcome.winnerId ? realmName(outcome.winnerId) : null;
     let text: string;
     if (outcome.reason === 'extinction') text = 'The realm lies in ruins — no victor.';
-    else if (won) text = outcome.reason === 'conquest' ? 'VICTORY — you rule the land by conquest!' : 'VICTORY — you are the last lord standing!';
+    else if (won) text = 'VICTORY — every rival is vanquished; the crown is yours!';
     else text = `DEFEAT — ${winner ?? 'a rival'} prevails.`;
     this.banner.textContent = text;
     this.banner.style.background = won ? '#2e5a2a' : '#5a2a26';

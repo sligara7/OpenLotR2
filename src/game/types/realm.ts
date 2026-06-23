@@ -50,15 +50,15 @@ export interface GameOptions {
  *  ("`${col},${row}`" → true). Monotonic — explored land stays revealed. */
 export type ExplorationState = Record<string, Record<string, true>>;
 
-/** How a game ended (null while it is still being played).
- *  - conquest:      a realm holds a supermajority of all counties
- *  - last-standing: every rival realm has been eliminated
+/** How a game ended (null while it is still being played). Victory comes only by
+ *  total conquest — eliminating every rival.
+ *  - last-standing: every rival realm has been eliminated (the lone victor)
  *  - defeat:        the human player was eliminated while rivals fight on
  *  - extinction:    no realm survives at all */
 export interface GameOutcome {
   /** The victorious realm, or null on extinction. */
   winnerId: string | null;
-  reason: 'conquest' | 'last-standing' | 'defeat' | 'extinction';
+  reason: 'last-standing' | 'defeat' | 'extinction';
 }
 
 /** The complete simulated world at a point in time. */

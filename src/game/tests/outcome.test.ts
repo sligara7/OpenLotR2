@@ -32,13 +32,19 @@ test('outcome: last realm standing wins', () => {
   assertEqual(o?.winnerId, 'p1');
 });
 
-test('outcome: a supermajority of counties wins by conquest', () => {
+test('outcome: dominating the map is NOT a win while any rival survives', () => {
   const world = createWorld({
     realms: [createRealm({ id: 'p1', name: 'You', isHuman: true }), createRealm({ id: 'p2', name: 'Rival' })],
-    counties: [county('a', 'p1'), county('b', 'p1'), county('c', 'p2'), county('d', null)],
+    // p1 holds the lion's share, but p2 still clings to one county.
+    counties: [county('a', 'p1'), county('b', 'p1'), county('c', 'p1'), county('d', 'p2')],
   });
-  const o = evaluateOutcome(world); // p1 holds 2 of 4 = 50%
-  assertEqual(o?.reason, 'conquest');
+  assertEqual(evaluateOutcome(world), null, 'victory needs total conquest, not a supermajority');
+
+  // Take that last county: p2 now holds nothing and has no army → eliminated → win.
+  world.counties['d'].ownerId = 'p1';
+  updateEliminations(world);
+  const o = evaluateOutcome(world);
+  assertEqual(o?.reason, 'last-standing', 'only total elimination wins');
   assertEqual(o?.winnerId, 'p1');
 });
 

@@ -1,6 +1,6 @@
 /* Combat — combined-arms field battles, matchups, army attacks, and capture. */
 
-import { test, assert, assertEqual, assertGreater, assertLess } from '../testing/harness.ts';
+import { test, assert, assertEqual, assertGreater } from '../testing/harness.ts';
 import { createCounty } from '../state/county.ts';
 import { createRealm } from '../state/realm.ts';
 import { createWorld } from '../state/world.ts';

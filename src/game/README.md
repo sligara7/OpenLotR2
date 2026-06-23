@@ -136,8 +136,8 @@ wages, and two mercenary bands won't combine (rival clans); disbanding a band
 disperses it (no troops or arms returned). This completes the manual's Part-4.
 
 **Winning** (`systems/conquest.ts` `evaluateOutcome`, checked each turn and stored
-on `GameState.outcome`): the game is decided when a realm holds a supermajority of
-all counties (`VICTORY_COUNTY_FRACTION`, *conquest*), when only one realm survives
+on `GameState.outcome`): victory comes only by total conquest — the game is decided
+when only one realm survives, every rival stripped of all counties and armies
 (*last-standing*), or — for the single-player game — when the human is eliminated
 (*defeat*); no survivors is *extinction*. Once `outcome` is set, `EndTurn` is
 refused and the client shows a victory/defeat banner.

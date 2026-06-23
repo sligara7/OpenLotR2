@@ -7,7 +7,7 @@
  * possible elimination of the loser — stay consistent however the county falls.
  */
 
-import { CONQUEST, VICTORY_COUNTY_FRACTION } from '../constants.ts';
+import { CONQUEST } from '../constants.ts';
 import type { GameState, GameOutcome } from '../types/realm.ts';
 
 /**
@@ -59,25 +59,17 @@ function countyCount(state: GameState, realmId: string): number {
 
 /**
  * Decide whether the game is over, from a single-player standpoint. Returns the
- * outcome (winner + reason) or null while play continues. Checked each turn:
- *  - extinction: no realm survives
- *  - last-standing: exactly one realm survives
- *  - conquest: a realm holds ≥ VICTORY_COUNTY_FRACTION of all counties
- *  - defeat: the human player has been eliminated while rivals fight on
+ * outcome (winner + reason) or null while play continues. Checked each turn.
+ * The ONLY road to victory is total conquest — outlasting every rival until
+ * none holds a county or fields an army:
+ *  - extinction:   no realm survives
+ *  - last-standing: exactly one realm survives (every challenger eliminated)
+ *  - defeat:        the human player has been eliminated while rivals fight on
  */
 export function evaluateOutcome(state: GameState): GameOutcome | null {
   const alive = Object.values(state.realms).filter((r) => !r.eliminated);
   if (alive.length === 0) return { winnerId: null, reason: 'extinction' };
   if (alive.length === 1) return { winnerId: alive[0].id, reason: 'last-standing' };
-
-  const total = Object.keys(state.counties).length;
-  if (total > 0) {
-    for (const r of alive) {
-      if (countyCount(state, r.id) / total >= VICTORY_COUNTY_FRACTION) {
-        return { winnerId: r.id, reason: 'conquest' };
-      }
-    }
-  }
 
   const human = Object.values(state.realms).find((r) => r.isHuman);
   if (human && human.eliminated) {

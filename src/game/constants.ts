@@ -223,9 +223,8 @@ export const CONQUEST = {
   pacifySeasons: 4,
 } as const;
 
-/** Share of ALL counties a realm must hold to win by conquest (dominating the
- *  map even with rivals still alive). Last-realm-standing also wins. */
-export const VICTORY_COUNTY_FRACTION = 0.5;
+// Victory comes only by total conquest — the last realm standing, with every
+// rival stripped of all counties and armies (see systems/conquest.ts).
 
 // --- Taxes (Manual Part-3 "Taxes", "Castles and Tax Revenues") ------------
 export const TAX_GOLD_PER_PERSON = 0.05; // crowns per person at 100% rate
