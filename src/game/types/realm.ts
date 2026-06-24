@@ -37,6 +37,20 @@ export type Adjacency = Record<string, string[]>;
  *  remake, so it is not a toggle here. */
 export type Difficulty = 'easy' | 'normal' | 'hard';
 
+/** Adjustable behaviour dials for the AI rulers. The two multipliers scale each
+ *  personality's own value (so the Knight stays more warlike than the Bishop);
+ *  `boldness` is the absolute exploration rate. All default to leaving the AI as
+ *  designed (aggression 1, diplomacy 1, boldness 0.3). */
+export interface AiTuning {
+  /** Multiplier on each ruler's personality aggression (0 = pacifist world). */
+  aggression: number;
+  /** Multiplier on each ruler's taste for diplomacy (0 = no alliances/gifts). */
+  diplomacy: number;
+  /** Exploration vs exploitation: how often the AI tries a non-greedy front or
+   *  gambit instead of the safe choice (0 = pure greedy, ~0.6 = very erratic). */
+  boldness: number;
+}
+
 export interface GameOptions {
   /** Seasonal grain labour, weather, and fertility all come into play. */
   advancedFarming: boolean;
@@ -44,6 +58,8 @@ export interface GameOptions {
   exploration: boolean;
   /** How hard the AI rulers push (scales their economy & host). */
   difficulty: Difficulty;
+  /** Behavioural dials for the AI rulers. */
+  ai: AiTuning;
 }
 
 /** Per-realm fog-of-war memory: the set of tile keys each realm has explored

@@ -1,6 +1,7 @@
 /* World construction and lookups (counties + realms + adjacency graph). */
 
 import { Season } from '../types/enums.ts';
+import { AI_TUNING_DEFAULTS } from '../constants.ts';
 import { emptyDiplomacy } from '../systems/diplomacy.ts';
 import { emptyExploration, revealDisk } from '../systems/exploration.ts';
 import type { Adjacency, GameOptions, GameState, Realm } from '../types/realm.ts';
@@ -51,6 +52,11 @@ export function createWorld(init: WorldInit): GameState {
       advancedFarming: init.options?.advancedFarming ?? false,
       exploration: init.options?.exploration ?? false,
       difficulty: init.options?.difficulty ?? 'normal',
+      ai: {
+        aggression: init.options?.ai?.aggression ?? AI_TUNING_DEFAULTS.aggression,
+        diplomacy: init.options?.ai?.diplomacy ?? AI_TUNING_DEFAULTS.diplomacy,
+        boldness: init.options?.ai?.boldness ?? AI_TUNING_DEFAULTS.boldness,
+      },
     },
     exploration: emptyExploration(),
     outcome: null,

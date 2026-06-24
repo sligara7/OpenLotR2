@@ -9,7 +9,7 @@
 // Types
 export * from './types/enums.ts';
 export type { County, Field, CountyFood, Castle, LabourPolicy, HappinessDelta } from './types/county.ts';
-export type { Realm, Treasury, GameState, Adjacency, GameOptions, ExplorationState, Difficulty } from './types/realm.ts';
+export type { Realm, Treasury, GameState, Adjacency, GameOptions, AiTuning, ExplorationState, Difficulty } from './types/realm.ts';
 export type { Army } from './types/army.ts';
 
 // State construction

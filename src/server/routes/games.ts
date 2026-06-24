@@ -22,9 +22,13 @@ export function gamesRouter(store: GameStore): Router {
       return;
     }
     const seed = parsed.data.seed ?? (Date.now() & 0x7fffffff);
-    const { advancedFarming, exploration, difficulty, nobles, startingGold, armySize, startingCastle, countyStatus } = parsed.data;
+    const {
+      advancedFarming, exploration, difficulty, nobles, startingGold, armySize, startingCastle, countyStatus,
+      aiAggression, aiDiplomacy, aiBoldness,
+    } = parsed.data;
     const game = store.create(seed, parsed.data.scenario, {
       advancedFarming, exploration, difficulty, nobles, startingGold, armySize, startingCastle, countyStatus,
+      aiAggression, aiDiplomacy, aiBoldness,
     });
     res.status(201).json({ gameId: game.id, seed: game.seed, state: game.state });
   });

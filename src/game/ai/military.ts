@@ -15,7 +15,7 @@
 import { buildBritainTileMap, countyTowns, findTilePath, hexNeighbours, isFerryLink } from '../maps/index.ts';
 import { countiesOfRealm } from '../state/world.ts';
 import { areAllied, requestsTo } from '../systems/diplomacy.ts';
-import { ARMED_UNITS, HAPPINESS, MIN_ARMY_SIZE } from '../constants.ts';
+import { AI_TUNING_DEFAULTS, ARMED_UNITS, HAPPINESS, MIN_ARMY_SIZE } from '../constants.ts';
 import { UnitType } from '../types/enums.ts';
 import type { GameState, Realm } from '../types/realm.ts';
 import type { Army } from '../types/army.ts';
@@ -28,10 +28,14 @@ import type { AiTraits } from './traits.ts';
 const ATTACK_CONFIDENCE = 1.2;
 /** Edge the AI will gamble on when it "explores" instead of playing it safe. */
 const ATTACK_GAMBLE = 0.9;
-/** Exploration rate: how often the AI eschews the greedy choice for a different
- *  front or a riskier fight (exploration vs exploitation). Breaks the standoffs
- *  that arise when every realm always nibbles its single softest border. */
-const EXPLORE_EPSILON = 0.3;
+
+/** How often this realm eschews the greedy choice for a different front or a
+ *  riskier fight (exploration vs exploitation) — the per-game `ai.boldness`
+ *  dial. Breaks the standoffs that arise when every realm always nibbles its
+ *  single softest border. */
+function exploreRate(state: GameState): number {
+  return state.options?.ai?.boldness ?? AI_TUNING_DEFAULTS.boldness;
+}
 /** Army the AI wants to field scales with the realm: a bigger empire raises a
  *  bigger host (capped, so it never bankrupts itself on wages). */
 const ARMY_PER_COUNTY = 8;
@@ -79,7 +83,7 @@ function borderTargets(state: GameState, realm: Realm): { id: string; score: num
 
 /**
  * Choose a county to march on. EXPLOIT (the common case): the softest border —
- * the greedy pick. EXPLORE (with EXPLORE_EPSILON): a random border instead, so
+ * the greedy pick. EXPLORE (with the ai.boldness rate): a random border, so
  * the realm commits to a fresh front rather than forever oscillating toward
  * whichever single county happens to be weakest this turn. The randomness draws
  * from the seeded game RNG, so games stay deterministic; without an RNG (unit
@@ -88,7 +92,7 @@ function borderTargets(state: GameState, realm: Realm): { id: string; score: num
 function chooseBorderTarget(state: GameState, realm: Realm, rng?: Rng): string | null {
   const targets = borderTargets(state, realm);
   if (targets.length === 0) return null;
-  if (rng && rng.chance(EXPLORE_EPSILON)) {
+  if (rng && rng.chance(exploreRate(state))) {
     return targets[rng.int(0, targets.length - 1)].id;
   }
   return targets.reduce((a, b) => (b.score < a.score ? b : a)).id;
@@ -136,7 +140,7 @@ function planArmy(state: GameState, realm: Realm, army: Army, traits: AiTraits, 
   // that form when two evenly-matched hosts each wait for an advantage.
   const foe = enemyInReach(state, army);
   if (foe) {
-    const edge = rng && rng.chance(EXPLORE_EPSILON) ? ATTACK_GAMBLE : ATTACK_CONFIDENCE;
+    const edge = rng && rng.chance(exploreRate(state)) ? ATTACK_GAMBLE : ATTACK_CONFIDENCE;
     if (army.soldiers > foe.soldiers * edge) {
       return { type: 'AttackArmy', armyId: army.id, targetArmyId: foe.id };
     }

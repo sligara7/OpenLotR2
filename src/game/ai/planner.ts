@@ -14,6 +14,8 @@ import { planGovernance } from './governance.ts';
 import { planMilitary, planReinforce } from './military.ts';
 import { planDiplomacy } from './diplomacy.ts';
 import { TRAITS_BY_PERSONALITY, DEFAULT_TRAITS } from './traits.ts';
+import { AI_TUNING_DEFAULTS } from '../constants.ts';
+import type { AiTraits } from './traits.ts';
 import type { GameState, Realm } from '../types/realm.ts';
 import type { Command } from '../commands/types.ts';
 import type { Rng } from '../rng.ts';
@@ -35,10 +37,19 @@ export function isAiRealm(realm: Realm): boolean {
   return !realm.isHuman && realm.personality !== null && !realm.eliminated;
 }
 
+const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
+
+/** Apply the per-game AI tuning multipliers to a personality's base traits. */
+function tunedTraits(base: AiTraits, state: GameState): AiTraits {
+  const ai = state.options?.ai ?? AI_TUNING_DEFAULTS;
+  return { ...base, aggression: clamp01(base.aggression * ai.aggression), diplomacy: clamp01(base.diplomacy * ai.diplomacy) };
+}
+
 /** All commands an AI ruler wants to issue this turn (governance + maneuver).
  *  The seeded `rng`, when supplied, drives the AI's exploration choices. */
 export function planRealmTurn(state: GameState, realm: Realm, rng?: Rng): Command[] {
-  const traits = realm.personality ? TRAITS_BY_PERSONALITY[realm.personality] : DEFAULT_TRAITS;
+  const base = realm.personality ? TRAITS_BY_PERSONALITY[realm.personality] : DEFAULT_TRAITS;
+  const traits = tunedTraits(base, state);
   // Order: conduct diplomacy, govern the economy, raise/forge troops, then
   // maneuver (so alliances settle before armies pick targets, and fresh
   // recruits march out the same turn).

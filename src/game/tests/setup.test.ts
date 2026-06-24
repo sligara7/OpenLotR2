@@ -4,6 +4,7 @@ import { test, assert, assertEqual, assertGreater } from '../testing/harness.ts'
 import { createBritainWorld } from '../scenarios.ts';
 import { CastleType } from '../types/enums.ts';
 import { countiesOfRealm } from '../state/world.ts';
+import { planRealmTurn } from '../ai/planner.ts';
 
 const ownedArmies = (state: ReturnType<typeof createBritainWorld>, realmId: string) =>
   Object.values(state.armies).filter((a) => a.ownerId === realmId);
@@ -56,6 +57,27 @@ test('starting castle: None leaves an open town; a grander castle garrisons more
   const stone = createBritainWorld({ startingCastle: CastleType.StoneCastle });
   assertGreater(stone.counties.hampshire.castle.garrison, motte.counties.hampshire.castle.garrison,
     'a stone castle holds a larger garrison');
+});
+
+test('AI tuning: defaults are recorded, and the dials reshape behaviour', () => {
+  const def = createBritainWorld();
+  assertEqual(def.options.ai.aggression, 1, 'aggression default');
+  assertEqual(def.options.ai.diplomacy, 1, 'diplomacy default');
+  assertEqual(def.options.ai.boldness, 0.3, 'boldness default');
+
+  // Aggression ×0 stands every army down — even the war-loving Baron issues no
+  // attack/march/siege commands (his aggression 0.7 → 0, below the 0.3 march gate).
+  const pacifist = createBritainWorld({ aiAggression: 0 });
+  const baron = pacifist.realms.p2;
+  const plan = planRealmTurn(pacifist, baron);
+  const warlike = plan.filter((c) => c.type === 'MoveArmy' || c.type === 'AttackArmy' || c.type === 'LaySiege' || c.type === 'FerryArmy');
+  assertEqual(warlike.length, 0, 'a pacifist-tuned world makes no war');
+
+  // Diplomacy ×0 silences alliance overtures.
+  const noDiplo = createBritainWorld({ aiDiplomacy: 0 });
+  noDiplo.diplomacy.opinions.p2 = { p3: 80 };
+  const dplan = planRealmTurn(noDiplo, noDiplo.realms.p2);
+  assertEqual(dplan.filter((c) => c.type === 'OfferAlliance').length, 0, 'no diplomacy, no overtures');
 });
 
 test('county status: a strong start is more populous than a weak one', () => {

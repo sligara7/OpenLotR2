@@ -51,6 +51,11 @@ export const CreateGameRequestSchema = z
     startingCastle: CastleTypeSchema.optional(),
     /** Strength of each player's starting county. */
     countyStatus: z.enum(['weak', 'normal', 'strong']).optional(),
+    /** AI behaviour dials (see AiTuning): aggression/diplomacy multipliers and the
+     *  exploration-vs-exploitation boldness rate. */
+    aiAggression: z.number().min(0).max(2).optional(),
+    aiDiplomacy: z.number().min(0).max(2).optional(),
+    aiBoldness: z.number().min(0).max(1).optional(),
   })
   .openapi('CreateGameRequest');
 

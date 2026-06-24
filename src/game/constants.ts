@@ -226,6 +226,11 @@ export const CONQUEST = {
 // Victory comes only by total conquest — the last realm standing, with every
 // rival stripped of all counties and armies (see systems/conquest.ts).
 
+/** Default AI behaviour dials (GameOptions.ai) — leaves the AI as designed.
+ *  aggression/diplomacy are multipliers on each personality's value; boldness is
+ *  the epsilon-greedy exploration rate the maneuver planner reads. */
+export const AI_TUNING_DEFAULTS = { aggression: 1, diplomacy: 1, boldness: 0.3 } as const;
+
 // --- Taxes (Manual Part-3 "Taxes", "Castles and Tax Revenues") ------------
 export const TAX_GOLD_PER_PERSON = 0.05; // crowns per person at 100% rate
 /** Tax rate (0..100) the populace tolerates before happiness suffers. */

@@ -146,6 +146,9 @@ test('custom game: the setup form starts a tailored game', async ({ page }) => {
   await expect(page.getByTestId('treasury')).toContainText('500 gold');
   // A fourth noble now competes (shows up in the diplomacy panel).
   await expect(page.getByTestId('diplo-p4')).toBeVisible();
+  // The AI tuning dials are present in the setup form.
+  await expect(page.getByTestId('setup-ai-aggression')).toBeVisible();
+  await expect(page.getByTestId('setup-ai-boldness')).toBeVisible();
 
   await page.screenshot({ path: 'test-results/custom-game.png', fullPage: true });
 });

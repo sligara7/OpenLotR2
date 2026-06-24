@@ -213,6 +213,11 @@ export const GameStateSchema = z
       advancedFarming: z.boolean(),
       exploration: z.boolean(),
       difficulty: z.enum(['easy', 'normal', 'hard']),
+      ai: z.object({
+        aggression: z.number(),
+        diplomacy: z.number(),
+        boldness: z.number(),
+      }).openapi('AiTuning'),
     }).openapi('GameOptions'),
     exploration: z.record(z.string(), z.record(z.string(), z.literal(true))).openapi('ExplorationState'),
     outcome: GameOutcomeSchema.nullable(),

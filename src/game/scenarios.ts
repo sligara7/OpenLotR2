@@ -15,7 +15,7 @@ import {
   WOOD_PER_TILE, STONE_PER_TILE, IRON_PER_TILE,
   GRAIN_SACKS_PER_FIELD, GRAIN_YIELD_MULTIPLIER,
   FOOD_SURPLUS_TARGET, STARTING_FOOD_SEASONS,
-  CASTLE_SPEC, SIEGE, ADVANCED_FARMING,
+  CASTLE_SPEC, SIEGE, ADVANCED_FARMING, AI_TUNING_DEFAULTS,
 } from './constants.ts';
 import type { County } from './types/county.ts';
 import type { Difficulty, GameOptions, GameState } from './types/realm.ts';
@@ -41,6 +41,10 @@ export interface GameSetup {
   startingCastle?: CastleTypeT;
   /** How strong each starting county is. Default 'normal'. */
   countyStatus?: 'weak' | 'normal' | 'strong';
+  /** AI behaviour dials (see AiTuning). Each defaults to leaving the AI as designed. */
+  aiAggression?: number;
+  aiDiplomacy?: number;
+  aiBoldness?: number;
 }
 
 /** Roster of possible nobles, human first; AI rivals fill the rest in order.
@@ -52,6 +56,20 @@ const ROSTER: { id: string; name: string; personality: NoblePersonality | null; 
   { id: 'p4', name: 'Earl of York', personality: NoblePersonality.Countess, counties: ['yorkshire', 'durham', 'lancashire'] },
   { id: 'p5', name: 'De Warenne', personality: NoblePersonality.Bishop, counties: ['norfolk', 'suffolk', 'cambridgeshire'] },
 ];
+
+/** Build the GameOptions block (option flags + AI tuning) from a setup. */
+function optionsFrom(setup?: GameSetup): GameOptions {
+  return {
+    advancedFarming: setup?.advancedFarming ?? false,
+    exploration: setup?.exploration ?? false,
+    difficulty: setup?.difficulty ?? 'normal',
+    ai: {
+      aggression: setup?.aiAggression ?? AI_TUNING_DEFAULTS.aggression,
+      diplomacy: setup?.aiDiplomacy ?? AI_TUNING_DEFAULTS.diplomacy,
+      boldness: setup?.aiBoldness ?? AI_TUNING_DEFAULTS.boldness,
+    },
+  };
+}
 
 /** Starting-county strength multipliers for the County Status setting. */
 const COUNTY_STATUS_MUL: Record<'weak' | 'normal' | 'strong', number> = { weak: 0.75, normal: 1, strong: 1.3 };
@@ -92,11 +110,7 @@ function retinue(total: number): Partial<UnitCounts> {
  * counties in a line so immigration flows along the happiness gradient.
  */
 export function createDemoWorld(setup?: GameSetup): GameState {
-  const options: GameOptions = {
-    advancedFarming: setup?.advancedFarming ?? false,
-    exploration: setup?.exploration ?? false,
-    difficulty: setup?.difficulty ?? 'normal',
-  };
+  const options = optionsFrom(setup);
   const player = createRealm({ id: 'p1', name: 'You', isHuman: true, gold: 200 });
   const rival = createRealm({ id: 'p2', name: 'Baron de Vere' });
 
@@ -138,11 +152,7 @@ export function createDemoWorld(setup?: GameSetup): GameState {
  * size, starting castle, county status, difficulty) all flow through `setup`.
  */
 export function createBritainWorld(setup?: GameSetup): GameState {
-  const options: GameOptions = {
-    advancedFarming: setup?.advancedFarming ?? false,
-    exploration: setup?.exploration ?? false,
-    difficulty: setup?.difficulty ?? 'normal',
-  };
+  const options = optionsFrom(setup);
   const nobles = Math.max(2, Math.min(ROSTER.length, Math.round(setup?.nobles ?? 3)));
   const startingGold = Math.max(0, Math.round(setup?.startingGold ?? 200));
   const armySize = Math.max(0, Math.round(setup?.armySize ?? 40));

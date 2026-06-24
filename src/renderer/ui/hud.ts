@@ -93,6 +93,9 @@ export class Hud {
   private castleSel!: HTMLSelectElement;
   private statusSel!: HTMLSelectElement;
   private difficultySel!: HTMLSelectElement;
+  private aiAggrInput!: HTMLInputElement;
+  private aiDiploInput!: HTMLInputElement;
+  private aiBoldInput!: HTMLInputElement;
   private armory!: HTMLDivElement;
   private armyPanel!: HTMLDivElement;
   private armyName!: HTMLDivElement;
@@ -242,6 +245,11 @@ export class Hud {
     this.goldInput = this.numRow(form, 'start-gold', 'Start gold', 200);
     this.armyInput = this.numRow(form, 'army-size', 'Army size', 40);
 
+    // AI behaviour dials (1 = as designed; see AiTuning).
+    this.aiAggrInput = this.floatRow(form, 'ai-aggression', 'AI aggression ×', 1, 2);
+    this.aiDiploInput = this.floatRow(form, 'ai-diplomacy', 'AI diplomacy ×', 1, 2);
+    this.aiBoldInput = this.floatRow(form, 'ai-boldness', 'AI boldness', 0.3, 1);
+
     // Advanced-play toggles.
     this.advFarmCheck = el('input', 'adv-farming'); this.advFarmCheck.type = 'checkbox';
     this.explorationCheck = el('input', 'exploration'); this.explorationCheck.type = 'checkbox';
@@ -260,6 +268,9 @@ export class Hud {
       armySize: Math.max(0, Math.floor(Number(this.armyInput.value) || 0)),
       startingCastle: this.castleSel.value as GameSetup['startingCastle'],
       countyStatus: this.statusSel.value as GameSetup['countyStatus'],
+      aiAggression: Math.max(0, Math.min(2, Number(this.aiAggrInput.value) || 1)),
+      aiDiplomacy: Math.max(0, Math.min(2, Number(this.aiDiploInput.value) || 1)),
+      aiBoldness: Math.max(0, Math.min(1, Number(this.aiBoldInput.value) || 0)),
     };
   }
 
@@ -276,6 +287,15 @@ export class Hud {
     const lbl = el('span'); lbl.textContent = label;
     const input = el('input', `setup-${testId}`, 'width:64px;') as HTMLInputElement;
     input.type = 'number'; input.min = '0'; input.value = String(value);
+    form.append(lbl, input);
+    return input;
+  }
+
+  /** A fractional 0..max input (for the AI dials), stepping by tenths. */
+  private floatRow(form: HTMLElement, testId: string, label: string, value: number, max: number): HTMLInputElement {
+    const lbl = el('span'); lbl.textContent = label;
+    const input = el('input', `setup-${testId}`, 'width:64px;') as HTMLInputElement;
+    input.type = 'number'; input.min = '0'; input.max = String(max); input.step = '0.1'; input.value = String(value);
     form.append(lbl, input);
     return input;
   }

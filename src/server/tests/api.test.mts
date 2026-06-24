@@ -108,6 +108,20 @@ test('api: out-of-range custom settings are rejected (Zod)', async () => {
   assertEqual(res.status, 400, 'nobles capped at 5 by the schema');
 });
 
+test('api: AI tuning dials flow into the game options', async () => {
+  const res = await post('/api/games', {
+    scenario: 'britain', aiAggression: 1.5, aiDiplomacy: 0, aiBoldness: 0.5,
+  });
+  assertEqual(res.status, 201, 'created');
+  const ai = (await body(res)).state.options.ai;
+  assertEqual(ai.aggression, 1.5, 'aggression recorded');
+  assertEqual(ai.diplomacy, 0, 'diplomacy recorded');
+  assertEqual(ai.boldness, 0.5, 'boldness recorded');
+  // A default game leaves them at the designed values.
+  const def = await post('/api/games', { scenario: 'britain' });
+  assertEqual((await body(def)).state.options.ai.aggression, 1, 'default aggression');
+});
+
 test('api: a malformed command is rejected with 400 (Zod validation)', async () => {
   const id = await newGame();
   const res = await post(`/api/games/${id}/commands`, { type: 'SetTaxRate', countyId: 'york', rate: 999 });
