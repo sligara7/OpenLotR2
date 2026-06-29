@@ -7,7 +7,10 @@
  * the canvas renderer can't initialize.
  */
 
-import { api } from './services/api.ts';
+// The backend runs in-process (the simulation core in the browser/WebView), so
+// the game works fully offline. ./services/api.ts is the alternative HTTP client
+// for a hosted/multiplayer server and exposes the same interface.
+import { api } from './services/local-api.ts';
 import { Hud, cycleRation, type ControlKind } from './ui/hud.ts';
 import { MapTilesSvg } from './ui/map-tiles-svg.ts';
 import { composition } from './ui/units.ts';
@@ -354,11 +357,20 @@ export async function startGameUI(): Promise<void> {
   mapView = new MapTilesSvg(); // canvas-free SVG map; subscribes to the state bus
   mapView.mount();
   hud.mount();
-  hud.setStatus('Creating game…');
 
-  const { gameId: id, state } = await api.createGame(1, 'britain');
-  gameId = id;
-  publish(state);
-  hud.setStatus(`Game ${id} ready.`);
-  (window as unknown as { __olr?: unknown }).__olr = { gameId: id };
+  // Resume the autosaved game from a previous session if one exists, otherwise
+  // start a fresh Britain game.
+  const resumed = await api.resume();
+  if (resumed) {
+    gameId = resumed.gameId;
+    publish(resumed.state);
+    hud.setStatus(`Resumed — year ${resumed.state.year}, turn ${resumed.state.turn}.`);
+  } else {
+    hud.setStatus('Creating game…');
+    const { gameId: id, state } = await api.createGame(1, 'britain');
+    gameId = id;
+    publish(state);
+    hud.setStatus(`Game ${id} ready.`);
+  }
+  (window as unknown as { __olr?: unknown }).__olr = { gameId };
 }
