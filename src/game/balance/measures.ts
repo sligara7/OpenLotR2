@@ -58,6 +58,13 @@ export interface GameResult {
   /** Counties that spent a season below Normal rations — the famine measure. */
   hungrySeasons: number;
   deserters: number;
+  /** Share of the purse the wage bill actually consumed, averaged over the
+   *  game. Deserters staying at zero is only interesting once you know whether
+   *  upkeep was ever close to biting: at a few percent, army size is limited by
+   *  something other than money. */
+  wagePressure: number;
+  /** Turns on which at least one realm could not pay in full. */
+  shortPaydays: number;
 
   // --- war -----------------------------------------------------------------
   siegesStarted: number;
@@ -111,16 +118,28 @@ export interface Tally {
   siegesWon: number;
   siegesAbandoned: number;
   assaultsRepulsed: number;
+  /** Wages owed across every realm, summed over the game. */
+  wagesDue: number;
+  /** Gold each realm held when the bill came, summed over the game. */
+  pursesAtPayday: number;
+  /** Turns on which at least one realm could not pay in full. */
+  shortPaydays: number;
   /** realmId -> first turn it led the map on counties. */
   ledAt: Map<string, number>;
-  seenSieges: Set<string>;
+  /** Counties with a siege STANDING right now. A siege that ends and is later
+   *  laid again is a second siege, which is what `seenSieges` used to get
+   *  wrong: keyed by county for the whole game, it counted one start however
+   *  often a county was fought over, so `siegesWon` could exceed
+   *  `siegesStarted` — measured at 34 won against 16 started. */
+  activeSieges: Set<string>;
 }
 
 export function emptyTally(): Tally {
   return {
     plagues: 0, revolts: 0, hungrySeasons: 0, deserters: 0,
     siegesStarted: 0, siegesWon: 0, siegesAbandoned: 0, assaultsRepulsed: 0,
-    ledAt: new Map(), seenSieges: new Set(),
+    wagesDue: 0, pursesAtPayday: 0, shortPaydays: 0,
+    ledAt: new Map(), activeSieges: new Set(),
   };
 }
 
@@ -134,14 +153,35 @@ export function tallyTurn(tally: Tally, state: GameState, report: TurnReport): v
       tally.hungrySeasons += 1;
     }
   }
-  for (const w of report.wages.realms) tally.deserters += w.deserted;
+  let short = false;
+  for (const w of report.wages.realms) {
+    tally.deserters += w.deserted;
+    tally.wagesDue += w.due;
+    // What the purse held when the bill arrived: what was paid, plus whatever
+    // survived paying it. `paid` is already capped by the purse.
+    tally.pursesAtPayday += w.paid + (state.realms[w.realmId]?.treasury.gold ?? 0);
+    if (w.deserted > 0) short = true;
+  }
+  if (short) tally.shortPaydays += 1;
+
   for (const s of report.siege.sieges) {
-    if (!tally.seenSieges.has(s.countyId)) { tally.seenSieges.add(s.countyId); tally.siegesStarted += 1; }
+    if (!tally.activeSieges.has(s.countyId)) {
+      tally.activeSieges.add(s.countyId);
+      tally.siegesStarted += 1;
+    }
     // `captured` is the unambiguous signal: 'lifted' means the besieger gave
     // up and went home, which is the opposite of winning.
     if (s.captured) tally.siegesWon += 1;
     if (s.status === 'lifted') tally.siegesAbandoned += 1;
     if (s.status === 'repulsed') tally.assaultsRepulsed += 1;
+  }
+  // Whatever is no longer in `state.sieges` has ended, however it ended — so
+  // the next siege of that county counts as a new one. Read from live state
+  // rather than inferred from `status`, because a siege also ends when the
+  // besieging army is destroyed in a repulsed assault, and the ledger entry for
+  // that says `repulsed` with `captured: false` like any other failed storm.
+  for (const id of [...tally.activeSieges]) {
+    if (!state.sieges[id]) tally.activeSieges.delete(id);
   }
 
   // Who leads the map right now? Recording the FIRST turn each realm led says

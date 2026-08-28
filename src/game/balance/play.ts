@@ -96,6 +96,8 @@ export function playGame({ seed, maxTurns, setup }: PlayOptions): GameResult {
     revolts: tally.revolts,
     hungrySeasons: tally.hungrySeasons,
     deserters: Math.round(tally.deserters),
+    wagePressure: tally.pursesAtPayday > 0 ? tally.wagesDue / tally.pursesAtPayday : 0,
+    shortPaydays: tally.shortPaydays,
     siegesStarted: tally.siegesStarted,
     siegesWon: tally.siegesWon,
     siegesAbandoned: tally.siegesAbandoned,

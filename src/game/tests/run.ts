@@ -37,6 +37,7 @@ import './conscription.test.ts';
 import './mercenaries.test.ts';
 import './wages.test.ts';
 import './garrisons.test.ts';
+import './measures.test.ts';
 import './army-manage.test.ts';
 import './outcome.test.ts';
 import './diplomacy.test.ts';

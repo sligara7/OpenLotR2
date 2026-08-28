@@ -119,6 +119,11 @@ export function formatReport(results: GameResult[], maxTurns: number): string {
   out.push(`  revolts              ${spread(results.map((r) => r.revolts))}`);
   out.push(`  plagues              ${spread(results.map((r) => r.plagues))}`);
   out.push(`  deserters            ${spread(results.map((r) => r.deserters))}`);
+  const pressure = results.map((r) => Math.round(r.wagePressure * 100));
+  out.push(`  wage bill / purse    ${spread(pressure)}%  (short paydays ${spread(results.map((r) => r.shortPaydays))})`);
+  if (Math.max(...pressure) < 10) {
+    out.push('  \u26a0 upkeep never bites — army size is limited by something other than money');
+  }
 
   out.push('');
   out.push('WAR');
