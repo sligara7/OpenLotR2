@@ -17,7 +17,12 @@ import type { SiegeEngineType } from './types/siege.ts';
 // One "portion" feeds one peasant for one season at Normal ration.
 export const GRAIN_SACKS_PER_PORTION = 1; // sacks eaten per person at Normal
 export const BEEF_PORTIONS_PER_COW = 4; // people one slaughtered cow feeds
-export const DAIRY_PORTIONS_PER_COW = 1.2; // people one living cow feeds/season
+// A milk cow supports roughly three people indefinitely, where slaughtering her
+// feeds four once and ends the herd's future. That ratio is the whole point of
+// cattle: at 1.2 a living cow was worth so little against her carcass that
+// eating the herd was always correct, and every herd in Britain was gone by
+// turn 25 of every game. See systems/food.ts for the measurement.
+export const DAIRY_PORTIONS_PER_COW = 3; // people one living cow feeds/season
 
 // --- Agriculture (Manual Part-3 "Agriculture", "Grain", "Cattle") ---------
 export const GRAIN_SACKS_PER_FIELD = 5; // "Up to 5 sacks ... in one field"

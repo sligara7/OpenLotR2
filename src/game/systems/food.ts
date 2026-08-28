@@ -1,11 +1,30 @@
 /*
  * Food & rations (Manual Part-3 "Food", "Milk, Beef, or Bread?").
  *
+ * CATTLE ARE A DAIRY HERD, NOT A LARDER. A living cow feeds people every season
+ * and can go on doing it for years; a slaughtered one feeds them once. So the
+ * order of consumption is dairy, then grain, and only then beef — and beef only
+ * as deep into the herd as the ration slider permits.
+ *
+ * ⚠️ IT USED TO SPLIT DEMAND BETWEEN GRAIN AND BEEF BY THE SLIDER, and the
+ * arithmetic of that was impossible. At the default balance of 0.5 a county of
+ * 770 wanted half its diet from beef — 96 head a season against a starting herd
+ * of 32, which grew at best 1.6 a season once the crowding term was applied. So
+ * herds were eaten in a single season, and because growth is `cows * (1 +
+ * growth)` a herd at zero is an absorbing state that can never recover. Measured
+ * over a full game: all 2,936 cattle in Britain, across 76 of 82 counties, were
+ * dead by turn 25 and none ever came back — taking the dairy stream with them,
+ * since production gates dairy on `cows > 0`. Three food sources became one by
+ * year six of every game ever played.
+ *
  * Order of consumption each season:
- *   1. Dairy is eaten automatically (cannot be stored; surplus spoils).
- *   2. The remaining demand is split between grain and beef via the ration
- *      slider (grainBeefBalance). If one source is short, the other covers the
- *      shortfall where it can — people eat what's available.
+ *   1. Dairy, automatically, from the living herd (cannot be stored; surplus
+ *      spoils). This is what cattle are FOR.
+ *   2. Grain from the barns.
+ *   3. Beef, last, and only up to the share of the herd the slider is willing
+ *      to put under the knife. Slaughtering a milk cow is eating next year's
+ *      food, so it is what a county does when the barns are empty — a famine
+ *      measure, not a diet.
  * The *achieved* ration may be lower than the *wanted* ration when food runs
  * out; achievedMult (portions served per person) feeds health & happiness.
  */
@@ -16,6 +35,8 @@ import {
   GRAIN_SACKS_PER_PORTION,
 } from '../constants.ts';
 import type { County } from '../types/county.ts';
+
+const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
 
 export interface FoodResult {
   /** Portions actually served per person (Normal == 1). */
@@ -56,28 +77,19 @@ export function feedPopulation(county: County, dairyPortions: number): FoodResul
   const dairyServed = Math.min(dairyPortions, totalWanted);
   let need = Math.max(0, totalWanted - dairyServed);
 
-  // 2. Split the rest grain/beef per the slider, with cross-cover on shortfall.
-  const balance = county.labour.grainBeefBalance; // 0 grain .. 1 beef
-  let grainAvail = county.food.grainSacks / GRAIN_SACKS_PER_PORTION;
-  let beefAvail = county.food.cows * BEEF_PORTIONS_PER_COW;
+  // 2. Grain from the barns covers what dairy could not.
+  const grainAvail = county.food.grainSacks / GRAIN_SACKS_PER_PORTION;
+  const grainServed = Math.min(need, grainAvail);
+  need -= grainServed;
 
-  let grainServed = Math.min(need * (1 - balance), grainAvail);
-  let beefServed = Math.min(need * balance, beefAvail);
-  grainAvail -= grainServed;
-  beefAvail -= beefServed;
-  need -= grainServed + beefServed;
-
-  // Cross-cover: whichever source has slack absorbs the leftover demand.
-  if (need > 0 && grainAvail > 0) {
-    const extra = Math.min(need, grainAvail);
-    grainServed += extra;
-    need -= extra;
-  }
-  if (need > 0 && beefAvail > 0) {
-    const extra = Math.min(need, beefAvail);
-    beefServed += extra;
-    need -= extra;
-  }
+  // 3. Beef last. The slider is now WILLINGNESS TO SLAUGHTER, not a diet split:
+  // it caps how much of the herd may go under the knife this season. At 0 the
+  // county would rather go hungry than eat its herd; at 1 it will kill whatever
+  // it takes. Either way nothing is slaughtered while the barns hold grain.
+  const willing = clamp01(county.labour.grainBeefBalance);
+  const beefAvail = county.food.cows * willing * BEEF_PORTIONS_PER_COW;
+  const beefServed = Math.min(need, beefAvail);
+  need -= beefServed;
 
   // Commit consumption to stores (dairy surplus simply spoils).
   county.food.grainSacks -= grainServed * GRAIN_SACKS_PER_PORTION;

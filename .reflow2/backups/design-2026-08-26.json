@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:815ce3f52ea39f5e4669001104aa035cd4cd3e939be0c465039ebebd71317da4",
+  "content_hash": "sha256:2538b3ee1ec4db14ef954ce92447f0d8d27815577a5d13d1efd73938d5097b0c",
   "edges": [
     {
       "edge_type": "ALLOCATED_TO",
@@ -752,6 +752,14 @@
       "from_id": "dec:idea-single-player-only",
       "properties": {
         "acted_at": "2026-08-26T00:00:00Z",
+        "role": "author"
+      },
+      "to_id": "who:ajs"
+    },
+    {
+      "edge_type": "AUTHORED_BY",
+      "from_id": "dec:idea-storage-capacity",
+      "properties": {
         "role": "author"
       },
       "to_id": "who:ajs"
@@ -3218,6 +3226,14 @@
     },
     {
       "edge_type": "MITIGATES",
+      "from_id": "dec:idea-storage-capacity",
+      "properties": {
+        "evidence": "That requirement says a county's surplus must become money and scarcity must show as a price. A store with no ceiling defeats it: four of eleven goods are pinned at the price floor precisely because surplus accumulates without limit, so the price signal saturates and stops meaning anything. A capacity or spoilage rule is what would keep the signal alive."
+      },
+      "to_id": "req:surplus-becomes-money"
+    },
+    {
+      "edge_type": "MITIGATES",
       "from_id": "dec:idea-storyflow-extraction-template",
       "properties": {
         "evidence": "Partially, and only the first half. Closed vocabulary axes declared in code answer the 'player writes their own numbers' hazard by making the code own the vocabulary and the model only choose within it. It does nothing for the second half — the AI still will not know an authored object exists — and the descriptive/generative split means storyflow's own validation story does not come with it."
@@ -3891,6 +3907,14 @@
         "evidence": "Determinism was justified in the READMEs by the hosted-split and lockstep goal. Dropping multiplayer removes that justification while leaving determinism just as load-bearing for save/load resume and for the 168-case suite — so the requirement risks being discarded along with the goal that happened to argue for it."
       },
       "to_id": "req:deterministic-sim"
+    },
+    {
+      "edge_type": "RISKS",
+      "from_id": "dec:idea-storage-capacity",
+      "properties": {
+        "evidence": "Untested but plausible: the baseline currently shows a leader hoarding six figures of materials while fielding 250 men, and a realm that cannot hoard must spend. Recorded as a risk to the baseline's current reading rather than as a claimed fix, because the connection is assumed and not measured."
+      },
+      "to_id": "ver:balance-baseline"
     },
     {
       "edge_type": "RISKS",
@@ -7686,6 +7710,16 @@
       }
     },
     {
+      "node_id": "dec:idea-storage-capacity",
+      "node_type": "Decision",
+      "properties": {
+        "decision": "RECORDED AS BRAINSTORMING, NOT AS A PROPOSAL.\n\nThe user's thought, raised 2026-08-28 while looking at the materials glut: \"I experienced this in the original game where I kept piling up these indefinitely, which is unrealistic. Having 100000 tons of grain (somewhat perishable), 5 million tons of stone, etc just becomes unrealistic at some point (you couldn't possibly store it after a time). Basically, what I'm saying is there are limitations on how much capacity you have to store things.\"\n\nWHAT PROMPTED IT, measured the same day: at turn 200 the leading realm held stone 119,377, wool 87,540, iron 58,472 and gold 112,975 — while wood sat at 12. Four of eleven traded goods were pinned at the price floor. Production outruns every sink and the surplus simply accumulates without limit.\n\nOptions, none decided:\n(a) A HARD CAP PER STORE, probably tied to something the player builds or holds — county granaries and warehouses, or simply the number of counties. Production past the cap is wasted. Simplest to implement and the easiest to explain.\n(b) SPOILAGE / DECAY, which the user's own words point at for grain (\"somewhat perishable\"). A percentage lost per season, perhaps different per good — grain rots, stone does not, iron rusts slowly. More realistic and it makes stockpiling a decision rather than a default, but it needs a rate per good and is easy to make annoying.\n(c) BOTH, with capacity for bulk goods and spoilage for food.\n\nWHY IT MATTERS BEYOND REALISM: a sink is exactly what the materials glut lacks, and it may bear on the decisiveness problem too. A realm that cannot hoard must spend — on castles, on armies, on trade — and the balance harness currently shows a leader sitting on six figures of materials while fielding two hundred and fifty men. Whether that connection is real is untested and should not be assumed.\n\nTHE COUNTER-ARGUMENT WORTH KEEPING: caps and spoilage both punish the player for succeeding, and a badly tuned version turns a strategy game into an inventory-management chore. The original game's unlimited piles were annoying but they were never the thing that made it boring. If this is built, the test is whether it creates an interesting decision (what do I build before the harvest rots?) or merely a tax.",
+        "name": "OPEN — you cannot store five million tons of stone: stores should have a capacity",
+        "rationale": "Captured 2026-08-28 while the user was choosing to defer the materials work. Recorded as an idea rather than intent because it arrived in passing and the mechanism is undecided, but it is grounded in a measured problem and in the user's own experience of the original game.",
+        "status": "proposed"
+      }
+    },
+    {
       "node_id": "dec:idea-storyflow-extraction-template",
       "node_type": "Decision",
       "properties": {
@@ -9325,7 +9359,7 @@
       }
     }
   ],
-  "prev_content_hash": "sha256:6b68750b3ad20cdef803ce14d7d1109845a0ee6794a766cff0bac80a11c0f60a",
+  "prev_content_hash": "sha256:815ce3f52ea39f5e4669001104aa035cd4cd3e939be0c465039ebebd71317da4",
   "stamp": {
     "edge_type_names": [
       "ABOUT_ENTITY",

@@ -53,7 +53,9 @@ export interface Castle {
 /**
  * Labour intent set by the player.
  *  - industryShare in [0,1]: fraction of peasants sent to industry vs farming.
- *  - grainBeefBalance in [0,1]: ration slider, 0 == all grain, 1 == all beef.
+ *  - grainBeefBalance in [0,1]: WILLINGNESS TO SLAUGHTER the herd, 0 == spare
+ *    the cattle whatever the cost, 1 == kill as many as hunger demands. Beef is
+ *    a famine measure, never a diet: nothing is slaughtered while grain remains.
  *  Advanced per-task overrides can be layered on later (Advanced Labor Panel).
  */
 export interface LabourPolicy {
