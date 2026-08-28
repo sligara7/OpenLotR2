@@ -8,6 +8,7 @@
  */
 
 import {
+  CAPITULATION,
   CASTLE_SPEC,
   CONQUEST,
   GARRISON_ON_CAPTURE,
@@ -118,6 +119,151 @@ function countyCount(state: GameState, realmId: string): number {
   let n = 0;
   for (const c of Object.values(state.counties)) if (c.ownerId === realmId) n += 1;
   return n;
+}
+
+/** Soldiers a realm still has in the field, across every army it owns. */
+function fieldStrength(state: GameState, realmId: string): number {
+  let n = 0;
+  for (const a of Object.values(state.armies)) if (a.ownerId === realmId) n += a.soldiers;
+  return n;
+}
+
+export interface CapitulationEntry {
+  /** The realm that sued for terms. */
+  realmId: string;
+  /** Who took its remaining lands. */
+  toRealmId: string;
+  /** Counties handed over. */
+  counties: string[];
+}
+
+export type CapitulationLedger = CapitulationEntry[];
+
+/**
+ * A beaten realm sues for terms rather than being hunted to the last acre.
+ *
+ * Conquests ended politically far more often than they ended in annihilation —
+ * realms surrendered, defected, or were partitioned. Requiring every rival to be
+ * ground to zero county by county asks for the rarest outcome in history, and it
+ * is why twenty games produced thirty-four won sieges and not one elimination.
+ *
+ * A realm capitulates when it is no longer a going concern: down to
+ * CAPITULATION.countyFloor counties or fewer AND with less than a single legal
+ * army's worth of men left in the field. Both halves matter — a small realm with
+ * an army intact is still dangerous and fights on, and a large realm that has
+ * lost its army still has the ground to raise another.
+ *
+ * ITS LANDS GO TO WHOEVER PRESSED IT HARDEST, measured as the rival holding the
+ * most counties bordering what it has left; ties break on total holdings, then
+ * on realm id, so the outcome is deterministic and replayable from a seed. Its
+ * remaining armies lay down their arms with it.
+ *
+ * THE HUMAN PLAYER NEVER CAPITULATES AUTOMATICALLY. Surrender is a decision, and
+ * taking it out of the player's hands would end their game on the engine's
+ * judgement rather than their own — they lose when they hold nothing, as before.
+ */
+export function updateCapitulations(state: GameState): CapitulationLedger {
+  const ledger: CapitulationLedger = [];
+
+  const alive = Object.values(state.realms)
+    .filter((r) => !r.eliminated)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  // A surrender needs somebody to surrender TO. Beyond that there is no floor:
+  // the two-realm endgame is exactly where this matters most, because that is
+  // the stalemate the harness kept measuring.
+  if (alive.length < 2) return ledger;
+
+  for (const realm of alive) {
+    if (realm.isHuman || realm.eliminated) continue;
+
+    const held = Object.values(state.counties).filter((c) => c.ownerId === realm.id);
+    if (held.length === 0) continue;
+    if (!isBeaten(state, realm.id, held.length)) continue;
+
+    const victor = pressedHardest(state, realm.id, held);
+    if (!victor) continue;
+
+    const counties = held.map((c) => c.id).sort();
+    for (const id of counties) captureCounty(state, id, victor);
+    for (const army of Object.values(state.armies)) {
+      if (army.ownerId === realm.id) delete state.armies[army.id];
+    }
+
+    ledger.push({ realmId: realm.id, toRealmId: victor, counties });
+  }
+
+  return ledger;
+}
+
+/**
+ * Is this realm beaten — not merely losing?
+ *
+ * Two ways, and both are deliberately hard to reach. Either it is down to a
+ * couple of counties with no army worth the name, in which case hunting it acre
+ * by acre decides nothing anybody doesn't already know. Or a rival has become so
+ * dominant in BOTH land and men that the question is settled: that is how most
+ * conquests actually ended, with magnates and princes reading the arithmetic and
+ * submitting while they still held ground.
+ *
+ * The share floor is what stops an even contest being conceded. Two realms at
+ * forty and thirty counties are fighting a war, not finishing one, and neither
+ * should ever fold on ratios alone.
+ */
+function isBeaten(state: GameState, realmId: string, held: number): boolean {
+  const total = Object.keys(state.counties).length;
+  if (total === 0) return false;
+
+  // The share floor guards BOTH routes, not just the ratio one. A realm holding
+  // a real piece of the map is a going concern however few counties that is —
+  // on a small map two counties can be half of everything, and calling that
+  // beaten would concede an even contest on a technicality.
+  if (held / total >= CAPITULATION.hopelessShare) return false;
+
+  const mine = fieldStrength(state, realmId);
+  if (held <= CAPITULATION.countyFloor && mine < CAPITULATION.soldierFloor) return true;
+
+  for (const rival of Object.values(state.realms)) {
+    if (rival.eliminated || rival.id === realmId) continue;
+    const land = countyCount(state, rival.id);
+    const men = fieldStrength(state, rival.id);
+    if (land >= held * CAPITULATION.dominanceRatio && men >= mine * CAPITULATION.dominanceRatio) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Which surviving rival has pressed this realm hardest — the one holding the
+ * most counties adjacent to what it still has. Falls back to the largest realm
+ * when nothing borders it at all (an island holdout), and breaks every tie on
+ * realm id so the same game always ends the same way.
+ */
+function pressedHardest(state: GameState, realmId: string, held: County[]): string | null {
+  const pressure = new Map<string, number>();
+  for (const county of held) {
+    for (const id of state.adjacency[county.id] ?? []) {
+      const owner = state.counties[id]?.ownerId;
+      if (!owner || owner === realmId) continue;
+      if (state.realms[owner]?.eliminated) continue;
+      pressure.set(owner, (pressure.get(owner) ?? 0) + 1);
+    }
+  }
+
+  const rivals = Object.values(state.realms)
+    .filter((r) => !r.eliminated && r.id !== realmId)
+    .map((r) => ({
+      id: r.id,
+      pressing: pressure.get(r.id) ?? 0,
+      size: countyCount(state, r.id),
+    }))
+    .sort((a, b) =>
+      b.pressing - a.pressing || b.size - a.size || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+    );
+
+  const best = rivals[0];
+  return best && best.size > 0 ? best.id : null;
 }
 
 /**

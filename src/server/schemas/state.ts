@@ -312,6 +312,19 @@ const WagesLedgerSchema = z.object({
   realms: z.array(RealmWagesSchema),
 });
 
+const GarrisonEntrySchema = z.object({
+  countyId: z.string(),
+  released: z.number(),
+  garrison: z.number(),
+  toArmyId: z.string().nullable(),
+});
+
+const CapitulationEntrySchema = z.object({
+  realmId: z.string(),
+  toRealmId: z.string(),
+  counties: z.array(z.string()),
+});
+
 const DiplomacyLedgerSchema = z.object({
   expiredProposals: z.array(z.string()),
   expiredRequests: z.array(z.string()),
@@ -328,6 +341,8 @@ export const TurnReportSchema = z
     forage: ForageLedgerSchema,
     siege: SiegeLedgerSchema,
     wages: WagesLedgerSchema,
+    garrisons: z.array(GarrisonEntrySchema),
+    capitulations: z.array(CapitulationEntrySchema),
     diplomacy: DiplomacyLedgerSchema,
     outcome: GameOutcomeSchema.nullable(),
   })

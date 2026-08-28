@@ -374,6 +374,63 @@ export const GARRISON_ON_CAPTURE = 0.5;
  *  against a real army. */
 export const WATCH_ON_CAPTURE = 20;
 
+// --- Conquest that pays for itself ----------------------------------------
+// Garrisoning from the taking army fixed the revolving door and created the
+// opposite stall: every county taken cost the field army a permanent
+// detachment, nothing ever gave those men back, and so offensive strength
+// DECAYED with each victory. Twenty AI-versus-AI games ended 0-for-20 decided
+// with the leader frozen at half the map — the Crusader-state failure, where
+// every castle held is men not in the field.
+//
+// The conquerors who actually finished had conquest financing the next
+// conquest: Rome's socii and then citizenship turning conquered manpower into
+// Roman manpower, the Ottoman timar granting conquered land out in exchange for
+// the cavalry that took the next land. So a settled county holds its OWN walls,
+// and the conqueror's detachment is the seed of a garrison rather than the whole
+// of it.
+
+// ⚠️ The first attempt at this went the WRONG WAY and the harness caught it in
+// one run: letting settled counties raise levies up to their walls' full
+// establishment helped defenders as much as conquerors. Garrisons went 301 →
+// 5,537 men in a single seeded game while field armies stayed at 300–500,
+// assaults repulsed tripled, and the map froze harder than before. The gain has
+// to land in the FIELD, not on the walls — see systems/garrisons.ts.
+
+export const GARRISON = {
+  /** Happiness a county must reach to count as settled rather than merely held.
+   *  Above a freshly conquered county's cap (CONQUEST.conqueredHappiness) on
+   *  purpose: ground becomes strength only once the people are won over, so a
+   *  conquest driven by taxes and hunger goes on costing the men who hold it. */
+  settledHappiness: 45,
+  /** Men a settled county stands down from its walls each season. A trickle:
+   *  an army is recovered over seasons of good governance, not overnight. */
+  releasePerSeason: 5,
+} as const;
+
+// --- Suing for terms ------------------------------------------------------
+// Conquests ended politically far more often than they ended in annihilation:
+// realms surrendered, defected, or were partitioned. Grinding every rival to
+// zero county by county is the rarest outcome in history, and requiring it is
+// why 34 sieges won across twenty games produced no eliminations at all.
+
+export const CAPITULATION = {
+  /** A realm sues for terms when a rival holds at least this many times its
+   *  land AND this many times its men. Submission was rarely a last stand: the
+   *  Anglo-Saxon magnates came to William with shires still in hand, and the
+   *  princely states read the arithmetic and submitted intact. What ends a war
+   *  is a settled question, not an empty map. */
+  dominanceRatio: 3,
+  /** ...but never while it still holds this share of the map. A realm with an
+   *  eighth of Britain is not beaten, however far ahead the leader is — this is
+   *  what keeps an even contest from being conceded. */
+  hopelessShare: 0.12,
+  /** A realm down to this many counties with no army worth the name is finished
+   *  whatever the ratios say, and is spared being hunted acre by acre. */
+  countyFloor: 2,
+  /** Field strength below which a realm cannot turn anything around. */
+  soldierFloor: MIN_ARMY_SIZE,
+} as const;
+
 // --- Merchants & the marketplace (Manual Part-3 "Merchants") --------------
 // The manual gives no numbers, only the shape: a merchant shows you two prices
 // per good, and "you'll notice a large difference between buying and selling

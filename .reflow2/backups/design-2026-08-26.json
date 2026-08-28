@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:6b68750b3ad20cdef803ce14d7d1109845a0ee6794a766cff0bac80a11c0f60a",
+  "content_hash": "sha256:815ce3f52ea39f5e4669001104aa035cd4cd3e939be0c465039ebebd71317da4",
   "edges": [
     {
       "edge_type": "ALLOCATED_TO",
@@ -9145,9 +9145,9 @@
       "node_type": "Verification",
       "properties": {
         "description": "The first full run of the harness, kept as the line every later balance change is measured against. Twenty games, three nobles, default aggression, a two-hundred-turn cap — fifty game years each.",
-        "findings": "Re-run 2026-08-28 (20 games, 3 nobles, aggression 1, cap 200 turns, 118s). DECISIVENESS: 0/20 reached a decision; every game ended with the leader holding 50% of the map at the cap and no realm eliminated. ECONOMY: 4 of 11 goods at the glut floor, leader's hoard 286,170 (range 14,311–370,204) — production outruns every sink. SEASONS: 5,662 hungry county-seasons, 21 revolts, 492 plagues, 0 deserters. WAR: 16 sieges laid, 34 sieges won, 0 abandoned, 3 assaults repulsed.\n\nTWO MEASUREMENT PROBLEMS FOUND IN THE SAME RUN, separate from the balance result: sieges won (34) exceeds sieges laid (16), so one of those counters is not measuring what its label says; and deserters is 0 in every game, meaning wages.ts desertion never fires and army upkeep applies no pressure at all. Both should be resolved before tuning against these numbers.",
+        "findings": "Re-run 2026-08-28 after implementing dec:conquest-must-compound (systems/garrisons.ts + capitulation in systems/conquest.ts).\n\nMOVED, FOR THE FIRST TIME: 2/20 games reached a decision (was 0/20), decided at turns 22 and 79, both last-standing. Still failing — 18/20 undecided with the leader at 52% of the map.\n\nWHAT THE FIX DID. Settled counties now stand surplus garrison down and return the men to the field, reversing the permanent drain that made offensive strength decay with every victory. Measured on one seeded game: total garrisons at turn 200 fell from 5,537 to ~1,650, and the leader began drifting upward (37→41 counties from t100 to t200) where before it was frozen.\n\n⚠️ THE FIRST ATTEMPT WENT THE WRONG WAY and is recorded because it is a plausible misreading of the same idea: letting settled counties RAISE levies up to their walls' full establishment strengthened defenders exactly as much as conquerors. Garrisons went 301 → 5,537, assaults repulsed tripled 3 → 9, sieges won halved 34 → 18, and the map froze harder. The compounding has to land in the FIELD, not on the walls.\n\nWHAT NOW BLOCKS DECISIVENESS, and it is not the conquest rules. Each realm fields only 2-4 armies totalling 250-800 men across 30-40 counties, while the leader's hoard reaches 315,439 in timber/stone/iron/wool. Sieges laid is 9 per game over 200 turns. The AI's siege gate is not the problem — it besieges any garrisoned enemy county it stands on — the problem is that it almost never has armies standing anywhere. The AI hoards instead of raising and spending forces. That is an AI/economy question, not a conquest question.\n\nSTILL UNFIXED FROM THE PREVIOUS RUN: sieges won (19) still exceeds sieges laid (9), so that counter remains wrong; deserters remains 0 in every game, so army upkeep still applies no pressure.",
         "kind": "validation",
-        "last_run_at": "2026-08-28T00:00:00Z",
+        "last_run_at": "2026-08-28T12:00:00Z",
         "level": "system",
         "method": "measurement",
         "name": "Balance baseline",
@@ -9215,9 +9215,9 @@
       "node_type": "Verification",
       "properties": {
         "description": "Playwright against the built UI: county state, the SVG map with rivers, borders, armies and castles, ending a turn, diplomacy, advanced farming, fog of war, custom setup, per-county and bulk controls, save/load through the UI, and the armoury and mustering flow.",
-        "findings": "Run 2026-08-26: 14 of 14 passed, up from 11. The three new cases are regressions for defects found by playing rather than by testing — two armies on one tile staying individually selectable, every realm painted in a five-noble game, and the turn log carrying only the player's own counties. Each was confirmed to FAIL when its fix is reverted, so none of them passes vacuously. Still exercises the in-process backend, not the REST API.",
+        "findings": "17/17 passed in 31.1s (Chromium, 1 worker), run immediately after the legacy Phaser canvas and its dependency were removed from the renderer. Covers live county state from the API, the SVG hex map, End Turn, diplomacy, advanced farming, fog of war, custom game setup, per-county and bulk realm controls, save/load round-trip, combat and mustering, army stacking, realm painting, the turn log, the marketplace open and closed, and ordering a castle built. Nothing regressed with the canvas gone, which is the evidence that it was outside the game loop.",
         "kind": "validation",
-        "last_run_at": "2026-08-26T00:00:00Z",
+        "last_run_at": "2026-08-28T00:00:00Z",
         "level": "system",
         "location": "tests/e2e/game.spec.ts",
         "method": "test",
@@ -9325,7 +9325,7 @@
       }
     }
   ],
-  "prev_content_hash": "sha256:79f5f5ca68f72843507cd088d4f56f4b2e56de1763e240dce6994c7770f6c58b",
+  "prev_content_hash": "sha256:6b68750b3ad20cdef803ce14d7d1109845a0ee6794a766cff0bac80a11c0f60a",
   "stamp": {
     "edge_type_names": [
       "ABOUT_ENTITY",

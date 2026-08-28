@@ -40,7 +40,10 @@ import type { ConvoyLedger } from './systems/convoys.ts';
 import { advanceSieges } from './systems/siege.ts';
 import type { SiegeLedger } from './systems/siege.ts';
 import { armyMovementAllowance } from './state/army.ts';
-import { updateEliminations, evaluateOutcome } from './systems/conquest.ts';
+import { updateCapitulations, updateEliminations, evaluateOutcome } from './systems/conquest.ts';
+import type { CapitulationLedger } from './systems/conquest.ts';
+import { settleGarrisons } from './systems/garrisons.ts';
+import type { GarrisonLedger } from './systems/garrisons.ts';
 import { payWages } from './systems/wages.ts';
 import type { WagesLedger } from './systems/wages.ts';
 import { runDiplomacy } from './systems/diplomacy.ts';
@@ -72,6 +75,8 @@ export interface TurnReport {
   forage: ForageLedger;
   siege: SiegeLedger;
   wages: WagesLedger;
+  garrisons: GarrisonLedger;
+  capitulations: CapitulationLedger;
   diplomacy: DiplomacyLedger;
   /** Set the turn the game is decided; null while it continues. */
   outcome: GameOutcome | null;
@@ -144,6 +149,10 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
   // Upkeep: pay army wages from the (now tax-funded) treasuries; unpaid troops
   // desert. Runs after the fighting so survivors are what gets paid.
   const wages = payWages(state);
+  // Settled counties stand their surplus garrisons down and put those men back
+  // in the field. After the fighting, so a county threatened this turn keeps its
+  // walls manned through it.
+  const garrisons = settleGarrisons(state);
   // Fresh movement budget for every surviving army next turn.
   for (const army of Object.values(state.armies)) army.movement = armyMovementAllowance(army);
 
@@ -154,6 +163,10 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
   // Relations cool toward neutral (allies warm), stale offers lapse.
   const diplomacy = runDiplomacy(state);
 
+  // Realms with nothing left to fight with sue for terms, handing what they
+  // hold to whoever pressed them hardest. Before eliminations, so a realm that
+  // capitulates is then counted out in the same turn.
+  const capitulations = updateCapitulations(state);
   // Settle eliminations from this turn's fighting, then check for a winner.
   updateEliminations(state);
   state.outcome = evaluateOutcome(state);
@@ -168,6 +181,8 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
     forage,
     siege,
     wages,
+    garrisons,
+    capitulations,
     diplomacy,
     outcome: state.outcome,
   };

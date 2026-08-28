@@ -66,7 +66,12 @@ export type { ConvoyLedger, ConvoyOutcome } from './systems/convoys.ts';
 export type { Convoy } from './types/convoy.ts';
 export { advanceSieges, garrisonStrength, engineBuildCost, engineBreach } from './systems/siege.ts';
 export type { SiegeLedger, SiegeOutcome, SiegeStatus } from './systems/siege.ts';
-export { captureCounty, updateEliminations, realmIsAlive, evaluateOutcome } from './systems/conquest.ts';
+export {
+  captureCounty, updateEliminations, updateCapitulations, realmIsAlive, evaluateOutcome,
+} from './systems/conquest.ts';
+export type { CapitulationEntry, CapitulationLedger } from './systems/conquest.ts';
+export { settleGarrisons, watchStrength } from './systems/garrisons.ts';
+export type { GarrisonEntry, GarrisonLedger } from './systems/garrisons.ts';
 export type { Siege, SiegeEngines, SiegeEngineType } from './types/siege.ts';
 export type { GameOutcome } from './types/realm.ts';
 
