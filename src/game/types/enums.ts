@@ -71,6 +71,8 @@ export type FieldStatus = (typeof FieldStatus)[keyof typeof FieldStatus];
 /** Industries a county may operate. (Manual Part-3 "Industry".) */
 export const Industry = {
   Lumber: 'Lumber',
+  /** Sheep on the uplands, sheared for wool — England's real export trade. */
+  Woolgrowing: 'Woolgrowing',
   Quarry: 'Quarry',
   IronMine: 'IronMine',
   Blacksmith: 'Blacksmith',
@@ -88,6 +90,16 @@ export const CastleType = {
   RoyalCastle: 'RoyalCastle',
 } as const;
 export type CastleType = (typeof CastleType)[keyof typeof CastleType];
+
+/** Every castle a ruler may actually order built, simplest to grandest.
+ *  `None` is excluded: it is the absence of a castle, not a design. */
+export const CASTLE_DESIGNS: readonly CastleType[] = [
+  CastleType.WoodenPalisade,
+  CastleType.MotteAndBailey,
+  CastleType.NormanKeep,
+  CastleType.StoneCastle,
+  CastleType.RoyalCastle,
+];
 
 /** Soldier types that make up an army. (Manual Part-4 "Armies".) Their attack/
  *  defence and the rock-paper-scissors matchups live in constants.ts. */

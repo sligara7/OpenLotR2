@@ -7,20 +7,45 @@
  * possible elimination of the loser — stay consistent however the county falls.
  */
 
-import { CONQUEST } from '../constants.ts';
+import {
+  CASTLE_SPEC,
+  CONQUEST,
+  GARRISON_ON_CAPTURE,
+  MIN_ARMY_SIZE,
+  WATCH_ON_CAPTURE,
+} from '../constants.ts';
+import { UnitType } from '../types/enums.ts';
+import { setUnits } from '../state/army.ts';
+import type { County } from '../types/county.ts';
 import type { GameState, GameOutcome } from '../types/realm.ts';
 
 /**
- * Transfer a county to a new owner. The defeated garrison is gone (set to 0),
- * the conquered populace turns resentful, and any siege on the county lifts.
- * Castle type and damage persist (you capture the walls, cracks and all).
+ * Transfer a county to a new owner. The defeated garrison is gone, the conquered
+ * populace turns resentful, and any siege on the county lifts. Castle type and
+ * damage persist — you capture the walls, cracks and all.
+ *
+ * IF AN ARMY TOOK IT, THAT ARMY LEAVES MEN BEHIND. This is what a medieval
+ * captain actually did, and mechanically it is what makes conquest stick: a
+ * county walked into and left empty is one the enemy walks back into next
+ * season. Twenty AI-versus-AI games measured that revolving door as the reason
+ * no game ever reached a decision, so holding land now costs an army strength
+ * and a thin raiding force must choose between taking counties and keeping them.
+ *
+ * An army too small to spare anyone takes the county but cannot hold it, which
+ * is a real and deliberate choice rather than a failure.
  */
-export function captureCounty(state: GameState, countyId: string, newOwnerId: string): void {
+export function captureCounty(
+  state: GameState,
+  countyId: string,
+  newOwnerId: string,
+  byArmyId?: string,
+): void {
   const county = state.counties[countyId];
   if (!county) return;
 
   county.ownerId = newOwnerId;
   county.castle.garrison = 0;
+  if (byArmyId) garrisonFromArmy(state, county, byArmyId);
   county.happiness = Math.min(county.happiness, CONQUEST.conqueredHappiness);
   county.revolting = false;
   county.unrestSeasons = 0;
@@ -30,6 +55,44 @@ export function captureCounty(state: GameState, countyId: string, newOwnerId: st
 
   delete state.sieges[countyId];
 }
+
+/**
+ * Detach a holding force from the army that just took this county.
+ *
+ * How many depends on what there is to hold: a castle wants a real garrison,
+ * a bare county only a watch on the town. The army keeps at least the minimum
+ * legal size, so it is never dissolved by garrisoning — if it cannot spare the
+ * men, nobody stays and the county is held by presence alone.
+ */
+function garrisonFromArmy(state: GameState, county: County, armyId: string): void {
+  const army = state.armies[armyId];
+  if (!army) return;
+
+  const walls = CASTLE_SPEC[county.castle.type].garrison;
+  const wanted = walls > 0 ? Math.round(walls * GARRISON_ON_CAPTURE) : WATCH_ON_CAPTURE;
+  const sparable = army.soldiers - MIN_ARMY_SIZE;
+  const left = Math.min(wanted, sparable);
+  if (left <= 0) return;
+
+  // Take the garrison from the army's own ranks, cheapest troops first: a
+  // captain leaves levies to watch a gate and keeps his knights for the field.
+  const remaining = { ...army.units };
+  let owed = left;
+  for (const type of GARRISON_ORDER) {
+    if (owed <= 0) break;
+    const take = Math.min(remaining[type], owed);
+    remaining[type] -= take;
+    owed -= take;
+  }
+  setUnits(army, remaining);
+  county.castle.garrison = left - owed;
+}
+
+/** Whom a captain leaves behind, first to last: the cheapest troops he has. */
+const GARRISON_ORDER: readonly UnitType[] = [
+  UnitType.Peasant, UnitType.Pikeman, UnitType.Maceman, UnitType.Archer,
+  UnitType.Crossbowman, UnitType.Swordsman, UnitType.Knight,
+];
 
 /** Is a realm still in the game (holds at least one county or army)? */
 export function realmIsAlive(state: GameState, realmId: string): boolean {

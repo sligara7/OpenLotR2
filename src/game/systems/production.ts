@@ -16,6 +16,7 @@
 
 import { FieldStatus, Season } from '../types/enums.ts';
 import {
+  WOOL_PER_WORKER,
   CATTLE_FIELD_CAPACITY,
   CATTLE_GROWTH_RATE,
   CATTLE_WORKERS_PER_COW,
@@ -46,6 +47,8 @@ export interface ProductionSummary {
   dairyPortions: number;
   grainHarvested: number;
   wood: number;
+  /** Fleeces sheared this season, pooled to the realm. */
+  wool: number;
   stone: number;
   iron: number;
   /** Weapons forged by the blacksmith this season (banked to the armory). */
@@ -141,6 +144,14 @@ function runIndustry(
 ): void {
   // Output is the lesser of what the labour can make and what the land (tile
   // capacity) can sustain. capacity undefined => labour-limited only.
+  if (county.industries.Woolgrowing.operational) {
+    // Shepherds work the uplands; the land itself caps how big a flock it carries.
+    summary.wool = Math.min(
+      alloc.woolgrowing * WOOL_PER_WORKER,
+      county.industries.Woolgrowing.capacity ?? Infinity,
+    );
+    treasury.wool += summary.wool;
+  }
   if (county.industries.Lumber.operational) {
     summary.wood = Math.min(alloc.lumber * WOOD_PER_WORKER, county.industries.Lumber.capacity ?? Infinity);
     treasury.wood += summary.wood;
@@ -208,6 +219,7 @@ export function runProduction(
     stone: 0,
     iron: 0,
     weapons: 0,
+    wool: 0,
     castleCompleted: false,
   };
   runAgriculture(county, alloc, season, advanced, summary);

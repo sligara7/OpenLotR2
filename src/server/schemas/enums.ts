@@ -14,6 +14,7 @@ import {
   UnitType,
   Weather,
 } from '../../game/types/enums.ts';
+import { TradeGood } from '../../game/types/trade.ts';
 
 export const RationLevelSchema = z.nativeEnum(RationLevel).openapi('RationLevel');
 export const FieldStatusSchema = z.nativeEnum(FieldStatus).openapi('FieldStatus');
@@ -23,6 +24,7 @@ export const SeasonSchema = z.nativeEnum(Season).openapi('Season');
 export const NoblePersonalitySchema = z.nativeEnum(NoblePersonality).openapi('NoblePersonality');
 export const UnitTypeSchema = z.nativeEnum(UnitType).openapi('UnitType');
 export const WeatherSchema = z.nativeEnum(Weather).openapi('Weather');
+export const TradeGoodSchema = z.nativeEnum(TradeGood).openapi('TradeGood');
 
 /** Field uses a player may assign directly (subset of FieldStatus). */
 export const FieldUseSchema = z

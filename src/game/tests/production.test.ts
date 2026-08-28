@@ -8,7 +8,7 @@ import { FieldStatus, Season } from '../types/enums.ts';
 import { GRAIN_YIELD_MULTIPLIER } from '../constants.ts';
 import type { Treasury } from '../types/realm.ts';
 
-const treasury = (): Treasury => ({ gold: 0, wood: 0, stone: 0, iron: 0, weapons: {} });
+const treasury = (): Treasury => ({ gold: 0, wood: 0, stone: 0, iron: 0, wool: 0, weapons: {} });
 
 test('production: an operational lumber mill yields wood to the treasury', () => {
   const c = createCounty({ id: 'a', name: 'A', population: 100, industries: { Lumber: true } });

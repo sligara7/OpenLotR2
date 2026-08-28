@@ -1,16 +1,23 @@
 /*
  * Procedural hex-tile map for Great Britain.
  *
- * Each county on the BRITAIN map is a *centre*; every hex within a radius of its
- * nearest centre belongs to that county (a Voronoi-style blob), so a county is a
- * cluster of hexes approximating its shape. Hexes with no nearby centre are sea.
- * Terrain is assigned by country/relief + deterministic noise (Scottish & Welsh
- * highlands get mountains; the Pennines get hills; lowlands are plains/forest);
- * coastal land becomes Coast; each tile then gets a resource suited to its
+ * THE COAST DECIDES THE LAND. A real coastline (`britain-outline.ts`, from
+ * public-domain Natural Earth data) is rasterised onto the hex grid: a hex is
+ * land because it falls inside the island, full stop. Land hexes are then given
+ * to the nearest county centre, so counties FILL a true coast instead of
+ * defining it. That inversion is the point — the map used to call a hex land if
+ * it sat within a radius of some county centre, which made the island a union
+ * of circles and is why it read as a cluster of bubbles rather than as Britain.
+ *
+ * Terrain then follows real relief (the Highlands, the Pennines, Snowdonia and
+ * the Brecon Beacons are placed by where they actually are) plus deterministic
+ * noise; coastal land becomes Coast; each tile gets a resource suited to its
  * terrain. Fully seed-free and deterministic — same output every run.
  */
 
 import { BRITAIN } from './britain.ts';
+import { COUNTY_COORDS } from './britain-coords.ts';
+import { buildProjection, hexPixel, inLand, inStrait, projectOutline, projectStraits } from './projection.ts';
 import {
   Terrain,
   TileResource,
@@ -21,13 +28,20 @@ import {
   type TileMap,
 } from './tiles.ts';
 
-const F = 2; // fine hexes per county-grid step
-const RADIUS = 2.25; // land radius around a county centre (pixel units)
-const SQRT3 = Math.sqrt(3);
-
-function px(col: number, row: number): [number, number] {
-  return [SQRT3 * (col + 0.5 * (row & 1)), 1.5 * row];
-}
+/**
+ * The map's one resolution knob: how many hex rows the island spans. Columns
+ * follow from Britain's real proportions, so this alone sets the tile count.
+ *
+ * At 120 the grid is 57x120 — 6,840 hexes of which about 2,750 are land, so a
+ * county averages 34 tiles and even Clackmannanshire, the smallest, gets 8.
+ * That is the point at which a county has a SHAPE rather than a blob, and
+ * Cornwall, the Wash and the Bristol Channel read as themselves.
+ *
+ * Raising it changes every distance in the game at once, so movement budgets
+ * and siege and convoy pacing are tuned against this number. Lower it to 100
+ * (4,800 hexes) if the tablet struggles; the coastline still reads.
+ */
+const ROWS = 120;
 
 /** Deterministic [0,1) hash of a cell + salt (no RNG state). */
 function hashUnit(a: number, b: number, salt: number): number {
@@ -36,18 +50,45 @@ function hashUnit(a: number, b: number, salt: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-function terrainFor(country: string, gcol: number, grow: number, fc: number, fr: number): Terrain {
+/**
+ * Terrain from real relief.
+ *
+ * The uplands are placed by where they actually are rather than by which cell of
+ * a layout grid a county sat in: the Highlands north-west of the Highland
+ * Boundary Fault, the Pennines down England's spine, Snowdonia and the Brecon
+ * Beacons in Wales. Within a band the mix is deterministic noise, so the same
+ * tile always gets the same terrain.
+ */
+function terrainFor(country: string, lon: number, lat: number, fc: number, fr: number): Terrain {
   const n = hashUnit(fc, fr, 1);
+
   if (country === 'Scotland') {
-    if (grow <= 4) return n < 0.45 ? Terrain.Mountains : n < 0.7 ? Terrain.Hills : Terrain.Moor;
-    return n < 0.25 ? Terrain.Mountains : n < 0.5 ? Terrain.Hills : n < 0.7 ? Terrain.Moor : Terrain.Plains;
+    // The Highland Boundary Fault runs roughly Helensburgh to Stonehaven; north
+    // and west of it is mountain country, the Central Belt and Borders are not.
+    const highland = lat > 56.0 && lon < -3.0 && lat > 56.0 + (lon + 3.0) * 0.55;
+    if (lat > 57.2) return n < 0.45 ? Terrain.Mountains : n < 0.7 ? Terrain.Hills : Terrain.Moor;
+    if (highland) return n < 0.35 ? Terrain.Mountains : n < 0.6 ? Terrain.Hills : Terrain.Moor;
+    // Central Belt and the Borders: farmland and moor, passable.
+    return n < 0.1 ? Terrain.Hills : n < 0.3 ? Terrain.Moor : Terrain.Plains;
   }
+
   if (country === 'Wales') {
-    return n < 0.4 ? Terrain.Mountains : n < 0.7 ? Terrain.Hills : Terrain.Plains;
+    // Snowdonia in the north-west, the Beacons in the south-east; the coastal
+    // strips and the Marches are gentler.
+    const snowdonia = lat > 52.6 && lon < -3.5;
+    const beacons = lat > 51.7 && lat < 52.2 && lon > -3.9 && lon < -3.1;
+    if (snowdonia || beacons) return n < 0.45 ? Terrain.Mountains : n < 0.75 ? Terrain.Hills : Terrain.Moor;
+    return n < 0.15 ? Terrain.Mountains : n < 0.5 ? Terrain.Hills : Terrain.Plains;
   }
-  // England: a Pennine highland belt through the central north.
-  const pennine = grow >= 11 && grow <= 14 && gcol >= 6 && gcol <= 8;
-  if (pennine) return n < 0.3 ? Terrain.Mountains : n < 0.6 ? Terrain.Hills : Terrain.Plains;
+
+  // England: the Pennines run north-south through the middle of the north; the
+  // Lake District is higher still; Dartmoor and Exmoor sit in the south-west.
+  const pennines = lat > 53.0 && lat < 55.3 && lon > -2.7 && lon < -1.6;
+  const lakes = lat > 54.3 && lat < 54.8 && lon < -2.8;
+  const moors = lat < 51.3 && lon < -3.4;
+  if (lakes) return n < 0.5 ? Terrain.Mountains : n < 0.8 ? Terrain.Hills : Terrain.Moor;
+  if (pennines) return n < 0.25 ? Terrain.Mountains : n < 0.65 ? Terrain.Hills : Terrain.Moor;
+  if (moors) return n < 0.15 ? Terrain.Hills : n < 0.4 ? Terrain.Moor : Terrain.Plains;
   return n < 0.18 ? Terrain.Forest : n < 0.3 ? Terrain.Hills : Terrain.Plains;
 }
 
@@ -70,44 +111,67 @@ let cached: TileMap | null = null;
 export function buildBritainTileMap(): TileMap {
   if (cached) return cached;
 
-  const maxCol = Math.max(...BRITAIN.regions.map((r) => r.col));
-  const maxRow = Math.max(...BRITAIN.regions.map((r) => r.row));
-  const cols = (maxCol + 1) * F + 2;
-  const rows = (maxRow + 1) * F + 2;
+  const projection = buildProjection(ROWS);
+  const { cols, rows } = projection;
+  const outline = projectOutline(projection);
+  const straits = projectStraits(projection);
 
-  // County centres in fine-grid coordinates (offset to the cell centre).
-  const centres = BRITAIN.regions.map((region) => ({
-    region,
-    p: px(region.col * F + 1, region.row * F + 1),
-  }));
+  // Every county's centre, projected into the same space as the coastline —
+  // which is the whole reason both go through one projection.
+  const centres = BRITAIN.regions.map((region) => {
+    const coord = COUNTY_COORDS[region.id];
+    if (!coord) throw new Error(`No coordinates for county '${region.id}'`);
+    return { region, p: projection.project(coord[0], coord[1]) };
+  });
 
-  // Pass 1: nearest-centre assignment → land (county) or sea.
+  // Pass 1: the coastline says which hexes are land; the nearest centre says
+  // whose. A hex outside every landmass is sea, however close a county sits.
   const byKey = new Map<string, HexTile>();
   const key = (c: number, r: number) => `${c},${r}`;
 
   for (let fr = 0; fr < rows; fr++) {
     for (let fc = 0; fc < cols; fc++) {
-      const [x, y] = px(fc, fr);
+      const [x, y] = hexPixel(fc, fr);
+      // Inside a landmass, and not in a channel too narrow for the raster to keep.
+      const land = inLand(x, y, outline) && !inStrait(x, y, straits);
+
       let best = centres[0];
-      let bestD = Infinity;
-      for (const centre of centres) {
-        const dx = x - centre.p[0];
-        const dy = y - centre.p[1];
-        const d = dx * dx + dy * dy;
-        if (d < bestD) { bestD = d; best = centre; }
+      if (land) {
+        let bestD = Infinity;
+        for (const centre of centres) {
+          const dx = x - centre.p[0];
+          const dy = y - centre.p[1];
+          const d = dx * dx + dy * dy;
+          if (d < bestD) { bestD = d; best = centre; }
+        }
       }
-      const land = Math.sqrt(bestD) <= RADIUS;
+
+      const coord = land ? COUNTY_COORDS[best.region.id] : undefined;
       byKey.set(key(fc, fr), {
         col: fc,
         row: fr,
         terrain: land
-          ? terrainFor(best.region.country, best.region.col, best.region.row, fc, fr)
+          ? terrainFor(best.region.country, coord![0], coord![1], fc, fr)
           : Terrain.Water,
         resource: TileResource.None,
         countyId: land ? best.region.id : null,
       });
     }
   }
+
+  // Pass 1.5: every county must own at least one tile. A county whose whole
+  // Voronoi cell fell outside the coast — a small one on a crowded stretch of
+  // coastline — would otherwise vanish, taking its town, armies and scenario
+  // setup with it. Give it the land tile nearest its centre, borrowed from
+  // whichever neighbour has tiles to spare.
+  claimTileForEveryCounty(byKey, centres);
+
+  // Pass 1.6: every county must be ONE piece. Nearest-centre assignment can cut
+  // a county in two around a firth or a mountain — and a county whose town sits
+  // in the smaller piece has its own territory unreachable, which breaks
+  // movement, sieges and supply. Keep each county's largest blob and give the
+  // strays to whichever neighbour already borders them most.
+  defragmentCounties(byKey, key);
 
   // Pass 2: land bordering sea (or the map edge) becomes Coast (mountains keep).
   for (const tile of byKey.values()) {
@@ -126,8 +190,6 @@ export function buildBritainTileMap(): TileMap {
   // south-west); then carve again now those bridges have merged masses. Wider sea
   // gaps stay open water — true islands await ferries.
   carvePasses(byKey, key);
-  bridgeNarrowStraits(byKey, key);
-  carvePasses(byKey, key);
   fixCoastInvariant(byKey, key);
 
   // Pass 3: resources.
@@ -143,6 +205,127 @@ export function buildBritainTileMap(): TileMap {
 }
 
 type Key = (c: number, r: number) => string;
+
+/**
+ * Give every county a single connected territory.
+ *
+ * Nearest-centre assignment works on straight-line distance, so a county can be
+ * handed two patches of land with water or another county between them. The
+ * largest patch stays; each other patch is handed to the neighbouring county it
+ * shares the most border with, which keeps the map's county count intact while
+ * making every county walkable end to end.
+ *
+ * Repeated until nothing moves: handing a stray patch to a neighbour can split
+ * THAT neighbour, so one pass is not enough. It settles in two or three.
+ */
+function defragmentCounties(byKey: Map<string, HexTile>, key: Key): void {
+  for (let pass = 0; pass < 6; pass++) {
+    if (!defragmentOnce(byKey, key)) return;
+  }
+}
+
+/** One defragmentation sweep. Returns true if any tile changed hands. */
+function defragmentOnce(byKey: Map<string, HexTile>, key: Key): boolean {
+  let moved = false;
+  const byCounty = new Map<string, HexTile[]>();
+  for (const t of byKey.values()) {
+    if (!t.countyId) continue;
+    const list = byCounty.get(t.countyId);
+    if (list) list.push(t); else byCounty.set(t.countyId, [t]);
+  }
+
+  for (const [id, tiles] of byCounty) {
+    // Split this county's tiles into connected blobs.
+    const unvisited = new Set(tiles.map((t) => key(t.col, t.row)));
+    const blobs: HexTile[][] = [];
+    for (const t of tiles) {
+      const start = key(t.col, t.row);
+      if (!unvisited.has(start)) continue;
+      const blob: HexTile[] = [];
+      const stack = [t];
+      unvisited.delete(start);
+      while (stack.length) {
+        const cur = stack.pop()!;
+        blob.push(cur);
+        for (const [nc, nr] of hexNeighbours(cur.col, cur.row)) {
+          const k = key(nc, nr);
+          if (!unvisited.has(k)) continue;
+          unvisited.delete(k);
+          stack.push(byKey.get(k)!);
+        }
+      }
+      blobs.push(blob);
+    }
+    if (blobs.length < 2) continue;
+
+    // Keep the biggest; rehome the rest.
+    blobs.sort((a, b) => b.length - a.length);
+    for (const stray of blobs.slice(1)) {
+      const border = new Map<string, number>();
+      for (const t of stray) {
+        for (const [nc, nr] of hexNeighbours(t.col, t.row)) {
+          const n = byKey.get(key(nc, nr));
+          if (n?.countyId && n.countyId !== id) {
+            border.set(n.countyId, (border.get(n.countyId) ?? 0) + 1);
+          }
+        }
+      }
+      let newOwner: string | null = null;
+      let most = 0;
+      for (const [cid, n] of border) if (n > most) { most = n; newOwner = cid; }
+      // An island fragment touching nobody keeps its county rather than
+      // becoming sea: losing land is worse than an odd offshore holding.
+      if (newOwner) {
+        for (const t of stray) t.countyId = newOwner;
+        moved = true;
+      }
+    }
+  }
+  return moved;
+}
+
+
+interface Centre {
+  region: { id: string; country: string };
+  p: [number, number];
+}
+
+/**
+ * Make sure no county was rasterised out of existence.
+ *
+ * Nearest-centre assignment only ever hands out tiles that the coastline already
+ * called land, so a county packed onto a crowded stretch of coast can end up
+ * with none at all — and a county with no tiles has no town, which strands its
+ * armies and breaks scenario setup. Rare, but silent when it happens, so it is
+ * checked rather than hoped for: each empty county takes the land tile closest
+ * to its own centre from whichever neighbour can spare one.
+ */
+function claimTileForEveryCounty(byKey: Map<string, HexTile>, centres: Centre[]): void {
+  const owned = new Map<string, number>();
+  for (const t of byKey.values()) {
+    if (t.countyId) owned.set(t.countyId, (owned.get(t.countyId) ?? 0) + 1);
+  }
+
+  for (const centre of centres) {
+    if (owned.get(centre.region.id)) continue;
+
+    let best: HexTile | undefined;
+    let bestD = Infinity;
+    for (const t of byKey.values()) {
+      // Only take from a county that still has more than one tile, so rescuing
+      // one county can never empty another.
+      if (!t.countyId || (owned.get(t.countyId) ?? 0) <= 1) continue;
+      const [x, y] = hexPixel(t.col, t.row);
+      const d = (x - centre.p[0]) ** 2 + (y - centre.p[1]) ** 2;
+      if (d < bestD) { bestD = d; best = t; }
+    }
+    if (!best) continue;
+
+    owned.set(best.countyId!, owned.get(best.countyId!)! - 1);
+    best.countyId = centre.region.id;
+    owned.set(centre.region.id, 1);
+  }
+}
 
 const isLandTile = (t: HexTile | undefined): t is HexTile => !!t && t.countyId !== null;
 const isPassTile = (t: HexTile | undefined): t is HexTile => isLandTile(t) && isPassable(t.terrain);
@@ -168,32 +351,6 @@ function passableComponents(byKey: Map<string, HexTile>, key: Key): { comp: Map<
     sizes[id] = size;
   }
   return { comp, sizes };
-}
-
-/**
- * Bridge SINGLE-tile straits: a sea tile wedged between two different passable
- * landmasses becomes a Coast isthmus (assigned to a neighbouring county), so the
- * masses join. Only one-tile gaps — wider channels stay sea (ferry crossings, a
- * future feature). This repairs Voronoi near-touches (e.g. the south-west
- * peninsula) without filling open water.
- */
-function bridgeNarrowStraits(byKey: Map<string, HexTile>, key: Key): void {
-  const { comp } = passableComponents(byKey, key);
-
-  // Collect the straits to bridge first, so simultaneous bridges don't perturb
-  // each other's component test mid-pass.
-  const bridged: { tile: HexTile; donor: string }[] = [];
-  for (const t of byKey.values()) {
-    if (t.countyId !== null) continue; // only sea tiles
-    const masses = new Set<number>();
-    let donor: string | null = null;
-    for (const [nc, nr] of hexNeighbours(t.col, t.row)) {
-      const nb = byKey.get(key(nc, nr));
-      if (isPassTile(nb)) { masses.add(comp.get(key(nc, nr))!); donor = nb.countyId; }
-    }
-    if (masses.size >= 2 && donor) bridged.push({ tile: t, donor });
-  }
-  for (const { tile, donor } of bridged) { tile.countyId = donor; tile.terrain = Terrain.Coast; }
 }
 
 /**

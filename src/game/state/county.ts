@@ -39,6 +39,7 @@ function makeIndustries(
   const site = (has: boolean): IndustrySite => ({ present: has, operational: has });
   return {
     [Industry.Lumber]: site(present?.Lumber ?? false),
+    [Industry.Woolgrowing]: site(present?.Woolgrowing ?? false),
     [Industry.Quarry]: site(present?.Quarry ?? false),
     [Industry.IronMine]: site(present?.IronMine ?? false),
     // Every county has a blacksmith (Manual Part-3 "Blacksmith").
@@ -77,6 +78,7 @@ export function createCounty(init: CountyInit): County {
     blacksmithProduct: null,
     recentConscription: 0,
     aleSeasons: 0,
+    grievance: 0,
     revolting: false,
     unrestSeasons: 0,
     pacifiedSeasons: 0,

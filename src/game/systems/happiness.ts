@@ -53,8 +53,14 @@ export function updateHappiness(county: County): HappinessDelta {
   // Ale: temporary flat boost while it lasts.
   if (county.aleSeasons > 0) d.ale = HAPPINESS.aleBonus;
 
-  // Events: an active revolt depresses happiness further.
+  // Events: an active revolt depresses happiness further, and so does the
+  // memory of the lord selling the county's bread while it went hungry.
   if (county.revolting) d.events = -HAPPINESS.revoltPenalty;
+  if (county.grievance > 0) {
+    d.events -= county.grievance;
+    // Resentment fades, but not quickly — a dearth is remembered.
+    county.grievance = Math.max(0, county.grievance - HAPPINESS.grievanceDecay);
+  }
 
   const total = d.taxes + d.health + d.rations + d.conscription + d.ale + d.events;
   county.happiness = Math.max(0, Math.min(100, county.happiness + total));

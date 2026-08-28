@@ -10,9 +10,10 @@ import { createWorld } from './state/world.ts';
 import { createArmy } from './state/army.ts';
 import type { UnitCounts } from './types/army.ts';
 import { CastleType, FieldStatus, NoblePersonality, Season } from './types/enums.ts';
-import { BRITAIN, mapEdges, buildBritainTileMap, countyProfiles, countyTowns } from './maps/index.ts';
+import { BRITAIN, britainAdjacency, buildBritainTileMap, countyProfiles, countyTowns } from './maps/index.ts';
 import {
   WOOD_PER_TILE, STONE_PER_TILE, IRON_PER_TILE,
+  WOOL_PER_TILE,
   GRAIN_SACKS_PER_FIELD, GRAIN_YIELD_MULTIPLIER,
   FOOD_SURPLUS_TARGET, STARTING_FOOD_SEASONS,
   CASTLE_SPEC, SIEGE, ADVANCED_FARMING, AI_TUNING_DEFAULTS,
@@ -118,7 +119,7 @@ export function createDemoWorld(setup?: GameSetup): GameState {
     farm(createCounty({
       id: 'york', name: 'York', ownerId: 'p1', population: 320, happiness: 70,
       taxRate: 15, grainSacks: 1500, cows: 60, fieldCount: 8,
-      industries: { Lumber: true, Quarry: true },
+      industries: { Lumber: true, Quarry: true, Woolgrowing: true },
     }), 4, 4),
     farm(createCounty({
       id: 'lancaster', name: 'Lancaster', ownerId: 'p1', population: 240, happiness: 60,
@@ -217,6 +218,10 @@ export function createBritainWorld(setup?: GameSetup): GameState {
         Lumber: (p?.wood ?? 0) > 0,
         Quarry: (p?.stone ?? 0) > 0,
         IronMine: (p?.iron ?? 0) > 0,
+        // Sheep graze the pasture — the same grass that feeds cattle also
+        // grows fleeces, and upland counties that raise little wheat are
+        // exactly the ones wool made rich.
+        Woolgrowing: (p?.pasture ?? 0) > 0,
       },
       // A starting county holds the chosen castle (garrisoned, so it can only be
       // taken by siege); neutral counties have none and fall to a marching army.
@@ -230,6 +235,7 @@ export function createBritainWorld(setup?: GameSetup): GameState {
     if (p && p.wood > 0) county.industries.Lumber.capacity = p.wood * WOOD_PER_TILE;
     if (p && p.stone > 0) county.industries.Quarry.capacity = p.stone * STONE_PER_TILE;
     if (p && p.iron > 0) county.industries.IronMine.capacity = p.iron * IRON_PER_TILE;
+    if (p && p.pasture > 0) county.industries.Woolgrowing.capacity = p.pasture * WOOL_PER_TILE;
 
     farm(county, grainFields, cattleFields);
     return county;
@@ -251,7 +257,9 @@ export function createBritainWorld(setup?: GameSetup): GameState {
     realms,
     counties,
     armies,
-    edges: mapEdges(BRITAIN),
+    // Adjacency comes from where the tiles actually touch, not from the
+    // hand-declared lists (see maps/adjacency.ts).
+    edges: britainAdjacency(),
     season: Season.Spring,
     options,
   });

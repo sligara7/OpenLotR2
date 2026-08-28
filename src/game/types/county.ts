@@ -103,6 +103,13 @@ export interface County {
   recentConscription: number;
   /** Seasons of ale happiness remaining (temporary boost). */
   aleSeasons: number;
+  /**
+   * Resentment at food being sold out from under a hungry county — the medieval
+   * sin of profiteering in a dearth. Raised when a lord sells staples out of a
+   * county whose stores are already short, and it fades over a few seasons.
+   * Feeds the `events` line of the Happiness Report.
+   */
+  grievance: number;
   /** True while peasants are in open revolt. */
   revolting: boolean;
   /** Consecutive seasons spent at/near zero happiness (revolt countdown). */

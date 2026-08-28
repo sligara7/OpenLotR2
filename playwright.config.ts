@@ -14,7 +14,7 @@ export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 30_000,
   // Generous assertion timeout: the first navigation pays Vite's cold-start
-  // compile of Phaser (~1.2MB) before the HUD appears.
+  // compile before the HUD appears.
   expect: { timeout: 15_000 },
   use: { baseURL: `http://localhost:${webPort}` },
   webServer: [

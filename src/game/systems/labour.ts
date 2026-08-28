@@ -16,6 +16,7 @@ export interface LabourAllocation {
   cattleRaising: number;
   reclamation: number;
   lumber: number;
+  woolgrowing: number;
   quarry: number;
   ironMine: number;
   blacksmith: number;
@@ -29,6 +30,7 @@ const ZERO: LabourAllocation = {
   cattleRaising: 0,
   reclamation: 0,
   lumber: 0,
+  woolgrowing: 0,
   quarry: 0,
   ironMine: 0,
   blacksmith: 0,
@@ -53,6 +55,7 @@ function activeAgTasks(county: County): (keyof LabourAllocation)[] {
 function activeIndustryTasks(county: County): (keyof LabourAllocation)[] {
   const tasks: (keyof LabourAllocation)[] = [];
   if (county.industries[Industry.Lumber].operational) tasks.push('lumber');
+  if (county.industries[Industry.Woolgrowing].operational) tasks.push('woolgrowing');
   if (county.industries[Industry.Quarry].operational) tasks.push('quarry');
   if (county.industries[Industry.IronMine].operational) tasks.push('ironMine');
   if (county.industries[Industry.Blacksmith].operational) tasks.push('blacksmith');

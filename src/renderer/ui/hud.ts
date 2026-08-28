@@ -12,13 +12,16 @@
  * Every control carries a data-testid so Playwright can drive it.
  */
 
-import { CastleType, RationLevel, UNIT_TYPES } from '../../game/types/enums.ts';
+import { CASTLE_DESIGNS, CastleType, RationLevel, UNIT_TYPES } from '../../game/types/enums.ts';
+import { CASTLE_SPEC } from '../../game/constants.ts';
 import type { UnitType } from '../../game/types/enums.ts';
 import type { County } from '../../game/types/county.ts';
 import type { GameState } from '../../game/types/realm.ts';
 import type { GameSetup } from '../../game/scenarios.ts';
 import type { Army } from '../../game/types/army.ts';
 import { composition, armoryLine, armySpeed, FORGEABLE } from './units.ts';
+import { TRADE_GOODS, type Merchant, type TradeGood } from '../../game/types/trade.ts';
+import { quote } from '../../game/systems/merchants.ts';
 import { renderDiplomacy, type DiplomacyCallbacks } from './diplomacy.ts';
 
 export type ControlKind = 'tax' | 'ration' | 'industry' | 'diet';
@@ -43,6 +46,8 @@ export interface HudCallbacks {
   onSiege: () => void;
   /** Disband the selected army. */
   onDisband: () => void;
+  /** Begin (or switch to) a castle design in one of your counties. */
+  onBuildCastle: (countyId: string, design: CastleType) => void;
   /** Set a county blacksmith's product (null = idle). */
   onBlacksmith: (countyId: string, product: UnitType | null) => void;
   /** Muster a batch of `unit` from a county. */
@@ -51,6 +56,8 @@ export interface HudCallbacks {
   onHire: (countyId: string, unit: UnitType) => void;
   /** Send a supply convoy from a county to the selected army. */
   onSupply: (countyId: string) => void;
+  /** Buy from or sell to the merchant visiting a county. */
+  onTrade: (countyId: string, good: TradeGood, side: 'buy' | 'sell', quantity: number) => void;
   /** Diplomacy actions (gift / compliment / insult / offer / break / respond). */
   diplomacy: DiplomacyCallbacks;
 }
@@ -104,7 +111,19 @@ export class Hud {
   private disbandBtn!: HTMLButtonElement;
   private treasury!: HTMLDivElement;
   private milRow!: HTMLDivElement;
+  /** Last published state — the market needs it to price goods locally. */
+  private lastState: GameState | null = null;
+  private marketRow!: HTMLDivElement;
+  private marketTitle!: HTMLSpanElement;
+  private marketGood!: HTMLSelectElement;
+  private marketQty!: HTMLInputElement;
+  private marketPrice!: HTMLSpanElement;
+  private marketBuy!: HTMLButtonElement;
+  private marketSell!: HTMLButtonElement;
   private forgeSel!: HTMLSelectElement;
+  private castleBuildSel!: HTMLSelectElement;
+  private castleBuildBtn!: HTMLButtonElement;
+  private castleState!: HTMLSpanElement;
   private musterSel!: HTMLSelectElement;
   private diplo!: HTMLDivElement;
   private diploPanel!: HTMLDivElement;
@@ -145,11 +164,13 @@ export class Hud {
     const diet = this.control('sel-diet', () => this.selected?.id ?? null, 'diet');
     this.selTax = tax.value; this.selRation = ration.value; this.selInd = ind.value; this.selDiet = diet.value;
     this.milRow = this.buildMilControls();
+    this.marketRow = this.buildMarket();
     this.panel.append(
       this.selName, this.selDetail,
       this.labelled('Tax', tax.group), this.labelled('Ration', ration.group),
       this.labelled('Industry', ind.group), this.labelled('Grain⇄Beef', diet.group),
       this.milRow,
+      this.marketRow,
     );
     this.showSelected(null);
 
@@ -369,8 +390,9 @@ export class Hud {
     this.status.textContent = message;
   }
 
-  showSelected(county: County | null): void {
+  showSelected(county: County | null, merchant: Merchant | null = null): void {
     this.selected = county;
+    this.showMarket(county, merchant);
     if (!county) {
       this.selName.textContent = 'No county selected';
       this.selDetail.textContent = 'Click a county on the map.';
@@ -396,7 +418,17 @@ export class Hud {
     // Forge/muster controls only make sense on your own counties.
     const mine = county.ownerId === this.meId;
     this.milRow.style.display = mine ? 'flex' : 'none';
-    if (mine) this.forgeSel.value = county.blacksmithProduct ?? '';
+    if (mine) {
+      this.forgeSel.value = county.blacksmithProduct ?? '';
+      const c = county.castle;
+      const building = c.buildProgress < 1 && c.type !== CastleType.None;
+      this.castleState.textContent = c.type === CastleType.None
+        ? 'no castle'
+        : building
+          ? `${c.type} — building ${Math.round(c.buildProgress * 100)}%`
+          : `${c.type} standing${c.damage > 0 ? `, damaged ${Math.round(c.damage * 100)}%` : ''}`;
+      if (!building) this.castleBuildSel.value = c.type === CastleType.None ? CASTLE_DESIGNS[0] : c.type;
+    }
   }
 
   /** Show the currently selected army's strength, composition, and siege option. */
@@ -423,6 +455,85 @@ export class Hud {
     this.siegeBtn.style.display = canSiege ? 'inline-block' : 'none';
     // Disband only your own army, and only when it stands in your own county.
     this.disbandBtn.style.display = mine && !!county && county.ownerId === meId ? 'inline-block' : 'none';
+  }
+
+
+  /**
+   * The marketplace, shown only when a merchant is standing in the selected
+   * county and you own it — which is the manual's rule and the whole reason a
+   * merchant's arrival is worth noticing.
+   *
+   * The two prices are always on screen together, as they are on the manual's
+   * little scroll: what a unit costs to buy, and what it fetches if you sell.
+   */
+  private buildMarket(): HTMLDivElement {
+    const row = el('div', 'market', 'border-top:1px solid #4a3c28;margin-top:6px;padding-top:6px;flex-direction:column;gap:4px;display:none;');
+
+    this.marketTitle = el('span', 'market-title');
+    this.marketTitle.style.color = '#e8c98a';
+
+    const line = el('div', undefined, 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;');
+    this.marketGood = el('select', 'market-good', 'background:#1a140c;color:#e8dcc0;border:1px solid #5a4a2a;');
+    for (const g of TRADE_GOODS) {
+      const o = document.createElement('option');
+      o.value = g;
+      o.textContent = g;
+      this.marketGood.appendChild(o);
+    }
+    this.marketGood.onchange = () => this.refreshMarketPrice();
+
+    this.marketQty = el('input', 'market-qty', 'width:56px;background:#1a140c;color:#e8dcc0;border:1px solid #5a4a2a;');
+    this.marketQty.type = 'number';
+    this.marketQty.min = '1';
+    this.marketQty.value = '10';
+
+    this.marketPrice = el('span', 'market-price');
+    this.marketPrice.style.opacity = '0.85';
+
+    this.marketBuy = el('button', 'market-buy', 'cursor:pointer;padding:2px 8px;');
+    this.marketBuy.textContent = 'Buy';
+    this.marketBuy.onclick = () => this.trade('buy');
+
+    this.marketSell = el('button', 'market-sell', 'cursor:pointer;padding:2px 8px;');
+    this.marketSell.textContent = 'Sell';
+    this.marketSell.onclick = () => this.trade('sell');
+
+    line.append(this.marketGood, this.marketQty, this.marketBuy, this.marketSell, this.marketPrice);
+    row.append(this.marketTitle, line);
+    return row;
+  }
+
+  private trade(side: 'buy' | 'sell'): void {
+    const id = this.selected?.id;
+    const quantity = Math.max(1, Math.floor(Number(this.marketQty.value) || 0));
+    if (id) this.cb.onTrade(id, this.marketGood.value as TradeGood, side, quantity);
+  }
+
+  /**
+   * Show both sides of the price the way the manual's scroll does — and say
+   * WHY it is what it is, because the price now depends on what this county
+   * and realm are holding, and a player who cannot see that will read a glut
+   * as the merchant cheating them.
+   */
+  private refreshMarketPrice(): void {
+    const county = this.selected;
+    const state = this.lastState;
+    if (!county || !state) { this.marketPrice.textContent = ''; return; }
+    const q = quote(state, county.id, this.marketGood.value as TradeGood, this.meId);
+    if (!q) { this.marketPrice.textContent = ''; return; }
+    const mood = q.factor < 0.8 ? ' — glutted here' : q.factor > 1.25 ? ' — scarce here' : '';
+    this.marketPrice.textContent =
+      `sell ${q.sell} / buy ${q.buy} each · ${Math.round(q.stock)} held vs ${Math.round(q.reference)} usual${mood}`;
+  }
+
+  /** Open or close the market for the selected county. */
+  private showMarket(county: County | null, merchant: Merchant | null): void {
+    const open = !!county && !!merchant && county.ownerId === this.meId;
+    this.marketRow.style.display = open ? 'flex' : 'none';
+    if (!open || !merchant) return;
+    this.marketTitle.textContent =
+      `${merchant.name} the merchant is trading here · purse ${Math.round(merchant.purse)} crowns`;
+    this.refreshMarketPrice();
   }
 
   /** Blacksmith (forge) + conscription (muster) controls for an owned county. */
@@ -454,6 +565,31 @@ export class Hud {
     hBtn.onclick = () => { const id = this.selected?.id; if (id) this.cb.onHire(id, this.musterSel.value as UnitType); };
     muster.append(mLabel, this.musterSel, mBtn, hBtn);
 
+    // Castles. The manual makes this one of the six things a ruler does each
+    // turn — "you should build some kind of a castle as soon as you have enough
+    // stone and wood" — and until now the command existed with no way to reach
+    // it, so a county could only ever keep the castle it started with and the
+    // realm's timber and stone had nothing to be spent on.
+    const castle = el('div', undefined, 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;');
+    const cLabel = el('span'); cLabel.textContent = 'Castle:';
+    this.castleBuildSel = el('select', 'castle-build-select', 'background:#1a140c;color:#e8dcc0;border:1px solid #5a4a2a;');
+    for (const t of CASTLE_DESIGNS) {
+      const o = document.createElement('option');
+      o.value = t;
+      const spec = CASTLE_SPEC[t];
+      o.textContent = spec.wood || spec.stone ? `${t} (${spec.wood}w ${spec.stone}s)` : t;
+      this.castleBuildSel.appendChild(o);
+    }
+    this.castleBuildBtn = el('button', 'castle-build-btn', 'cursor:pointer;padding:2px 8px;');
+    this.castleBuildBtn.textContent = 'Build';
+    this.castleBuildBtn.onclick = () => {
+      const id = this.selected?.id;
+      if (id) this.cb.onBuildCastle(id, this.castleBuildSel.value as CastleType);
+    };
+    this.castleState = el('span', 'castle-state');
+    this.castleState.style.opacity = '0.85';
+    castle.append(cLabel, this.castleBuildSel, this.castleBuildBtn, this.castleState);
+
     const supply = el('div', undefined, 'display:flex;align-items:center;gap:6px;');
     const sBtn = el('button', 'supply-btn', 'cursor:pointer;padding:2px 8px;');
     sBtn.textContent = 'Supply army';
@@ -461,19 +597,21 @@ export class Hud {
     sBtn.onclick = () => { const id = this.selected?.id; if (id) this.cb.onSupply(id); };
     supply.append(sBtn);
 
-    row.append(forge, muster, supply);
+    row.append(forge, muster, castle, supply);
     return row;
   }
 
   /** @param meId the human player's realm id (owned counties are listed). */
   render(state: GameState, meId: string): void {
+    this.lastState = state;
     this.meId = meId;
     this.advancedFarming = state.options?.advancedFarming ?? false;
     const farmFlag = this.advancedFarming ? ' · ⛅ Advanced Farming' : '';
     this.header.textContent = `Year ${state.year} · ${state.season} · turn ${state.turn}${farmFlag}`;
     const t = state.realms[meId]?.treasury;
     this.treasury.textContent = t
-      ? `Treasury: ${Math.round(t.gold)} gold · ${Math.round(t.wood)} wood · ${Math.round(t.stone)} stone · ${Math.round(t.iron)} iron`
+      ? `Treasury: ${Math.round(t.gold)} gold · ${Math.round(t.wood)} wood · ${Math.round(t.stone)} stone · ` +
+        `${Math.round(t.iron)} iron · ${Math.round(t.wool)} wool`
       : 'Treasury: —';
     this.armory.textContent = `Armory: ${armoryLine(state.realms[meId]?.treasury.weapons ?? {})}`;
 

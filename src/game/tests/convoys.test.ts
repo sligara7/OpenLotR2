@@ -47,10 +47,41 @@ test('convoy: rolls toward a distant army over turns, then delivers', () => {
   const start = `${world.convoys[convoyId].col},${world.convoys[convoyId].row}`;
 
   let delivered = false;
-  for (let i = 0; i < 12 && !delivered; i++) delivered = advanceConvoys(world).convoys.some((c) => c.status === 'delivered');
+  let eaten = 0;
+  for (let i = 0; i < 12 && !delivered; i++) {
+    const ledger = advanceConvoys(world);
+    for (const c of ledger.convoys) eaten += c.eaten;
+    delivered = ledger.convoys.some((c) => c.status === 'delivered');
+  }
   assert(delivered, 'the convoy eventually reaches the army');
-  assertEqual(army.supply, 60, 'army resupplied');
   assert(start !== `${army.col},${army.row}`, 'it really travelled');
+
+  // THE COLUMN ATE AS IT WENT. Less arrives than set out, and the shortfall is
+  // the escort and the draught animals living on the cargo — the central fact
+  // of pre-modern logistics, and the reason supply has a radius at all.
+  assert(army.supply < 60, `less arrived than set out (${army.supply.toFixed(1)} of 60)`);
+  assert(army.supply > 0, 'but a haul across two counties still arrives worth having');
+  assert(eaten > 0, `and the ledger says what the journey cost (${eaten.toFixed(1)})`);
+});
+
+test('convoy: past a certain distance the wagon eats everything and nothing arrives', () => {
+  const world = createBritainWorld();
+  const army = world.armies['p1-army'];
+  // The far end of Britain: Hampshire to Caithness is 112 tiles, at which
+  // distance under two percent of a load survives the journey. An ordinary
+  // cartload simply never gets there.
+  const caithness = countyTowns(buildBritainTileMap()).get('caithness')!;
+  army.col = caithness.col; army.row = caithness.row; army.countyId = 'caithness';
+
+  dispatch(world, { type: 'SendConvoy', fromCountyId: 'hampshire', toArmyId: 'p1-army', grainSacks: 50 }, ctx);
+
+  let consumed = false;
+  for (let i = 0; i < 40 && !consumed; i++) {
+    consumed = advanceConvoys(world).convoys.some((c) => c.status === 'consumed');
+  }
+  assert(consumed, 'the column ate itself hollow before it ever arrived');
+  assertEqual(army.supply, 0, 'and the army at the far end got nothing');
+  assertEqual(Object.keys(world.convoys).length, 0, 'the convoy is off the map');
 });
 
 test('convoy: an enemy army on its tile destroys it (raided supply line)', () => {

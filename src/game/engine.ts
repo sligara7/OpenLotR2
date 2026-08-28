@@ -35,6 +35,7 @@ import type { MigrationLedger } from './systems/immigration.ts';
 import { forageArmies } from './systems/foraging.ts';
 import type { ForageLedger } from './systems/foraging.ts';
 import { advanceConvoys } from './systems/convoys.ts';
+import { advanceMerchants } from './systems/merchants.ts';
 import type { ConvoyLedger } from './systems/convoys.ts';
 import { advanceSieges } from './systems/siege.ts';
 import type { SiegeLedger } from './systems/siege.ts';
@@ -76,7 +77,7 @@ export interface TurnReport {
   outcome: GameOutcome | null;
 }
 
-const scratchTreasury = (): Treasury => ({ gold: 0, wood: 0, stone: 0, iron: 0, weapons: {} });
+const scratchTreasury = (): Treasury => ({ gold: 0, wood: 0, stone: 0, iron: 0, wool: 0, weapons: {} });
 
 function processCounty(state: GameState, county: County, rng: Rng): CountyTurnReport {
   const realm = county.ownerId ? state.realms[county.ownerId] : undefined;
@@ -145,6 +146,10 @@ export function advanceSeason(state: GameState, rng: Rng): TurnReport {
   const wages = payWages(state);
   // Fresh movement budget for every surviving army next turn.
   for (const army of Object.values(state.armies)) army.movement = armyMovementAllowance(army);
+
+  // Merchants move on to the next county on their round, so who can trade —
+  // and for what — changes from season to season.
+  advanceMerchants(state);
 
   // Relations cool toward neutral (allies warm), stale offers lapse.
   const diplomacy = runDiplomacy(state);

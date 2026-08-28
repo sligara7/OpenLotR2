@@ -16,6 +16,7 @@ import type { CastleType, FieldStatus, RationLevel, UnitType } from '../types/en
 import type { UnitCounts } from '../types/army.ts';
 import type { SiegeEngines } from '../types/siege.ts';
 import type { Rng } from '../rng.ts';
+import type { TradeGood } from '../types/trade.ts';
 import type { TurnReport } from '../engine.ts';
 
 export interface SetTaxRate { type: 'SetTaxRate'; countyId: string; rate: number; }
@@ -44,6 +45,16 @@ export interface SendSupplies {
   cows?: number;
 }
 export interface BuyAle { type: 'BuyAle'; countyId: string; }
+/** Buy from or sell to the merchant visiting one of your counties. Grain and
+ *  cattle move against that county's stores; everything else against the realm's
+ *  shared treasury. Refused when no merchant is there (Manual Part-3). */
+export interface Trade {
+  type: 'Trade';
+  countyId: string;
+  good: TradeGood;
+  side: 'buy' | 'sell';
+  quantity: number;
+}
 /** Dispatch a supply convoy carrying `grainSacks` of food from one of your
  *  counties toward one of your armies; it travels (and can be intercepted). */
 export interface SendConvoy { type: 'SendConvoy'; fromCountyId: string; toArmyId: string; grainSacks: number; }
@@ -105,6 +116,7 @@ export type Command =
   | BuildCastle
   | SendSupplies
   | BuyAle
+  | Trade
   | SendConvoy
   | MoveArmy
   | FerryArmy

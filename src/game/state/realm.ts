@@ -9,6 +9,7 @@ export interface RealmInit {
   isHuman?: boolean;
   personality?: NoblePersonality | null;
   gold?: number;
+  wool?: number;
   wood?: number;
   stone?: number;
   iron?: number;
@@ -25,6 +26,7 @@ export function createRealm(init: RealmInit): Realm {
       wood: init.wood ?? 0,
       stone: init.stone ?? 0,
       iron: init.iron ?? 0,
+      wool: init.wool ?? 0,
       weapons: {},
     },
     eliminated: false,

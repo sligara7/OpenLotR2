@@ -16,6 +16,7 @@ import { setTaxRate, setRation, setLabourPolicy } from './handlers/governance.ts
 import { assignField } from './handlers/fields.ts';
 import { buildCastle } from './handlers/castle.ts';
 import { sendSupplies, buyAle } from './handlers/logistics.ts';
+import { trade } from './handlers/trade.ts';
 import { sendConvoy } from './handlers/convoys.ts';
 import { moveArmy, ferryArmy } from './handlers/army.ts';
 import { attackArmy, laySiege } from './handlers/combat.ts';
@@ -43,6 +44,7 @@ export function dispatch(state: GameState, command: Command, ctx: CommandContext
     case 'BuildCastle': return buildCastle(state, command, ctx);
     case 'SendSupplies': return sendSupplies(state, command, ctx);
     case 'BuyAle': return buyAle(state, command, ctx);
+    case 'Trade': return trade(state, command, ctx);
     case 'SendConvoy': return sendConvoy(state, command, ctx);
     case 'MoveArmy': return moveArmy(state, command, ctx);
     case 'FerryArmy': return ferryArmy(state, command, ctx);

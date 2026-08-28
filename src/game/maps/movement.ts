@@ -9,8 +9,25 @@
 import { findPath, hexDistance, type Offset } from './hex.ts';
 import { edgeKey, hexNeighbours, isPassable, type HexTile, type TileMap } from './tiles.ts';
 
-/** Extra movement cost to cross a river edge (Unciv-style river penalty). */
-export const RIVER_CROSS_COST = 2;
+/**
+ * Extra movement cost to cross a river edge (Unciv-style river penalty).
+ *
+ * Scaled with the map: a fixed penalty gets weaker as tiles get finer, and a
+ * journey now costs about 2.3x more points than it did, so the old +2 had
+ * become proportionally a third of its former weight.
+ *
+ * ⚠️ CURRENTLY INERT, AND MEASURED SO — not a tuning problem. On 2026-08-26,
+ * across all 182 adjacent-county journeys and four coast-to-coast marches
+ * (including Hampshire to Caithness, 112 tiles), the number of river crossings
+ * was ZERO. The cause is river GENERATION, not this constant: carveRivers
+ * produces 61 disconnected systems over 2,752 land tiles, the longest 9 edges
+ * and 28 of them single-edge stubs. Puddles, not barriers — so pathfinding
+ * always steps around them and raising this number only widens the detour.
+ *
+ * Left at the correctly-scaled value so it behaves properly once rivers are
+ * carved as continuous source-to-sea courses. Until then, rivers are scenery.
+ */
+export const RIVER_CROSS_COST = 5;
 
 export interface TilePath {
   tiles: HexTile[];

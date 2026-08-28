@@ -30,7 +30,66 @@ const TERRAIN_FILL: Record<Terrain, string> = {
   Plains: '#7e9c4d', Forest: '#3a6230', Hills: '#a89254', Mountains: '#7c8086',
   Moor: '#937e94', Coast: '#d8c489', Water: '#2d5e8a',
 };
-const OWNER_COLOR: Record<string, string> = { p1: '#3a6ea5', p2: '#a53a3a', p3: '#3aa55a' };
+/*
+ * One colour per realm — the player's "shield colour" in the manual's terms.
+ *
+ * MUST COVER EVERY REALM A GAME CAN HOLD. A game may be set up with 2 to 5
+ * nobles, and this table used to name only three: in a four- or five-noble game
+ * the last two realms got no map tint and no border colour at all, so their
+ * territory was indistinguishable from unclaimed land.
+ */
+const OWNER_COLOR: Record<string, string> = {
+  p1: '#3a6ea5', // blue
+  p2: '#a53a3a', // red
+  p3: '#3aa55a', // green
+  p4: '#7d4aa5', // purple
+  p5: '#c08a2e', // gold
+};
+
+/** Fallback for a realm the palette does not name — visible, never invisible. */
+const NEUTRAL_OWNER_COLOR = '#8a8378';
+
+/** A realm's colour, always something. Never returns undefined, because an
+ *  undefined colour is how two realms became invisible on the map. */
+function ownerColour(realmId: string): string {
+  return OWNER_COLOR[realmId] ?? NEUTRAL_OWNER_COLOR;
+}
+
+/** How wide an army banner is, in map units. The fan is sized against this. */
+const ARMY_ICON_WIDTH = 7;
+/** How far a banner may be pushed from the tile centre before it spills into
+ *  a neighbouring hex. The hex itself has radius S. */
+const FAN_MAX_RADIUS = 6.5;
+
+/**
+ * How to lay out `n` armies sharing one tile: a ring radius, and how much to
+ * shrink each banner so they do not overlap.
+ *
+ * DERIVED, NOT GUESSED, because guessing is what broke it. `n` banners evenly
+ * spaced on a ring of radius r sit 2*r*sin(pi/n) apart, so the radius that just
+ * separates them is ICON_WIDTH / (2*sin(pi/n)). A first attempt used a flat 3.4,
+ * which happens to be enough for two banners and not enough for three — so
+ * mustering a third army in a county put it back on top of the others and made
+ * them unclickable again, exactly the bug the fan was added to fix.
+ *
+ * Past six banners the ring cannot grow without spilling into the next hex, so
+ * the banners shrink instead and the tile visibly becomes a crowded muster.
+ */
+function fanLayout(n: number): { radius: number; scale: number } {
+  if (n <= 1) return { radius: 0, scale: 1 };
+  const needed = ARMY_ICON_WIDTH / (2 * Math.sin(Math.PI / n));
+  const radius = Math.min(FAN_MAX_RADIUS, needed);
+  // If the ring had to be capped, shrink the banners by however much it fell short.
+  const scale = Math.max(0.5, Math.min(1, radius / needed));
+  return { radius, scale };
+}
+
+/** Where to draw the i-th of `n` armies sharing one tile. */
+function fanOffset(i: number, n: number, radius: number): [number, number] {
+  if (n <= 1) return [0, 0];
+  const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+  return [Math.cos(angle) * radius, Math.sin(angle) * radius];
+}
 
 // Crop patch colours by grain stage.
 const CROP_BARE = '#6e4a2a';     // ploughed / harvested
@@ -172,15 +231,23 @@ function castleIcon(cx: number, cy: number, colour: string): SVGElement {
 }
 
 /** An army banner in the owner's colour; ringed when selected. */
-function armyIcon(cx: number, cy: number, colour: string, selected: boolean): SVGGElement {
+function armyIcon(cx: number, cy: number, colour: string, selected: boolean, scale = 1): SVGGElement {
   const g = document.createElementNS(SVGNS, 'g') as SVGGElement;
-  if (selected) g.appendChild(el('circle', { cx, cy, r: 6, fill: 'none', stroke: '#ffe9a8', 'stroke-width': 1.2 }));
+  const w = ARMY_ICON_WIDTH * scale / 2;
+  const h = 3.5 * scale;
+  if (selected) {
+    g.appendChild(el('circle', { cx, cy, r: 6 * scale, fill: 'none', stroke: '#ffe9a8', 'stroke-width': 1.2 }));
+  }
   // shield
   g.appendChild(el('path', {
-    d: `M${cx - 3.5},${cy - 3.5} L${cx + 3.5},${cy - 3.5} L${cx + 3.5},${cy + 0.5} Q${cx},${cy + 5} ${cx - 3.5},${cy + 0.5} Z`,
+    d: `M${cx - w},${cy - h} L${cx + w},${cy - h} L${cx + w},${cy + 0.5 * scale} ` +
+       `Q${cx},${cy + 5 * scale} ${cx - w},${cy + 0.5 * scale} Z`,
     fill: colour, stroke: '#15110a', 'stroke-width': 0.6,
   }));
-  g.appendChild(el('line', { x1: cx, y1: cy - 3, x2: cx, y2: cy + 2.5, stroke: 'rgba(255,255,255,0.6)', 'stroke-width': 0.5 }));
+  g.appendChild(el('line', {
+    x1: cx, y1: cy - 3 * scale, x2: cx, y2: cy + 2.5 * scale,
+    stroke: 'rgba(255,255,255,0.6)', 'stroke-width': 0.5,
+  }));
   return g;
 }
 
@@ -241,6 +308,8 @@ export class MapTilesSvg {
     this.sieges.setAttribute('data-testid', 'sieges');
     this.convoysLayer = document.createElementNS(SVGNS, 'g');
     this.convoysLayer.setAttribute('data-testid', 'convoys');
+    this.merchantsLayer = document.createElementNS(SVGNS, 'g');
+    this.merchantsLayer.setAttribute('data-testid', 'merchants');
     this.units = document.createElementNS(SVGNS, 'g');
     this.units.setAttribute('data-testid', 'units');
     this.paths = document.createElementNS(SVGNS, 'g');
@@ -372,7 +441,8 @@ export class MapTilesSvg {
     // redrawn from state); they sit above the land but below structures/units.
     this.viewport.append(
       terrainLayer, shadeLayer, coastLayer, featuresLayer, riversLayer, this.farms, industryLayer, this.borders,
-      this.castles, this.sieges, this.settle, labelLayer, this.fog, this.paths, this.convoysLayer, this.units,
+      this.castles, this.sieges, this.settle, labelLayer, this.fog, this.paths, this.convoysLayer,
+      this.merchantsLayer, this.units,
     );
 
     const pad = 6;
@@ -409,8 +479,8 @@ export class MapTilesSvg {
         let width = 1;
         let dkey = '';
         if (ownerA) {
-          if (ownerB === ownerA) { stroke = OWNER_COLOR[ownerA]; width = 0.9; dkey = `${edgeKey(col, row, nc, nr)}|s`; }
-          else { stroke = OWNER_COLOR[ownerA]; width = 2.8; dkey = `${edgeKey(col, row, nc, nr)}|o${ownerA}`; }
+          if (ownerB === ownerA) { stroke = ownerColour(ownerA); width = 0.9; dkey = `${edgeKey(col, row, nc, nr)}|s`; }
+          else { stroke = ownerColour(ownerA); width = 2.8; dkey = `${edgeKey(col, row, nc, nr)}|o${ownerA}`; }
         } else if (!seaSide && ownerB === null) {
           stroke = '#241a0c'; width = 0.8; dkey = `${edgeKey(col, row, nc, nr)}|n`;
         }
@@ -468,7 +538,7 @@ export class MapTilesSvg {
     // Owner tint.
     for (const { poly, base, countyId } of this.tiles.values()) {
       const owner = countyId ? state.counties[countyId]?.ownerId ?? null : null;
-      poly.setAttribute('fill', owner && OWNER_COLOR[owner] ? mix(base, OWNER_COLOR[owner], 0.45) : base);
+      poly.setAttribute('fill', owner ? mix(base, ownerColour(owner), 0.45) : base);
     }
 
     // Farms (worked crop/pasture tiles) + settlements, rebuilt from state.
@@ -501,6 +571,7 @@ export class MapTilesSvg {
     this.drawCastles(state);
     this.drawSieges(state);
     this.drawConvoys(state);
+    this.drawMerchants(state);
     this.drawUnits(state);
     this.rebuildFog(state);
     while (this.paths.firstChild) this.paths.removeChild(this.paths.firstChild); // clear stale move preview
@@ -555,7 +626,7 @@ export class MapTilesSvg {
       const county = state.counties[countyId];
       if (!county || county.castle.type === CastleType.None || view.spots.length === 0) continue;
       const owner = county.ownerId;
-      const colour = owner && OWNER_COLOR[owner] ? OWNER_COLOR[owner] : '#888';
+      const colour = owner ? ownerColour(owner) : NEUTRAL_OWNER_COLOR;
       this.castles.appendChild(castleIcon(view.spots[0][0], view.spots[0][1], colour));
     }
   }
@@ -568,7 +639,7 @@ export class MapTilesSvg {
       const [cx, cy] = hexCentre(convoy.col, convoy.row);
       const x = cx * S;
       const y = cy * S;
-      const colour = OWNER_COLOR[convoy.ownerId] ?? '#888';
+      const colour = ownerColour(convoy.ownerId);
       const g = document.createElementNS(SVGNS, 'g');
       g.setAttribute('data-testid', `convoy-${convoy.id}`);
       g.setAttribute('pointer-events', 'none');
@@ -579,25 +650,75 @@ export class MapTilesSvg {
     }
   }
 
+  /**
+   * Merchant wagons, at the town of whichever county they are visiting.
+   *
+   * Drawn because trade is only possible where a wagon has stopped, so a player
+   * has to be able to SEE one coming — the manual has them visible on the main
+   * map for exactly that reason. A canopied cart, distinct from the owner-coloured
+   * supply convoys.
+   */
+  private drawMerchants(state: GameState): void {
+    while (this.merchantsLayer.firstChild) this.merchantsLayer.removeChild(this.merchantsLayer.firstChild);
+    for (const merchant of state.merchants ?? []) {
+      const countyId = merchant.circuit[merchant.at % merchant.circuit.length];
+      const view = this.counties.get(countyId);
+      if (!view || view.spots.length === 0) continue;
+
+      const [x, y] = view.spots[0];
+      const g = document.createElementNS(SVGNS, 'g');
+      g.setAttribute('data-testid', `merchant-${merchant.id}`);
+      g.setAttribute('pointer-events', 'none');
+      // Cart bed, canopy and wheels.
+      g.appendChild(el('rect', { x: x - 3, y: y - 1, width: 6, height: 2.6, fill: '#6b4a22', stroke: '#2a1c0c', 'stroke-width': 0.4 }));
+      g.appendChild(el('path', { d: `M${x - 3},${y - 1} q3,-4 6,0`, fill: '#e6dcc0', stroke: '#2a1c0c', 'stroke-width': 0.4 }));
+      g.appendChild(el('circle', { cx: x - 1.8, cy: y + 1.8, r: 1, fill: '#2e2a22' }));
+      g.appendChild(el('circle', { cx: x + 1.8, cy: y + 1.8, r: 1, fill: '#2e2a22' }));
+      this.merchantsLayer.appendChild(g);
+    }
+  }
+
   private drawUnits(state: GameState): void {
     while (this.units.firstChild) this.units.removeChild(this.units.firstChild);
-    for (const army of Object.values(state.armies)) {
+
+    // Armies sharing a tile are FANNED OUT rather than stacked. Drawn at the
+    // bare tile centre they land exactly on top of one another, and the last one
+    // drawn swallows every click — so mustering a second army in a county silently
+    // made the first one unselectable, with no visible sign that two were there.
+    const visible = Object.values(state.armies).filter(
       // Hide enemy armies sitting in the fog (your own are always shown).
-      if (army.ownerId !== this.meId && !this.tileVisible(state, army.col, army.row, army.countyId)) continue;
-      const [ux, uy] = hexCentre(army.col, army.row);
-      const colour = OWNER_COLOR[army.ownerId] ?? '#888';
-      const g = armyIcon(ux * S, uy * S, colour, army.id === this.selectedArmyId);
-      // Troop-count label below the banner.
-      const label = el('text', {
-        x: ux * S, y: uy * S + 8, 'text-anchor': 'middle', 'font-size': 3.6, 'font-weight': 'bold',
-        fill: '#fff', stroke: '#000', 'stroke-width': 0.4, 'paint-order': 'stroke',
-      });
-      label.textContent = String(army.soldiers);
-      g.appendChild(label);
-      g.setAttribute('data-testid', `army-${army.id}`);
-      (g as SVGElement).style.cursor = 'pointer';
-      g.addEventListener('click', (e) => { e.stopPropagation(); armyClicked(army.id); });
-      this.units.appendChild(g);
+      (a) => a.ownerId === this.meId || this.tileVisible(state, a.col, a.row, a.countyId),
+    );
+    const onTile = new Map<string, typeof visible>();
+    for (const a of visible) {
+      const k = `${a.col},${a.row}`;
+      const list = onTile.get(k);
+      if (list) list.push(a); else onTile.set(k, [a]);
+    }
+
+    for (const [, sharing] of onTile) {
+      // Stable order, so a redraw never shuffles the banners under the cursor.
+      sharing.sort((a, b) => (a.id < b.id ? -1 : 1));
+      const { radius, scale } = fanLayout(sharing.length);
+      for (const [i, army] of sharing.entries()) {
+        const [ux, uy] = hexCentre(army.col, army.row);
+        const [dx, dy] = fanOffset(i, sharing.length, radius);
+        const x = ux * S + dx;
+        const y = uy * S + dy;
+        const colour = ownerColour(army.ownerId);
+        const g = armyIcon(x, y, colour, army.id === this.selectedArmyId, scale);
+        // Troop-count label below the banner.
+        const label = el('text', {
+          x, y: y + 8 * scale, 'text-anchor': 'middle', 'font-size': 3.6 * scale, 'font-weight': 'bold',
+          fill: '#fff', stroke: '#000', 'stroke-width': 0.4, 'paint-order': 'stroke',
+        });
+        label.textContent = String(army.soldiers);
+        g.appendChild(label);
+        g.setAttribute('data-testid', `army-${army.id}`);
+        (g as SVGElement).style.cursor = 'pointer';
+        g.addEventListener('click', (e) => { e.stopPropagation(); armyClicked(army.id); });
+        this.units.appendChild(g);
+      }
     }
   }
 

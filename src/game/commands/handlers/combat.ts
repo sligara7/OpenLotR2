@@ -97,7 +97,7 @@ export function captureOnOccupy(state: GameState, army: Army): string | null {
   if (defended) return null;
 
   registerHostility(state, army.ownerId, county.ownerId ?? '');
-  captureCounty(state, county.id, army.ownerId);
+  captureCounty(state, county.id, army.ownerId, army.id);
   updateEliminations(state);
   return county.id;
 }

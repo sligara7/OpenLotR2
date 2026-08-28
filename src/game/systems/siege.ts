@@ -146,7 +146,7 @@ export function advanceSieges(state: GameState, rng: Rng): SiegeLedger {
 
     if (county.castle.garrison <= 0) {
       // Starved (or battered) into surrender — no assault needed.
-      captureCounty(state, siege.countyId, siege.attackerRealmId);
+      captureCounty(state, siege.countyId, siege.attackerRealmId, siege.besiegerArmyId);
       status = 'starved';
       captured = true;
     } else if (cost > 0 && siege.progress >= 1) {
@@ -161,7 +161,7 @@ export function advanceSieges(state: GameState, rng: Rng): SiegeLedger {
       county.castle.garrison = result.defender.survivors;
 
       if (result.defenderDestroyed) {
-        captureCounty(state, siege.countyId, siege.attackerRealmId);
+        captureCounty(state, siege.countyId, siege.attackerRealmId, siege.besiegerArmyId);
         status = 'stormed';
         captured = true;
       } else {

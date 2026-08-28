@@ -3,7 +3,7 @@
   "title": "King of the Lands",
   "homepage": "https://github.com/sligara7/OpenLotR2",
   "version": "0.0.1-alpha",
-  "description": "King of the Lands — a medieval realm-management & conquest strategy game (inspired by Lords of the Realm II, with Civ V / Axis & Allies / Risk influences)",
+  "description": "King of the Lands \u2014 a medieval realm-management & conquest strategy game (inspired by Lords of the Realm II, with Civ V / Axis & Allies / Risk influences)",
   "main": "dist/main/index.js",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
@@ -24,10 +24,10 @@
     "test:api": "tsx src/server/tests/run.mts",
     "test:e2e": "playwright test",
     "api": "tsx src/server/index.ts",
-    "api:dev": "tsx watch src/server/index.ts"
+    "api:dev": "tsx watch src/server/index.ts",
+    "balance": "tsx src/game/balance/run.ts"
   },
   "keywords": [
-    "phaser",
     "express",
     "electron"
   ],
@@ -46,7 +46,6 @@
     "express": "^4.17.1",
     "io": "^1.0.0",
     "nedb": "^1.8.0",
-    "phaser": "^3.90.0",
     "pl8image": "github:s-ayers/pl8image",
     "png-crop": "^0.0.2",
     "socket.io": "^2.2.0",

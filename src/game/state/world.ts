@@ -1,6 +1,7 @@
 /* World construction and lookups (counties + realms + adjacency graph). */
 
 import { Season } from '../types/enums.ts';
+import { buildMerchants } from '../systems/merchants.ts';
 import { AI_TUNING_DEFAULTS } from '../constants.ts';
 import { emptyDiplomacy } from '../systems/diplomacy.ts';
 import { emptyExploration, revealDisk } from '../systems/exploration.ts';
@@ -59,6 +60,9 @@ export function createWorld(init: WorldInit): GameState {
       },
     },
     exploration: emptyExploration(),
+    // Merchants work circuits over the counties, in the order the map lists
+    // them, so their routes are reproducible.
+    merchants: buildMerchants(Object.keys(counties), adjacency),
     outcome: null,
   };
 

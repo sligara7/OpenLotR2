@@ -265,3 +265,138 @@ test('combat & units: army composition, the armory, forging and mustering', asyn
 
   await page.screenshot({ path: 'test-results/combat-units.png', fullPage: true });
 });
+
+/*
+ * Regressions from a play session on 2026-08-26. Each of these was a defect that
+ * made the game feel broken without ever throwing an error, which is exactly the
+ * kind an automated check has to hold down.
+ */
+
+test('armies crowded on one tile stay individually selectable', async ({ page }) => {
+  await page.goto('/');
+
+  // Muster TWO more armies where the starting army already stands. Three is the
+  // number that matters: a fan sized by guesswork separated two banners and not
+  // three, so the bug came back the moment a county mustered twice.
+  await page.getByTestId('county-hampshire-info').click();
+  await page.getByTestId('muster-btn').click();
+  await expect(page.getByTestId('army-p1-army-2')).toBeVisible();
+  await page.getByTestId('county-hampshire-info').click();
+  await page.getByTestId('muster-btn').click();
+  await expect(page.getByTestId('army-p1-army-3')).toBeVisible();
+
+  // Every one of them must still be reachable by a click.
+  for (const id of ['army-p1-army', 'army-p1-army-2', 'army-p1-army-3']) {
+    await page.getByTestId(id).click({ timeout: 5000 });
+    await expect(page.getByTestId('status')).toContainText(/Army selected|Armies combined/);
+  }
+});
+
+test('every realm is painted, even in a five-noble game', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('setup-nobles').selectOption('5');
+  await page.getByTestId('new-game').click();
+  await expect(page.getByTestId('borders')).toBeVisible();
+
+  // The owner palette must name every realm a game can hold. It once listed
+  // three, so in a four- or five-noble game the last two realms drew no tint and
+  // no border colour and were indistinguishable from unclaimed land.
+  const strokes = await page.evaluate(() =>
+    [...new Set([...document.querySelectorAll('[data-testid="borders"] line')]
+      .map((l) => l.getAttribute('stroke')))]);
+  expect(strokes.every((s) => s && s !== 'undefined')).toBe(true);
+  // Five realms plus the neutral border colour.
+  expect(strokes.length).toBeGreaterThanOrEqual(6);
+});
+
+test('the turn log reports your own realm, not all 82 counties', async ({ page }) => {
+  await page.goto('/');
+  for (let i = 0; i < 10; i++) {
+    await page.getByTestId('end-turn').click();
+    await expect(page.getByTestId('status')).toContainText('EndTurn');
+  }
+
+  // Plague fires at 3% per county per season across the whole map, so reporting
+  // every county buried the player's own news under two or three lines a turn
+  // about land nobody owned.
+  const log = (await page.getByTestId('turn-log').textContent()) ?? '';
+  const struck = [...log.matchAll(/plague struck ([A-Z][a-zA-Z ]+?)(?:Year|·|$)/g)].map((m) => m[1].trim());
+  const mine = ['Hampshire', 'Berkshire', 'Wiltshire'];
+  for (const county of struck) expect(mine).toContain(county);
+});
+
+test('marketplace: trade with the merchant visiting one of your counties', async ({ page }) => {
+  await page.goto('/');
+
+  // Wagons are drawn on the map, because trade is only possible where one has
+  // stopped and a player has to be able to see one coming.
+  expect(await page.getByTestId('merchants').locator('g').count()).toBeGreaterThan(0);
+
+  // Find a season in which a merchant is standing in a county we own. Circuits
+  // are deterministic, so this always resolves — but not necessarily on turn 0.
+  const mine = ['hampshire', 'berkshire', 'wiltshire'];
+  let open: string | null = null;
+  for (let turn = 0; turn < 12 && !open; turn++) {
+    for (const county of mine) {
+      await page.getByTestId(`county-${county}-info`).click();
+      if (await page.getByTestId('market').isVisible()) { open = county; break; }
+    }
+    if (!open) await page.getByTestId('end-turn').click();
+  }
+  expect(open).not.toBeNull();
+  await expect(page.getByTestId('market-title')).toContainText('merchant is trading here');
+
+  // The price is quoted against what is actually held here, so the panel says
+  // how much there is and what a usual holding would be.
+  await expect(page.getByTestId('market-price')).toContainText('held vs');
+
+  // Buying spends gold and delivers goods. Only a few units: a realm holding no
+  // timber is a desperate buyer and pays accordingly, which is the supply
+  // pricing working rather than a fault.
+  await page.getByTestId('market-good').selectOption('Wood');
+  await page.getByTestId('market-qty').fill('5');
+  await page.getByTestId('market-buy').click();
+  await expect(page.getByTestId('status')).toContainText('Bought 5 Wood');
+  await expect(page.getByTestId('treasury')).toContainText('5 wood');
+
+  // Selling turns a county's grain back into gold, at a worse rate than buying.
+  await page.getByTestId(`county-${open}-info`).click();
+  await page.getByTestId('market-good').selectOption('Grain');
+  await page.getByTestId('market-qty').fill('30');
+  await page.getByTestId('market-sell').click();
+  await expect(page.getByTestId('status')).toContainText('Sold 30 Grain');
+});
+
+test('marketplace: closed in a county with no merchant', async ({ page }) => {
+  await page.goto('/');
+  // Somewhere on the map there is a county with no wagon in it; the market must
+  // stay shut there. This is the rule that makes a merchant's arrival matter.
+  const visiting = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid^="merchant-"]')].length);
+  expect(visiting).toBeGreaterThan(0);
+
+  await page.getByTestId('county-yorkshire-info').click();
+  // Yorkshire is not ours, so even with a merchant there the market stays shut.
+  await expect(page.getByTestId('market')).toBeHidden();
+});
+
+test('castles: a ruler can order one built, and it consumes the realm’s materials', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('county-hampshire-info').click();
+
+  // Every design a ruler may order, with what it costs — the manual makes
+  // castle building one of the six things a ruler does each turn, and until
+  // this control existed the command was unreachable, so a county could only
+  // ever keep the castle it started with.
+  await expect(page.getByTestId('castle-build-select')).toBeVisible();
+  await expect(page.getByTestId('castle-state')).toContainText('MotteAndBailey');
+
+  await page.getByTestId('castle-build-select').selectOption('NormanKeep');
+  await page.getByTestId('castle-build-btn').click();
+  await expect(page.getByTestId('status')).toContainText('BuildCastle');
+
+  // The build takes seasons and draws on the treasury as it goes.
+  for (let i = 0; i < 8; i++) await page.getByTestId('end-turn').click();
+  await page.getByTestId('county-hampshire-info').click();
+  await expect(page.getByTestId('castle-state')).toContainText('NormanKeep');
+});

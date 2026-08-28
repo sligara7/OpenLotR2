@@ -1,7 +1,7 @@
 /*
  * Tiny state pub/sub. The controller publishes the latest GameState; views (the
- * DOM HUD and the Phaser map) subscribe. Keeps the canvas map and the control
- * panel in sync without coupling them to each other.
+ * DOM HUD and the SVG map) subscribe. Keeps the map and the control panel in
+ * sync without coupling them to each other.
  */
 
 import type { GameState } from '../game/types/realm.ts';

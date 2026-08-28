@@ -13,7 +13,7 @@ import { Season, UnitType } from '../types/enums.ts';
 import type { Treasury } from '../types/realm.ts';
 
 const ctx = { actorRealmId: 'p1' };
-const treasury = (): Treasury => ({ gold: 0, wood: 0, stone: 0, iron: 0, weapons: {} });
+const treasury = (): Treasury => ({ gold: 0, wood: 0, stone: 0, iron: 0, wool: 0, weapons: {} });
 
 test('blacksmith: forges the chosen weapon from the realm iron + wood', () => {
   const c = createCounty({ id: 'a', name: 'A', population: 200 });

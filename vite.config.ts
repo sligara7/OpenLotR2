@@ -3,7 +3,8 @@
  *
  *   - Renderer: Vite serves/builds src/renderer (its index.html is the entry).
  *   - Static game assets live in /static and are exposed at the web root via
- *     publicDir, so Phaser's loader paths (e.g. 'themes/classic/...') resolve.
+ *     publicDir. Nothing in the live UI loads from there since the legacy
+ *     canvas was retired; the directory is kept as extracted reference art.
  *   - Main process: vite-plugin-electron builds src/main/index.ts and, in dev,
  *     sets VITE_DEV_SERVER_URL + launches Electron pointing at the dev server.
  *

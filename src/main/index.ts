@@ -27,7 +27,7 @@ function createWindow() {
     width: 1000,
     height: 570,
     webPreferences: {
-      // The renderer is a bundled browser app (Phaser) and needs no Node;
+      // The renderer is a bundled browser app and needs no Node;
       // webSecurity is relaxed so file:// asset loads aren't blocked.
       webSecurity: false,
     },

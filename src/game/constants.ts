@@ -10,6 +10,7 @@
  */
 
 import { CastleType, Industry, UnitType } from './types/enums.ts';
+import { TradeGood } from './types/trade.ts';
 import type { SiegeEngineType } from './types/siege.ts';
 
 // --- Food & rations -------------------------------------------------------
@@ -47,6 +48,9 @@ export const STARTING_FOOD_SEASONS = 3;
 
 // --- Industry (Manual Part-3 "Industry") ----------------------------------
 export const WOOD_PER_WORKER = 1.5;
+/** Fleeces a shepherd brings in per season. Low per head — wool's worth is in
+ *  its PRICE, not its volume: a sack of wool was worth many sacks of grain. */
+export const WOOL_PER_WORKER = 0.6;
 export const STONE_PER_WORKER = 1.0;
 export const IRON_PER_WORKER = 0.8;
 /** Minimum recommended crew used for the "time to build" estimate. */
@@ -56,6 +60,10 @@ export const MIN_INDUSTRY_CREW = 5;
 // holds). One resource tile sustains this much output per season regardless of
 // how many extra workers pile on — so geography caps industry, not just labour.
 export const WOOD_PER_TILE = 8;
+/** Fleeces one pasture tile's flock sustains per season. Sheep were grazed on
+ *  the uplands and downs that fed nothing else, which is exactly why wool paid
+ *  so well for land that grew no wheat. */
+export const WOOL_PER_TILE = 3;
 export const STONE_PER_TILE = 6;
 export const IRON_PER_TILE = 5;
 
@@ -119,13 +127,13 @@ export const UNIT_SPEC: Record<
   UnitType,
   { attack: number; defence: number; iron: number; wood: number; speed: number }
 > = {
-  [UnitType.Peasant]:     { attack: 1, defence: 1, iron: 0, wood: 0, speed: 4 },
-  [UnitType.Maceman]:     { attack: 3, defence: 2, iron: 1, wood: 1, speed: 5 },
-  [UnitType.Pikeman]:     { attack: 2, defence: 4, iron: 1, wood: 1, speed: 3 },
-  [UnitType.Archer]:      { attack: 3, defence: 1, iron: 0, wood: 2, speed: 5 },
-  [UnitType.Crossbowman]: { attack: 4, defence: 2, iron: 1, wood: 1, speed: 4 },
-  [UnitType.Swordsman]:   { attack: 4, defence: 4, iron: 2, wood: 1, speed: 4 },
-  [UnitType.Knight]:      { attack: 6, defence: 5, iron: 3, wood: 1, speed: 6 },
+  [UnitType.Peasant]:     { attack: 1, defence: 1, iron: 0, wood: 0, speed: 9 },
+  [UnitType.Maceman]:     { attack: 3, defence: 2, iron: 1, wood: 1, speed: 12 },
+  [UnitType.Pikeman]:     { attack: 2, defence: 4, iron: 1, wood: 1, speed: 7 },
+  [UnitType.Archer]:      { attack: 3, defence: 1, iron: 0, wood: 2, speed: 12 },
+  [UnitType.Crossbowman]: { attack: 4, defence: 2, iron: 1, wood: 1, speed: 9 },
+  [UnitType.Swordsman]:   { attack: 4, defence: 4, iron: 2, wood: 1, speed: 9 },
+  [UnitType.Knight]:      { attack: 6, defence: 5, iron: 3, wood: 1, speed: 14 },
 };
 
 // Raising troops (Manual Part-4): the blacksmith forges one weapon type from the
@@ -139,14 +147,14 @@ export const MIN_ARMY_SIZE = 50; // "an army must have at least 50 soldiers"
 // the army marches as far along its route as the budget allows, then halts until
 // next turn — so distance, terrain, rivers AND composition shape maneuver. This
 // constant is only the fallback for a (transient) empty army.
-export const ARMY_MOVEMENT_POINTS = 5;
+export const ARMY_MOVEMENT_POINTS = 12;
 
 // Supply convoys (the other half of logistics, paired with foraging): a cart
 // carries food from a county toward one of your armies, moving this many points
 // per turn (slower than troops). It delivers on arrival, topping up the army's
 // carried supply so it need not forage; an enemy army sharing its tile destroys
 // it (raid the supply line).
-export const CONVOY_MOVEMENT_POINTS = 4;
+export const CONVOY_MOVEMENT_POINTS = 9;
 
 // Upkeep: a standing army draws seasonal wages from the realm treasury (Manual
 // Part-4). When a realm cannot pay in full, the unpaid share of every army
@@ -273,6 +281,8 @@ export const HAPPINESS = {
   /** Ale: flat boost while aleSeasons > 0. */
   aleBonus: 10,
   /** Happiness lost while a revolt is active in-county. */
+  /** Grievance bled off each season — a dearth is remembered for a while. */
+  grievanceDecay: 3,
   revoltPenalty: 15,
 } as const;
 
@@ -318,6 +328,160 @@ export const PLAGUE = {
   healthHit: 30,
 } as const;
 
+// --- The tyranny of the wagon ---------------------------------------------
+// A cart and its animals eat the cargo. The classic figure, from Engels on
+// Alexander and van Creveld's Supplying War, is a pack animal carrying roughly
+// 250 lb and eating about 10 lb a day: the column exhausts its own load in
+// something like twenty-five days out and back. There is a radius beyond which
+// land supply is arithmetically impossible, and every pre-modern campaign was
+// shaped by it.
+//
+// This is the ONE number that turns supply from a flavour note into geography.
+// Set it too high and nothing can be supplied anywhere; too low and the wagon
+// might as well be free. Judge it with the balance harness, not by argument.
+
+/**
+ * Share of what a convoy is carrying that its own escort and draught animals
+ * eat for each tile travelled.
+ *
+ * At 0.035 a column keeps about 70% of its load over ten tiles, half over
+ * twenty, and a fifth over forty-five — so a haul across a county or two
+ * arrives nearly full, one across Britain arrives empty, and there is a real
+ * distance past which sending anything is waste.
+ */
+export const CONVOY_CONSUMPTION_PER_TILE = 0.035;
+
+/** Below this many portions a convoy has eaten itself and is struck from the
+ *  map — the column turned back, or never arrived. */
+export const CONVOY_MINIMUM_LOAD = 1;
+
+// --- Holding what you take ------------------------------------------------
+// A county walked into and left empty is a county the enemy walks back into
+// next season. Measured over twenty AI-versus-AI games, that revolving door was
+// why not one of them ever reached a decision: territory changed hands for
+// fifty years and no realm could ever be consolidated out of existence.
+//
+// So a captured county is GARRISONED FROM THE ARMY THAT TOOK IT — which is what
+// a medieval captain actually did, and which makes holding land cost something.
+// A thin raiding force can take counties or hold them, not both.
+
+/** Share of a castle's full garrison the taking army leaves behind. Below its
+ *  full strength on purpose: an occupier is thinner than a prepared defender. */
+export const GARRISON_ON_CAPTURE = 0.5;
+
+/** Men left in a county with no castle at all — a watch on the town, enough
+ *  that the county cannot simply be strolled back into, not enough to hold
+ *  against a real army. */
+export const WATCH_ON_CAPTURE = 20;
+
+// --- Merchants & the marketplace (Manual Part-3 "Merchants") --------------
+// The manual gives no numbers, only the shape: a merchant shows you two prices
+// per good, and "you'll notice a large difference between buying and selling
+// prices". So each good has ONE base value, and the merchant's margin is applied
+// around it — you pay above, you receive below. The gap is the merchant's living
+// and the reason hoarding to sell is not free money.
+//
+// Values are in crowns and are relative to each other rather than researched:
+// grain is the cheap bulk good, a knight's mail the dearest thing on the cart.
+
+/** Base worth of one unit of each good, before the merchant takes a margin. */
+export const GOOD_VALUE: Record<TradeGood, number> = {
+  [TradeGood.Grain]: 4,
+  [TradeGood.Cows]: 18,
+  [TradeGood.Wood]: 6,
+  [TradeGood.Stone]: 8,
+  [TradeGood.Iron]: 14,
+  // The dearest thing a county can GROW. English fleeces were the best in
+  // Europe and the Flemish weavers paid for them accordingly.
+  [TradeGood.Wool]: 26,
+  [TradeGood.Pikeman]: 30,
+  [TradeGood.Maceman]: 34,
+  [TradeGood.Archer]: 30,
+  [TradeGood.Crossbowman]: 44,
+  [TradeGood.Swordsman]: 56,
+  [TradeGood.Knight]: 90,
+} as const;
+
+/** You PAY this multiple of a good's value, and RECEIVE that one. The spread is
+ *  wide on purpose — the manual is blunt that merchants are tough businessmen. */
+export const MERCHANT_BUY_MARKUP = 1.35;
+export const MERCHANT_SELL_MARGIN = 0.65;
+
+/**
+ * Roughly how many seasons a county waits between merchant visits.
+ *
+ * This is the one knob: the number of wagons is derived from it and the size of
+ * the map, so a county trades about this often whether the map has three
+ * counties or eighty-two. Six is one or two visits a year — often enough that
+ * trade is a real part of a reign, rare enough that a merchant's arrival is
+ * worth planning around, which is the balance the manual describes.
+ */
+export const SEASONS_BETWEEN_VISITS = 6;
+
+// --- Supply and demand ----------------------------------------------------
+// A price is not a fact about a good, it is a fact about a good IN A PLACE. A
+// merchant standing in a county whose barns hold four years of grain will not
+// pay well for grain; one in a county that has just been stripped will pay
+// dearly for it, and charge dearly to sell it.
+//
+// Each good has a REFERENCE holding — what a county or realm would comfortably
+// keep — and the price moves against the ratio of what is actually held to that.
+
+/**
+ * How sharply price answers supply. 0 would be a fixed price list; 1 would be
+ * strict inverse proportion. Around 0.6 a fourfold glut roughly halves the
+ * price, which is steep enough to punish hoarding without making a small
+ * surplus worthless.
+ */
+export const PRICE_ELASTICITY = 0.6;
+
+/** Floor and ceiling on the supply multiplier, so no price ever reaches absurdity. */
+export const PRICE_FACTOR_MIN = 0.2;
+export const PRICE_FACTOR_MAX = 3;
+
+// --- The just price (justum pretium) --------------------------------------
+// Scholastic economics held that a good has a fair price and that charging
+// beyond it in a dearth was a sin, not a shrewd trade. England enforced it: the
+// assizes of bread and ale fixed staple prices, and forestalling — cornering
+// supply to resell dear — was a prosecutable offence.
+//
+// Supply pricing makes selling food out of a starving county the single most
+// profitable act available to a ruler. These numbers are what stops that being
+// free: the county remembers, and so do the other nobles.
+
+/** Above this supply multiplier a staple counts as scarce, and selling it out
+ *  of the county is profiteering rather than trade. 1 is the ordinary price. */
+export const JUST_PRICE_THRESHOLD = 1.25;
+
+/** Happiness lost per unit of shortage-scarcity, per tenth of the county's
+ *  reference holding sold away. Scaled so a token sale barely registers and
+ *  stripping a hungry county is remembered for years. */
+export const PROFITEERING_GRIEVANCE = 14;
+
+/** Standing lost with EVERY other noble when a lord is caught at it — famine
+ *  profiteering was a public scandal, not a private transaction. */
+export const PROFITEERING_REPUTATION_HIT = 4;
+
+/** Goodwill earned for the opposite: carrying food INTO a county that is short.
+ *  Good lordship, and the thing a ruler was actually supposed to do. */
+export const RELIEF_GOODWILL = 6;
+
+/** Seasons of food a county is reckoned to hold comfortably — a year's grain.
+ *  Above this it is a glut and the price sags; below it, a shortage. */
+export const REFERENCE_FOOD_SEASONS = 4;
+
+/** A comfortable holding of each material and weapon, PER COUNTY the realm
+ *  holds — so a large realm is expected to keep larger stores. */
+export const REFERENCE_PER_COUNTY: Record<string, number> = {
+  Wood: 80, Stone: 60, Iron: 30, Wool: 40,
+  Pikeman: 20, Maceman: 20, Archer: 20, Crossbowman: 15, Swordsman: 15, Knight: 8,
+};
+
+/** Crowns a wagon carries to spend, and crowns' worth of goods it carries to
+ *  sell, refreshed each time it reaches a new county. */
+export const MERCHANT_PURSE = 250;
+export const MERCHANT_WARES = 400;
+
 /** Industries that always physically exist in every county. */
 export const UNIVERSAL_INDUSTRIES: Industry[] = [Industry.Blacksmith];
 
@@ -349,8 +513,10 @@ export const ADVANCED_FARMING = {
 
 // --- Exploration / fog of war (Manual Part-8 "Advanced Play") -------------
 export const EXPLORATION = {
-  /** How many hexes around an army are revealed as it travels. */
-  visionRadius: 2,
+  /** How many hexes around an army are revealed as it travels. Scaled with the
+   *  map: at the old resolution 2 hexes was most of a county, at this one it is
+   *  a fifth of one, so a scout that revealed a shire would reveal a field. */
+  visionRadius: 5,
 } as const;
 
 // --- Diplomacy (Manual Part-7 "Diplomacy") --------------------------------

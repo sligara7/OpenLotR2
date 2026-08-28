@@ -2,6 +2,7 @@
 
 import type { NoblePersonality } from './enums.ts';
 import type { County } from './county.ts';
+import type { Merchant } from './trade.ts';
 
 /**
  * Treasury is shared across ALL counties a realm controls. (Manual Part-3
@@ -13,6 +14,14 @@ export interface Treasury {
   wood: number;
   stone: number;
   iron: number;
+  /**
+   * Fleeces, sheared and pooled across the realm.
+   *
+   * Wool is the first thing this economy makes to SELL rather than to eat or
+   * to build with. Medieval England's wealth ran on it: the export duty funded
+   * the crown's wars, and the Lord Chancellor still sits on a Woolsack.
+   */
+  wool: number;
   /** Finished weapons by type; kept generic for now. */
   weapons: Record<string, number>;
 }
@@ -98,6 +107,9 @@ export interface GameState {
   options: GameOptions;
   /** Per-realm explored-tile memory (fog of war); empty when not in use. */
   exploration: ExplorationState;
+  /** Merchant wagons working their circuits. Trade is only possible in a county
+   *  one of them is currently standing in (Manual Part-3 "Merchants"). */
+  merchants: Merchant[];
   /** Set once the game has been decided; null while it is ongoing. */
   outcome: GameOutcome | null;
 }

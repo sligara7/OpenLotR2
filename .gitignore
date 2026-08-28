@@ -45,3 +45,9 @@ extracted/
 # Copyrighted reference docs (local only)
 doc/manual.pdf
 *.pdf
+
+# reflow2: the live graph store is a local RocksDB database — machine-local and
+# binary. The design itself is committed as the deterministic export under
+# .reflow2/backups/.
+.reflow2/*
+!.reflow2/backups/

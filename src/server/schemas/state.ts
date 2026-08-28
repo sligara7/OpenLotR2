@@ -33,6 +33,7 @@ const IndustrySiteSchema = z.object({
 
 const IndustriesSchema = z.object({
   Lumber: IndustrySiteSchema,
+  Woolgrowing: IndustrySiteSchema,
   Quarry: IndustrySiteSchema,
   IronMine: IndustrySiteSchema,
   Blacksmith: IndustrySiteSchema,
@@ -73,6 +74,7 @@ export const CountySchema = z
     blacksmithProduct: UnitTypeSchema.nullable(),
     recentConscription: z.number(),
     aleSeasons: z.number(),
+    grievance: z.number(),
     revolting: z.boolean(),
     unrestSeasons: z.number(),
     pacifiedSeasons: z.number(),
@@ -94,6 +96,7 @@ export const RealmSchema = z
       wood: z.number(),
       stone: z.number(),
       iron: z.number(),
+    wool: z.number(),
       weapons: z.record(z.string(), z.number()),
     }),
     eliminated: z.boolean(),
@@ -196,6 +199,18 @@ export const GameOutcomeSchema = z
   })
   .openapi('GameOutcome');
 
+/** A merchant wagon on its circuit. */
+export const MerchantSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    circuit: z.array(z.string()),
+    at: z.number().int(),
+    purse: z.number(),
+    wares: z.number(),
+  })
+  .openapi('Merchant');
+
 // --- GameState ------------------------------------------------------------
 export const GameStateSchema = z
   .object({
@@ -220,6 +235,7 @@ export const GameStateSchema = z
       }).openapi('AiTuning'),
     }).openapi('GameOptions'),
     exploration: z.record(z.string(), z.record(z.string(), z.literal(true))).openapi('ExplorationState'),
+    merchants: z.array(MerchantSchema),
     outcome: GameOutcomeSchema.nullable(),
   })
   .openapi('GameState');
@@ -259,9 +275,10 @@ const ConvoyOutcomeSchema = z.object({
   ownerId: z.string(),
   targetArmyId: z.string(),
   food: z.number(),
-  status: z.enum(['enroute', 'delivered', 'intercepted', 'lost']),
+  status: z.enum(['enroute', 'delivered', 'intercepted', 'lost', 'consumed']),
   col: z.number(),
   row: z.number(),
+  eaten: z.number(),
 });
 
 const ConvoyLedgerSchema = z.object({

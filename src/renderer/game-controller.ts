@@ -3,8 +3,7 @@
  *
  * Player actions (per-county and bulk-across-the-realm) flow through the command
  * protocol to the authoritative server; the refreshed state is then published to
- * every view (HUD + canvas map). Decoupled from Phaser so the UI works even when
- * the canvas renderer can't initialize.
+ * every view (HUD + SVG map).
  */
 
 // The backend runs in-process (the simulation core in the browser/WebView), so
@@ -15,6 +14,8 @@ import { Hud, cycleRation, type ControlKind } from './ui/hud.ts';
 import { MapTilesSvg } from './ui/map-tiles-svg.ts';
 import { composition } from './ui/units.ts';
 import { isFerryLink } from '../game/maps/index.ts';
+import { merchantAt } from '../game/systems/merchants.ts';
+import type { TradeGood } from '../game/types/trade.ts';
 import { stateBus } from './state-bus.ts';
 import type { Command } from '../game/commands/types.ts';
 import type { County } from '../game/types/county.ts';
@@ -27,36 +28,85 @@ import type { TurnReport } from '../game/engine.ts';
 interface Capture { countyId: string; ownerId: string | null }
 interface DiploEvents { newAlliances: string[]; brokenAlliances: string[]; newEnemies: string[] }
 
-/** Notable, player-visible events from a turn → log lines. `captures` (counties
- *  that changed hands, e.g. AI conquests) come on the result, the rest from the
- *  report. */
-function turnEvents(r: TurnReport, captures: Capture[], diplo: DiploEvents | undefined, state: GameState): string[] {
+/**
+ * Notable, player-visible events from a turn → log lines.
+ *
+ * WHOSE NEWS THIS IS MATTERS. The report covers all 82 counties, and reporting
+ * every one of them buried the handful a player can act on: at a 3% chance per
+ * county per season, plague alone produced two or three lines a turn about land
+ * nobody owned, and the log read as constant catastrophe while your own realm
+ * was quietly fine.
+ *
+ * So the rule is: things that happen INSIDE your realm are always reported,
+ * because they are yours to fix. Things that happen elsewhere are reported only
+ * when they change the shape of the game — a county changing hands, an alliance
+ * forming or breaking. A rival's plague, convoy or desertion is their business.
+ *
+ * `captures` (counties that changed hands, e.g. AI conquests) come on the
+ * result, the rest from the report.
+ */
+function turnEvents(
+  r: TurnReport,
+  captures: Capture[],
+  diplo: DiploEvents | undefined,
+  state: GameState,
+  meId: string,
+): string[] {
   const cn = (id: string): string => state.counties[id]?.name ?? id;
   const rn = (id: string): string => state.realms[id]?.name ?? id;
   // A realm-pair key "a|b" → "Name & Name".
   const pair = (key: string): string => key.split('|').map(rn).join(' & ');
+  const mine = (countyId: string): boolean => state.counties[countyId]?.ownerId === meId;
   const ev: string[] = [];
+
+  // Conquest is everyone's business: it redraws the map you play on.
   for (const cap of captures) {
     ev.push(cap.ownerId ? `${rn(cap.ownerId)} took ${cn(cap.countyId)}` : `${cn(cap.countyId)} broke free`);
   }
   for (const k of diplo?.newAlliances ?? []) ev.push(`${pair(k)} formed an alliance`);
   for (const k of diplo?.newEnemies ?? []) ev.push(`${pair(k)} are now sworn enemies`);
   for (const k of diplo?.brokenAlliances ?? []) ev.push(`${pair(k)} ended their alliance`);
+
   // Siege detail beyond the bare capture (captures already cover stormed/starved).
   for (const s of r.siege.sieges) {
     if (s.status === 'repulsed') ev.push(`assault on ${cn(s.countyId)} was repulsed`);
   }
+
+  // The rest is your own realm's news only.
   for (const c of r.convoys.convoys) {
-    if (c.status === 'delivered') ev.push(`${rn(c.ownerId)} resupplied an army`);
-    else if (c.status === 'intercepted') ev.push(`${rn(c.ownerId)}'s convoy was intercepted!`);
-    else if (c.status === 'lost') ev.push(`${rn(c.ownerId)}'s convoy was lost`);
+    if (c.ownerId !== meId) continue;
+    if (c.status === 'delivered') ev.push('a convoy resupplied your army');
+    else if (c.status === 'intercepted') ev.push('your convoy was intercepted!');
+    else if (c.status === 'lost') ev.push('your convoy was lost');
   }
-  for (const w of r.wages.realms) if (w.deserted > 0) ev.push(`${rn(w.realmId)} lost ${w.deserted} to desertion`);
+  for (const w of r.wages.realms) {
+    if (w.realmId === meId && w.deserted > 0) ev.push(`you lost ${w.deserted} to desertion — wages went unpaid`);
+  }
   for (const c of r.counties) {
+    if (!mine(c.countyId)) continue;
     if (c.plague) ev.push(`plague struck ${cn(c.countyId)}`);
     if (c.revoltTriggered) ev.push(`${cn(c.countyId)} rose in revolt`);
   }
   return ev;
+}
+
+/** Buy from or sell to the merchant visiting a county, and report the bargain. */
+async function doTrade(
+  countyId: string,
+  good: TradeGood,
+  side: 'buy' | 'sell',
+  quantity: number,
+): Promise<void> {
+  const result = await api.sendCommand(gameId, { type: 'Trade', countyId, good, side, quantity }, meId);
+  if (result.ok) {
+    const d = result.data as { merchant?: string; unitPrice?: number; total?: number } | undefined;
+    const verb = side === 'buy' ? 'Bought' : 'Sold';
+    const flow = side === 'buy' ? 'for' : 'for';
+    hud.setStatus(`${verb} ${quantity} ${good} ${flow} ${d?.total ?? '?'} crowns (${d?.unitPrice ?? '?'} each).`);
+  } else {
+    hud.setStatus(`Trade refused: ${result.error ?? 'unknown'}`);
+  }
+  publish(await api.getState(gameId));
 }
 
 /** How many soldiers a single "Muster" raises (the minimum legal army size). */
@@ -77,7 +127,8 @@ function humanId(state: GameState): string {
 
 function refreshSelected(): void {
   const state = stateBus.current;
-  hud.showSelected(selectedId && state ? state.counties[selectedId] ?? null : null);
+  const county = selectedId && state ? state.counties[selectedId] ?? null : null;
+  hud.showSelected(county, county && state ? merchantAt(state, county.id) : null);
 }
 
 /** Update the army panel from the current selection (army may have moved/died). */
@@ -263,7 +314,7 @@ async function act(command: Command): Promise<void> {
     const r = result.report;
     const captures = (result as { captures?: Capture[] }).captures ?? [];
     const diplo = (result as { diplomacy?: DiploEvents }).diplomacy;
-    hud.logTurn(`Year ${r.year} · ${r.season} · turn ${r.turn}`, turnEvents(r, captures, diplo, next));
+    hud.logTurn(`Year ${r.year} · ${r.season} · turn ${r.turn}`, turnEvents(r, captures, diplo, next, meId));
   }
   hud.setStatus(msg);
   publish(next);
@@ -339,10 +390,12 @@ export async function startGameUI(): Promise<void> {
     onNewGame: (setup) => void newGame(setup),
     onSiege: () => laySiege(),
     onDisband: () => disband(),
+    onBuildCastle: (countyId, design) => void act({ type: 'BuildCastle', countyId, design }),
     onBlacksmith: (countyId, product) => setBlacksmith(countyId, product),
     onMuster: (countyId, unit) => muster(countyId, unit),
     onHire: (countyId, unit) => hire(countyId, unit),
     onSupply: (countyId) => supplyArmy(countyId),
+    onTrade: (countyId, good, side, quantity) => void doTrade(countyId, good, side, quantity),
     diplomacy: {
       onGift: (toRealmId, gold) => gift(toRealmId, gold),
       onCompliment: (toRealmId) => compliment(toRealmId),
