@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:2538b3ee1ec4db14ef954ce92447f0d8d27815577a5d13d1efd73938d5097b0c",
+  "content_hash": "sha256:3255ae46cee45f0ce5a451cd9ff723a1c7ae8b8639b756bbf59cdb6896441310",
   "edges": [
     {
       "edge_type": "ALLOCATED_TO",
@@ -9179,9 +9179,9 @@
       "node_type": "Verification",
       "properties": {
         "description": "The first full run of the harness, kept as the line every later balance change is measured against. Twenty games, three nobles, default aggression, a two-hundred-turn cap — fifty game years each.",
-        "findings": "Re-run 2026-08-28 after implementing dec:conquest-must-compound (systems/garrisons.ts + capitulation in systems/conquest.ts).\n\nMOVED, FOR THE FIRST TIME: 2/20 games reached a decision (was 0/20), decided at turns 22 and 79, both last-standing. Still failing — 18/20 undecided with the leader at 52% of the map.\n\nWHAT THE FIX DID. Settled counties now stand surplus garrison down and return the men to the field, reversing the permanent drain that made offensive strength decay with every victory. Measured on one seeded game: total garrisons at turn 200 fell from 5,537 to ~1,650, and the leader began drifting upward (37→41 counties from t100 to t200) where before it was frozen.\n\n⚠️ THE FIRST ATTEMPT WENT THE WRONG WAY and is recorded because it is a plausible misreading of the same idea: letting settled counties RAISE levies up to their walls' full establishment strengthened defenders exactly as much as conquerors. Garrisons went 301 → 5,537, assaults repulsed tripled 3 → 9, sieges won halved 34 → 18, and the map froze harder. The compounding has to land in the FIELD, not on the walls.\n\nWHAT NOW BLOCKS DECISIVENESS, and it is not the conquest rules. Each realm fields only 2-4 armies totalling 250-800 men across 30-40 counties, while the leader's hoard reaches 315,439 in timber/stone/iron/wool. Sieges laid is 9 per game over 200 turns. The AI's siege gate is not the problem — it besieges any garrisoned enemy county it stands on — the problem is that it almost never has armies standing anywhere. The AI hoards instead of raising and spending forces. That is an AI/economy question, not a conquest question.\n\nSTILL UNFIXED FROM THE PREVIOUS RUN: sieges won (19) still exceeds sieges laid (9), so that counter remains wrong; deserters remains 0 in every game, so army upkeep still applies no pressure.",
+        "findings": "Re-run 2026-08-28 after the food work: the cattle dairy reframe, then seed corn and breeding stock reserves (systems/reserves.ts).\n\nStill FAILING — 3/20 decided, 17 undecided with the leader at 56%. But every other number moved, and the war tripled.\n\nPROGRESS ACROSS THE DAY, same harness, same seeds:\n  decided            0/20 -> 2/20 -> 3/20\n  sieges laid          20 ->   26 ->   72\n  hungry county-seasons 5,520 -> 5,442 -> 4,957\n  revolts                  21 ->   16 ->   11\n\nTHE PATTERN BEHIND IT. Every productive stock in this game is a multiplicative loop — grain is sown from grain, a herd grows from the herd, births are a fraction of the population — so any stock eaten to zero is dead for the rest of the game. Three absorbing states were live at once:\n  - CATTLE: all 2,936 head in Britain dead by turn 25 of every game, taking dairy with them (production gates dairy on cows > 0). Fixed by making beef a famine measure rather than a diet.\n  - GRAIN: 511 of 4,100 sowings planted NOTHING (one in eight), 44 of 82 counties failed to sow at least once. A missed sowing costs the whole year's harvest, making the next sowing likelier to fail — a spiral, not a shortage. Fixed by reserving the seed corn from all consumption including foraging.\n  - POPULATION: births = pop * rate, so a county emptied by war never repopulates. NOT ADDRESSED — the user scoped this out deliberately.\n\nAFTER THE RESERVES: failed sowings 12.5% -> 8.1%; counties ending at zero grain 3 -> 0; counties ending with no herd 17 -> 6, and those six are exactly the six that never had a pasture. Every county that ever held a herd still holds one.\n\nTHE REMAINING 8.1% OF FAILED SOWINGS IS THE POPULATION HALF, not the seed half: `want = GRAIN_SACKS_PER_FIELD * grainLabour`, so a county with too few people to work its fields sows nothing however full its barn. Seven counties end below fifty people. That is the third absorbing state, still open by choice.\n\nUNCHANGED AND STILL TRUE: upkeep never bites (wage bill 0-1% of purse, 0 short paydays); the eventual winner leads from turn 0 in every game, so there is no comeback in the design; ai/military.ts MAX_ARMY_TARGET = 250 caps a 40-county realm's armies regardless of its means.",
         "kind": "validation",
-        "last_run_at": "2026-08-28T12:00:00Z",
+        "last_run_at": "2026-08-28T18:00:00Z",
         "level": "system",
         "method": "measurement",
         "name": "Balance baseline",
@@ -9359,7 +9359,7 @@
       }
     }
   ],
-  "prev_content_hash": "sha256:815ce3f52ea39f5e4669001104aa035cd4cd3e939be0c465039ebebd71317da4",
+  "prev_content_hash": "sha256:2538b3ee1ec4db14ef954ce92447f0d8d27815577a5d13d1efd73938d5097b0c",
   "stamp": {
     "edge_type_names": [
       "ABOUT_ENTITY",

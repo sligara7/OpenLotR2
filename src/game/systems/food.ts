@@ -34,6 +34,7 @@ import {
   BEEF_PORTIONS_PER_COW,
   GRAIN_SACKS_PER_PORTION,
 } from '../constants.ts';
+import { edibleGrain, slaughterableCows } from './reserves.ts';
 import type { County } from '../types/county.ts';
 
 const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
@@ -77,8 +78,9 @@ export function feedPopulation(county: County, dairyPortions: number): FoodResul
   const dairyServed = Math.min(dairyPortions, totalWanted);
   let need = Math.max(0, totalWanted - dairyServed);
 
-  // 2. Grain from the barns covers what dairy could not.
-  const grainAvail = county.food.grainSacks / GRAIN_SACKS_PER_PORTION;
+  // 2. Grain from the barns covers what dairy could not — but only what sits
+  // ABOVE the seed corn. The county goes hungry before it eats next year's crop.
+  const grainAvail = edibleGrain(county) / GRAIN_SACKS_PER_PORTION;
   const grainServed = Math.min(need, grainAvail);
   need -= grainServed;
 
@@ -87,7 +89,7 @@ export function feedPopulation(county: County, dairyPortions: number): FoodResul
   // county would rather go hungry than eat its herd; at 1 it will kill whatever
   // it takes. Either way nothing is slaughtered while the barns hold grain.
   const willing = clamp01(county.labour.grainBeefBalance);
-  const beefAvail = county.food.cows * willing * BEEF_PORTIONS_PER_COW;
+  const beefAvail = slaughterableCows(county) * willing * BEEF_PORTIONS_PER_COW;
   const beefServed = Math.min(need, beefAvail);
   need -= beefServed;
 

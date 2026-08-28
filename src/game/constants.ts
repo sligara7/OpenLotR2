@@ -35,6 +35,10 @@ export const GRAIN_WORKERS_PER_FIELD = 8; // labour to fully work one field
 export const CATTLE_GROWTH_RATE = 0.15; // herd increase/season when tended
 export const CATTLE_WORKERS_PER_COW = 0.5; // labour to fully tend the herd
 export const CATTLE_FIELD_CAPACITY = 12; // cows per field before overcrowding
+/** Head kept back to breed the herd up again — never slaughtered, never
+ *  foraged. Small on purpose: a remnant that makes recovery possible over
+ *  years, not a herd anybody can live off. See systems/reserves.ts. */
+export const CATTLE_BREEDING_STOCK = 4;
 export const RECLAIM_MAX_PER_SEASON = 0.25; // "never ... more than a quarter"
 export const RECLAIM_WORKERS_PER_FIELD = 10;
 

@@ -20,6 +20,7 @@ import {
   BEEF_PORTIONS_PER_COW,
   GRAIN_SACKS_PER_PORTION,
 } from '../constants.ts';
+import { edibleGrain, slaughterableCows } from './reserves.ts';
 import type { GameState } from '../types/realm.ts';
 import type { County } from '../types/county.ts';
 
@@ -45,16 +46,22 @@ export interface ForageLedger {
 /** Draw up to `need` portions of food from a county's stores (grain first, then
  *  beef). Mutates the county's food in place; returns portions actually served.
  *  Uses the same conversion constants as the population's own consumption.
- *  Exported so a besieged garrison can eat from the same stores (systems/siege). */
+ *  Exported so a besieged garrison can eat from the same stores (systems/siege).
+ *
+ *  DRAWS THROUGH THE SAME RESERVES the population respects: an occupying host
+ *  strips the surplus and leaves the seed corn and the breeding stock. Letting
+ *  armies take those would be more realistic and would restore the very trap
+ *  systems/reserves.ts exists to break, in exactly the contested counties where
+ *  every ruined county in the measurements actually was. */
 export function drawFood(county: County, need: number): number {
   let remaining = need;
 
-  const grainAvail = county.food.grainSacks / GRAIN_SACKS_PER_PORTION;
+  const grainAvail = edibleGrain(county) / GRAIN_SACKS_PER_PORTION;
   const grainServed = Math.min(remaining, grainAvail);
   county.food.grainSacks -= grainServed * GRAIN_SACKS_PER_PORTION;
   remaining -= grainServed;
 
-  const beefAvail = county.food.cows * BEEF_PORTIONS_PER_COW;
+  const beefAvail = slaughterableCows(county) * BEEF_PORTIONS_PER_COW;
   const beefServed = Math.min(remaining, beefAvail);
   county.food.cows = Math.max(0, county.food.cows - beefServed / BEEF_PORTIONS_PER_COW);
   remaining -= beefServed;
