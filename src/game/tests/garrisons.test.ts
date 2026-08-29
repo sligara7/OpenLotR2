@@ -170,6 +170,45 @@ test('an army in the field is a reason to fight on', () => {
   assertEqual(updateCapitulations(w).length, 0, 'a realm with men left does not submit');
 });
 
+test('a realm with free land to take is not beaten, however far behind', () => {
+  // The bug this pins shipped on 2026-08-29 and was caught by measurement, not
+  // by review: 45 of 63 capitulations fired before turn 60, and one realm gave
+  // up SIX counties to a rival holding fourteen while 68% of Britain was still
+  // empty. Share of the map is a meaningless denominator during a land grab —
+  // a realm that is behind but has country to expand into is losing a race, not
+  // losing a war.
+  const w = createBritainWorld();
+  for (const r of Object.values(w.realms)) r.isHuman = false;
+  for (const a of Object.values(w.armies)) delete w.armies[a.id];
+  const ids = Object.keys(w.counties).sort();
+  for (const id of ids) w.counties[id].ownerId = null;
+  ids.slice(0, 24).forEach((id) => { w.counties[id].ownerId = 'p1'; });
+  ids.slice(24, 30).forEach((id) => { w.counties[id].ownerId = 'p2'; });
+  w.armies['a1'] = createArmy({
+    id: 'a1', ownerId: 'p1', col: 0, row: 0, countyId: null,
+    units: { [UnitType.Peasant]: 400 },
+  });
+
+  assertEqual(updateCapitulations(w).length, 0, 'nobody folds while Britain is half empty');
+});
+
+test('once the free land is gone, the same position IS a defeat', () => {
+  // The companion to the above: identical ratios, no empty country left. This
+  // is what the rule is actually for.
+  const w = createBritainWorld();
+  for (const r of Object.values(w.realms)) r.isHuman = false;
+  for (const a of Object.values(w.armies)) delete w.armies[a.id];
+  const ids = Object.keys(w.counties).sort();
+  for (const id of ids) w.counties[id].ownerId = 'p1';
+  ids.slice(0, 6).forEach((id) => { w.counties[id].ownerId = 'p2'; });
+  w.armies['a1'] = createArmy({
+    id: 'a1', ownerId: 'p1', col: 0, row: 0, countyId: null,
+    units: { [UnitType.Peasant]: 400 },
+  });
+
+  assertEqual(updateCapitulations(w).length, 1, 'with nowhere left to grow, it submits');
+});
+
 test('the human player is never surrendered on its behalf', () => {
   const humanId = Object.values(createBritainWorld().realms).find((r) => r.isHuman)!.id;
   const other = humanId === 'p1' ? 'p2' : 'p1';

@@ -437,6 +437,17 @@ export const CAPITULATION = {
    *  fold, and at 2x land, 2x men and under a quarter of the map that is 7 of
    *  those 34 games. */
   hopelessShare: 0.25,
+  /** No realm capitulates while this much of Britain is still UNCLAIMED.
+   *
+   *  ⚠️ THIS IS THE GUARD THE FIRST TWO ATTEMPTS BOTH LACKED, and without it
+   *  the rule fires during the opening land grab: measured on 2026-08-29, 45 of
+   *  63 capitulations happened before turn 60, and one realm surrendered SIX
+   *  counties to a rival holding fourteen while 68% of the map was still empty.
+   *  A realm with somewhere to expand is not beaten, however far behind it is —
+   *  share of the map is a meaningless denominator while most of the map
+   *  belongs to nobody. Only once the free land is gone does being out-landed
+   *  mean anything. */
+  mapClaimedFloor: 0.8,
   /** A realm down to this many counties with no army worth the name is finished
    *  whatever the ratios say, and is spared being hunted acre by acre. */
   countyFloor: 2,

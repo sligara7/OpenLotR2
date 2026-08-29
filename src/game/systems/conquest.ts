@@ -214,11 +214,19 @@ function isBeaten(state: GameState, realmId: string, held: number): boolean {
   const total = Object.keys(state.counties).length;
   if (total === 0) return false;
 
-  // The share floor guards BOTH routes, not just the ratio one. A realm holding
-  // a real piece of the map is a going concern however few counties that is —
-  // on a small map two counties can be half of everything, and calling that
-  // beaten would concede an even contest on a technicality.
-  if (held / total >= CAPITULATION.hopelessShare) return false;
+  // NOBODY SURRENDERS WHILE THERE IS STILL FREE LAND. A realm that is behind but
+  // has empty country to expand into is not beaten, it is merely losing a race,
+  // and the difference matters: before this guard existed the rule fired all
+  // through the opening land grab, surrendering realms of thirteen counties
+  // while half of Britain belonged to nobody.
+  const claimed = Object.values(state.counties).filter((c) => c.ownerId).length;
+  if (claimed / total < CAPITULATION.mapClaimedFloor) return false;
+
+  // The share floor guards BOTH routes, not just the ratio one, and it is
+  // measured against CLAIMED land rather than the whole map — what matters is
+  // how a realm stands against the powers that exist, not against country
+  // nobody holds.
+  if (held / claimed >= CAPITULATION.hopelessShare) return false;
 
   const mine = fieldStrength(state, realmId);
   if (held <= CAPITULATION.countyFloor && mine < CAPITULATION.soldierFloor) return true;
