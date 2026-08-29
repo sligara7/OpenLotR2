@@ -24,10 +24,48 @@ import type { Command } from '../commands/types.ts';
 import type { Rng } from '../rng.ts';
 import type { AiTraits } from './traits.ts';
 
-/** Numerical edge the AI wants before committing to a field battle. */
+/** Numerical edge a BOLD ruler wants before committing to a field battle. */
 const ATTACK_CONFIDENCE = 1.2;
 /** Edge the AI will gamble on when it "explores" instead of playing it safe. */
 const ATTACK_GAMBLE = 0.9;
+/** Extra edge a wholly timid ruler demands on top of the bold one's. Aggression
+ *  now scales BETWEEN these rather than gating the army out of the game. */
+const TIMIDITY_SPREAD = 0.9;
+/** Below this aggression a ruler will not march on a target chosen by somebody
+ *  else — he will defend an ally, but he will not fight an ally's war. */
+const TIMID_FAVOUR_FLOOR = 0.3;
+/** At or below this aggression a ruler makes no war at all.
+ *
+ *  This is NOT the old gate returning. It sits far below every personality in
+ *  the game (Bishop 0.2 is the lowest, and he is four times over it), so no
+ *  ruler is ever silenced by his own temperament. It exists for the per-game
+ *  `ai.aggression` dial, which multiplies every personality's value and is
+ *  documented to give "a peaceful world" at zero — a promise the design makes
+ *  to the player and which nothing else would keep. */
+const PACIFIST_FLOOR = 0.05;
+
+/**
+ * The advantage this ruler wants before it will fight — aggression as a degree
+ * rather than a gate.
+ *
+ * ⚠️ AGGRESSION USED TO BE A SWITCH WITH ONE HINGE. It was read in exactly two
+ * places, both as `if (traits.aggression < 0.3) return null`, and the second of
+ * those returned NO MILITARY COMMANDS AT ALL — so the Bishop, at 0.2, never
+ * moved an army, never defended, never took an undefended county, and was
+ * eliminated in every game measured. He was not losing; he was not playing. The
+ * personalities sit at Knight 0.9, Baron 0.7, Countess 0.6, Bishop 0.2, so the
+ * dial's only effect in the whole game was whether the Bishop existed.
+ *
+ * Now every ruler takes the field and aggression decides how much of an edge he
+ * insists on: the Knight will fight near parity, the Bishop only when the odds
+ * are plainly his.
+ */
+function attackEdge(traits: AiTraits, gambling: boolean): number {
+  const base = gambling ? ATTACK_GAMBLE : ATTACK_CONFIDENCE;
+  return base + (1 - clamp01(traits.aggression)) * TIMIDITY_SPREAD;
+}
+
+const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
 
 /** How often this realm eschews the greedy choice for a different front or a
  *  riskier fight (exploration vs exploitation) — the per-game `ai.boldness`
@@ -118,7 +156,10 @@ function requestedTarget(state: GameState, realm: Realm, traits: AiTraits): stri
   // a ruler with at least some appetite for war.
   const defend = reqs.find((r) => r.kind === 'defend' && state.counties[r.countyId]);
   if (defend) return defend.countyId;
-  if (traits.aggression < 0.3) return null;
+  // Marching on somebody else's enemy is a favour, and a timid ruler does not
+  // do favours with his army. Scaled rather than gated: he will still answer if
+  // he is bold enough to have an appetite for it at all.
+  if (traits.aggression < TIMID_FAVOUR_FLOOR) return null;
   const attack = reqs.find(
     (r) => r.kind === 'attack' && state.counties[r.countyId] && state.counties[r.countyId].ownerId !== realm.id,
   );
@@ -140,7 +181,7 @@ function planArmy(state: GameState, realm: Realm, army: Army, traits: AiTraits, 
   // that form when two evenly-matched hosts each wait for an advantage.
   const foe = enemyInReach(state, army);
   if (foe) {
-    const edge = rng && rng.chance(exploreRate(state)) ? ATTACK_GAMBLE : ATTACK_CONFIDENCE;
+    const edge = attackEdge(traits, !!rng && rng.chance(exploreRate(state)));
     if (army.soldiers > foe.soldiers * edge) {
       return { type: 'AttackArmy', armyId: army.id, targetArmyId: foe.id };
     }
@@ -244,11 +285,17 @@ export function planReinforce(state: GameState, realm: Realm, traits: AiTraits):
   return cmds;
 }
 
-/** All military commands for this ruler (empty if too timid or armyless). The
- *  seeded `rng`, when supplied, drives the AI's exploration-vs-exploitation
- *  choices; without it the AI plays the deterministic greedy line. */
+/** All military commands for this ruler. The seeded `rng`, when supplied,
+ *  drives the AI's exploration-vs-exploitation choices; without it the AI plays
+ *  the deterministic greedy line.
+ *
+ *  EVERY RULER TAKES THE FIELD. This used to return an empty list below an
+ *  aggression of 0.3, which meant the Bishop's armies never moved at all — not
+ *  to attack, not to defend, not to occupy empty ground — and he was wiped out
+ *  in every game. Timidity now shows up as caution in `attackEdge`, which is
+ *  what a cautious ruler actually does, rather than as absence. */
 export function planMilitary(state: GameState, realm: Realm, traits: AiTraits, rng?: Rng): Command[] {
-  if (traits.aggression < 0.3) return [];
+  if (traits.aggression <= PACIFIST_FLOOR) return [];
   const cmds: Command[] = [];
   for (const army of Object.values(state.armies)) {
     if (army.ownerId !== realm.id) continue;

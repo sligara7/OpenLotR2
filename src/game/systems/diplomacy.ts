@@ -174,9 +174,20 @@ export function registerHostility(
   aggressorId: string,
   victimId: string,
 ): HostilityResult {
-  if (!aggressorId || !victimId || aggressorId === victimId) {
+  if (!aggressorId) return { doublecross: false, becameEnemies: false };
+
+  // NO VICTIM REALM — an unclaimed county taken, or land seized from a realm
+  // already gone. There is nobody to be wronged, but the neighbours still watch
+  // it happen, and on this map that is how MOST growth happens: 71 of Britain's
+  // 82 counties begin unowned. Alarming third parties only over realm-on-realm
+  // war would let a ruler swallow three quarters of the island unremarked,
+  // which is exactly what was measured before this branch existed — a realm
+  // grew from 4 counties to 81 and no survivor thought any worse of it.
+  if (!victimId || aggressorId === victimId) {
+    alarmThirdParties(state, aggressorId, victimId);
     return { doublecross: false, becameEnemies: false };
   }
+
   const wasAllied = areAllied(state, aggressorId, victimId);
 
   if (wasAllied) {
@@ -193,8 +204,76 @@ export function registerHostility(
 
   const before = areEnemies(state, aggressorId, victimId);
   adjustOpinion(state, victimId, aggressorId, -DIPLOMACY.attackOpinionHit);
+
+  // THE OVER-MIGHTY NEIGHBOUR. A war waged by a realm that already holds a
+  // large share of the map alarms everyone still standing, not only the realm
+  // it is waging it on. Below the threat share this is silent: two small
+  // neighbours squabbling over a border is ordinary politics and no business of
+  // anybody else's. Above it, alarm grows with the aggressor's holdings, so the
+  // leader's next conquest costs it standing with every realm at once — which
+  // is what lets the threatened find each other and combine.
+  alarmThirdParties(state, aggressorId, victimId);
+
   const becameEnemies = !before && areEnemies(state, aggressorId, victimId);
   return { doublecross: false, becameEnemies };
+}
+
+/**
+ * Apply the over-mighty neighbour's alarm to every realm not party to the act —
+ * and draw the alarmed together.
+ *
+ * Both halves are needed. The first makes the leader everyone's problem; the
+ * second is what turns a shared grievance into a league, because a coalition is
+ * not several realms disliking the same man, it is those realms deciding they
+ * prefer each other to him. Without it the alarm is measurable and useless: the
+ * leader's standing fell to -21 while no alliance ever formed.
+ *
+ * The victim is drawn in too. Somebody just attacked by the strongest realm on
+ * the island has more common cause with the other frightened than anyone.
+ */
+function alarmThirdParties(state: GameState, aggressorId: string, victimId: string): void {
+  const alarm = threatAlarm(state, aggressorId);
+  if (alarm <= 0) return;
+
+  const alarmed: string[] = [];
+  for (const other of Object.keys(state.realms)) {
+    if (other === aggressorId) continue;
+    if (state.realms[other]?.eliminated) continue;
+    if (other !== victimId) adjustOpinion(state, other, aggressorId, -alarm);
+    alarmed.push(other);
+  }
+
+  // Common cause: everyone who has reason to fear him warms to everyone else
+  // who does. Applied both ways, since a league needs both parties willing.
+  const bond = alarm * DIPLOMACY.commonCauseShare;
+  if (bond <= 0) return;
+  for (const a of alarmed) {
+    for (const b of alarmed) {
+      if (a === b) continue;
+      if (areEnemies(state, a, b)) continue; // old blood outlasts new fear
+      adjustOpinion(state, a, b, bond);
+    }
+  }
+}
+
+/**
+ * How much an act of war by this realm alarms uninvolved third parties, from
+ * the share of the map it holds. Zero below DIPLOMACY.threatShare, rising
+ * linearly to DIPLOMACY.conquestAlarm at total dominion.
+ *
+ * Counts counties rather than armies on purpose: land is what neighbours can
+ * see, and it is what a realm's future strength is actually made of.
+ */
+export function threatAlarm(state: GameState, realmId: string): number {
+  const total = Object.keys(state.counties).length;
+  if (total === 0) return 0;
+  let held = 0;
+  for (const c of Object.values(state.counties)) if (c.ownerId === realmId) held += 1;
+
+  const share = held / total;
+  const { threatShare, conquestAlarm } = DIPLOMACY;
+  if (share <= threatShare) return 0;
+  return conquestAlarm * ((share - threatShare) / (1 - threatShare));
 }
 
 export interface DiplomacyLedger {

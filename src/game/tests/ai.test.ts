@@ -59,15 +59,47 @@ test('ai: idle fields are put to grain', () => {
   assert(fieldCmds.every((c) => c.type === 'AssignField' && c.use === 'Grain'), 'to grain');
 });
 
-test('ai: aggression gates whether the army marches', () => {
+test('ai: every ruler takes the field, however timid', () => {
+  // Aggression used to be a switch: below 0.3 a ruler issued NO military
+  // commands at all, so the Bishop never moved an army, never defended and was
+  // eliminated in every measured game. He was not losing, he was not playing.
   const world = createBritainWorld();
-  const baron = world.realms.p2; // Baron, aggression 0.7
+  const baron = world.realms.p2;
 
   const eager = planMilitary(world, baron, TRAITS_BY_PERSONALITY[NoblePersonality.Baron]);
   assert(has(eager, 'MoveArmy'), 'an aggressive ruler marches on its border');
 
   const timid = planMilitary(world, baron, TRAITS_BY_PERSONALITY[NoblePersonality.Bishop]);
-  assertEqual(timid.length, 0, 'a timid ruler holds position');
+  assertGreater(timid.length, 0, 'and a timid one still takes the field');
+});
+
+test('ai: timidity shows up as caution, not absence', () => {
+  // The Bishop wants a far bigger edge before he will commit to a fight than
+  // the Knight does. Same world, same army, different appetite for risk.
+  const world = createBritainWorld();
+  const realm = world.realms.p2;
+  const mine = world.armies['p2-army'];
+  const foe = createArmy({
+    id: 'foe', ownerId: 'p3', col: mine.col, row: mine.row,
+    countyId: mine.countyId, soldiers: Math.round(mine.soldiers / 1.3),
+  });
+  world.armies.foe = foe;
+
+  const bold = planMilitary(world, realm, TRAITS_BY_PERSONALITY[NoblePersonality.Knight]);
+  const timid = planMilitary(world, realm, TRAITS_BY_PERSONALITY[NoblePersonality.Bishop]);
+
+  assert(has(bold, 'AttackArmy'), 'a 1.3x edge is enough for the Knight');
+  assert(!has(timid, 'AttackArmy'), 'but not nearly enough for the Bishop');
+});
+
+test('ai: the pacifist dial still stands every army down', () => {
+  // The per-game ai.aggression multiplier promises "a peaceful world" at zero.
+  // The floor that keeps that promise sits far below every personality, so it
+  // silences the dial and never a ruler's own temperament.
+  const world = createBritainWorld();
+  const pacified = { ...TRAITS_BY_PERSONALITY[NoblePersonality.Knight], aggression: 0 };
+
+  assertEqual(planMilitary(world, world.realms.p2, pacified).length, 0, 'no war at all');
 });
 
 test('ai: takeAiTurns drives only AI realms and obeys ownership', () => {

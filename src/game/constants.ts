@@ -610,6 +610,36 @@ export const DIPLOMACY = {
   insultPenalty: 18,
   /** Attacking a realm lowers its opinion of you by this much. */
   attackOpinionHit: 25,
+  // --- The over-mighty neighbour ------------------------------------------
+  // An act of war used to cost the aggressor NOTHING in the eyes of anybody
+  // except its victim, so a realm could eat the map one county at a time and
+  // every survivor thought no worse of it. Measured across twenty games: the
+  // eventual winner led from turn one in every single one, and no realm was
+  // ever punished for leading.
+  //
+  // Every balance-of-power system in history and half the strategy games ever
+  // made answer this the same way — the strong become everyone's problem. The
+  // baronial leagues formed against over-mighty kings, not against weak ones.
+  /** Share of the map above which a realm's wars start alarming third parties.
+   *  Below it, a border squabble between small neighbours is ordinary politics
+   *  and nobody else cares. */
+  threatShare: 0.25,
+  /** How much every OTHER realm's regard falls when a realm at or above the
+   *  threat share commits an act of war, at the point where it holds the whole
+   *  map. Scaled linearly between threatShare and 1, so alarm grows as the
+   *  leader grows and a realm just over the line barely registers. */
+  conquestAlarm: 14,
+  /** Common cause. Realms alarmed by the same over-mighty neighbour warm to one
+   *  ANOTHER by this share of the alarm they both felt.
+   *
+   *  Being repelled from the leader is only half a coalition — it makes
+   *  everyone hate him separately, which changes nothing. Measured with only
+   *  the first half: the leader's standing fell to -21 while alliances stayed
+   *  at zero and he took 81 of 82 counties anyway. The enemy of my enemy has to
+   *  become my friend, or there is no league to join. Deliberately a fraction:
+   *  shared fear is a weaker bond than shared interest, and it should take
+   *  several alarms to make allies of rivals. */
+  commonCauseShare: 0.5,
   /** At/below this opinion a realm regards you as a permanent ENEMY. */
   enemyThreshold: -75,
   /** AI accepts an alliance offer when it likes the proposer at least this much. */
