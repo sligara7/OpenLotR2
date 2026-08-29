@@ -1,9 +1,9 @@
 /*
  * The balance harness — run it and read what the rules actually do.
  *
- *   npm run balance                     20 games, 200-turn cap
+ *   npm run balance                     20 games, 500-turn cap
  *   npm run balance -- --games 100      more samples, tighter numbers
- *   npm run balance -- --turns 400      let slow games finish
+ *   npm run balance -- --turns 200      the old fifty-year cap
  *   npm run balance -- --nobles 5       a crowded map
  *   npm run balance -- --aggression 2   push the AI
  *   npm run balance -- --json out.json  machine-readable, for comparing runs
@@ -36,7 +36,17 @@ function stringFlag(name: string): string | null {
 }
 
 const games = flag('games', 20);
-const maxTurns = flag('turns', 200);
+// 500 turns is 125 game years. The cap was 200 (fifty years) until 2026-08-28,
+// when making all four rulers actually competitive turned out to make games
+// HARDER to resolve — a contested map takes longer to settle than a walkover.
+// Measured on the same twenty seeds: 1/20 games reached a decision inside 200
+// turns and 5/20 inside 500, resolving between turns 151 and 409. A cap that
+// most games cannot reach measures the cap rather than the design.
+//
+// ⚠️ BASELINES ACROSS THIS CHANGE ARE NOT COMPARABLE. Every balance figure
+// recorded before this date was taken at 200 turns; pass `--turns 200` to
+// reproduce one.
+const maxTurns = flag('turns', 500);
 const nobles = flag('nobles', 3);
 const aggression = flag('aggression', 1);
 const jsonOut = stringFlag('json');
