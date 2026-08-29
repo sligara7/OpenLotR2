@@ -75,20 +75,42 @@ function exploreRate(state: GameState): number {
   return state.options?.ai?.boldness ?? AI_TUNING_DEFAULTS.boldness;
 }
 /** Army the AI wants to field scales with the realm: a bigger empire raises a
- *  bigger host (capped, so it never bankrupts itself on wages). */
+ *  bigger host. The map is the only ceiling — see targetArmySize. */
 const ARMY_PER_COUNTY = 8;
-const MAX_ARMY_TARGET = 250;
 /** Treasury the AI keeps in reserve before spending gold on mercenaries. */
 const MERCENARY_GOLD_RESERVE = 300;
 
 /** Difficulty nudges how large a host the AI tries to keep. */
 const DIFFICULTY_HOST_MUL = { easy: 0.7, normal: 1, hard: 1.3 } as const;
 
-/** The host size this realm aims to field, given how much land it holds. */
+/**
+ * The host this realm aims to field, given how much land it holds.
+ *
+ * ⚠️ THERE WAS A FLAT CEILING HERE — `MAX_ARMY_TARGET = 250` — AND IT WAS WHY NO
+ * WAR COULD BE FINISHED. Britain is 82 counties, so `50 + counties * 8` passes
+ * 250 at twenty-five of them: from a quarter of the map onward, conquering more
+ * land bought a realm no military strength whatever. Measured across 100 games,
+ * 84 of the 85 undecided ones ended with two survivors holding 48.9 and 28.2
+ * counties — 442 and 274 by this formula, BOTH FLATTENED TO 250. A 1.75x lead
+ * in land bought a 1.00x lead in force, so neither side could finish the other
+ * and the game ran to the cap. Raising the ceiling doubled the decision rate
+ * (15/100 to 13/40, two-proportion p = 0.019). See
+ * dec:rca-army-cap-neutralises-scale.
+ *
+ * THE CEILING'S STATED REASON WAS "so it never bankrupts itself on wages", and
+ * that turns out to be empirically void: the wage bill measures 0-1% of the
+ * treasury with zero short paydays across twenty games. Upkeep never bites, so
+ * it was never the thing the cap was protecting against.
+ *
+ * The map is the bound now: 82 counties gives 706 men, which is what a realm
+ * holding the whole island should be able to put in the field. Conscription
+ * still limits what any county can actually bear (`safeLevy`), so this is an
+ * intent, not a guarantee.
+ */
 function targetArmySize(state: GameState, realm: Realm): number {
   const counties = countiesOfRealm(state, realm.id).length;
   const mul = DIFFICULTY_HOST_MUL[state.options?.difficulty ?? 'normal'];
-  return Math.round(Math.min(MAX_ARMY_TARGET, MIN_ARMY_SIZE + counties * ARMY_PER_COUNTY) * mul);
+  return Math.round((MIN_ARMY_SIZE + counties * ARMY_PER_COUNTY) * mul);
 }
 
 /** Total soldiers a realm has under arms across all its armies. */

@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:1899f8529095885c254b7555827e5c6ce4ad07c12f21a5ad561172da45ff1800",
+  "content_hash": "sha256:34cb960b4cd08cbd48e86808eb1231a18183763a276474a2373fe8f8de1aa55c",
   "edges": [
     {
       "edge_type": "ALLOCATED_TO",
@@ -893,6 +893,14 @@
     },
     {
       "edge_type": "AUTHORED_BY",
+      "from_id": "dec:rca-army-cap-neutralises-scale",
+      "properties": {
+        "role": "author"
+      },
+      "to_id": "who:ajs"
+    },
+    {
+      "edge_type": "AUTHORED_BY",
       "from_id": "decision:ack:0a77650b58242054",
       "properties": {
         "role": "approver"
@@ -1063,6 +1071,16 @@
         "validation_status": "unvalidated"
       },
       "to_id": "dec:idea-doctrine-needs-levers"
+    },
+    {
+      "edge_type": "CAUSES",
+      "from_id": "dec:rca-army-cap-neutralises-scale",
+      "properties": {
+        "basis": "correlational",
+        "evidence": "That node described the attrition stalemate mechanically — \"attrition equalises at the front by construction\" — without saying why it equalises. It equalises because MAX_ARMY_TARGET caps both sides at the same force regardless of their land: at the observed end-state, 49 counties and 28 counties both field 250. Raising the cap doubled decisiveness (15% to 33%, p = 0.019), which is the measurement that makes this a cause of the stall rather than a coincidence beside it.",
+        "validation_status": "unvalidated"
+      },
+      "to_id": "dec:idea-offensives-stall"
     },
     {
       "edge_type": "CAUSES",
@@ -8059,6 +8077,16 @@
       }
     },
     {
+      "node_id": "dec:rca-army-cap-neutralises-scale",
+      "node_type": "Decision",
+      "properties": {
+        "decision": "A root-cause analysis of \"games do not end\", run 2026-08-29 against the 100-game baseline. Recorded as a CAUSE, not a proposal: no fix has been chosen.\n\nTHE MECHANISM. `targetArmySize` in ai/military.ts is `50 + counties * 8`, capped at MAX_ARMY_TARGET = 250. In the state undecided games actually reach — leader 48.9 counties, runner-up 28.2, measured across 84 of 85 undecided games — that arithmetic is:\n\n  leader     50 + 49*8 = 442  ->  capped to 250\n  runner-up  50 + 28*8 = 274  ->  capped to 250\n\nBOTH POWERS FIELD THE SAME ARMY DESPITE A 1.75x TERRITORIAL ADVANTAGE. The opening land grab has strong positive feedback — the eventual winner leads from turn 0 in nearly every game — and from then on land converts into no military edge whatever. There is no mechanism by which being ahead makes you win.\n\nTHE DISCRIMINATING MEASUREMENT. Raising the cap to 900, so the same two realms would field 442 against 274, was run over 40 games at the 500-turn cap:\n\n  cap 250:  15/100 decided (15%)\n  cap 900:  13/40  decided (33%)\n  two-proportion z = 2.34, two-sided p = 0.019\n\nDecisiveness roughly doubles. Sieges laid barely move (182 -> 168) and the leader's final share does not (59% -> 57%), so this is not \"more war\" — it is the same war reaching a conclusion.\n\n⚠️ THIS IS A CONTRIBUTING CAUSE, NOT THE WHOLE ONE. Two thirds of games still do not end with the cap raised. The finish line itself — dec:total-conquest-victory, which requires every rival eliminated and explicitly refuses to let domination win — remains a second, separate cause, and the two are additive rather than alternatives. The experiment was REVERTED; the cap is unchanged in the code.\n\nWHY THIS IS THE CLASS AND NOT ANOTHER TRIGGER. Two earlier causes were diagnosed and fixed and the symptom survived both: \"conquest has no permanence\" (fixed 2026-08-27 by garrisoning on capture) and \"offensives cannot be sustained\" (fixed 2026-08-28 by standing settled garrisons down). Neither touched the ceiling, and the ceiling was present at every occurrence — which is the test for a cause rather than a trigger. dec:idea-offensives-stall described the attrition stalemate mechanically and did not identify why attrition equalises: it equalises because the two sides are capped at the same force.\n\nWHAT WAS REFUTED ALONG THE WAY, recorded so nobody re-runs it:\n- A landless realm surviving on a wandering army and blocking last-standing: 0 such realms in 85 undecided games.\n- Diplomacy blocking the kill (the over-mighty-neighbour alarm added 2026-08-28): with aiDiplomacy at 0 the decision rate was 4/20 against 5/20 with it on, and no alliance stood at the end of any of 40 games. The coalition mechanic is inert.\n- The turn cap being the constraint: the decision hazard is 10% in turns 200-300 and about 3% per 100 turns thereafter, so more time buys little.",
+        "name": "ROOT CAUSE (partial) — a lead in land buys no lead in force, so no war can be finished",
+        "rationale": "Produced by the root-cause procedure rather than by inspection, and the procedure is why it is not the third wrong answer: the candidates were generated from the design's own bones, each was given a measurement that could refute it, and two of the five — including the one this session's author had built and would have preferred to matter — were killed by the data.",
+        "status": "proposed"
+      }
+    },
+    {
       "node_id": "dec:retire-rest-service",
       "node_type": "Decision",
       "properties": {
@@ -9379,9 +9407,9 @@
       "node_type": "Verification",
       "properties": {
         "description": "Twenty AI-versus-AI games, three nobles, default aggression, played to a FIVE-HUNDRED-turn cap — a hundred and twenty-five game years each. Kept as the line every later balance change is measured against.\n\nTHE CAP WAS 200 TURNS (fifty years) until 2026-08-28. It was raised because making all four rulers genuinely competitive made games harder to resolve rather than easier — a contested map takes longer to settle than a walkover — and on the same twenty seeds only 1/20 games reached a decision inside 200 turns against 5/20 inside 500, resolving between turns 151 and 409. A cap most games cannot reach measures the cap rather than the design.\n\n⚠️ FIGURES RECORDED BEFORE THAT DATE ARE NOT COMPARABLE WITH FIGURES AFTER IT. Everything in this design's history up to 2026-08-28 was measured at 200 turns; `npm run balance -- --turns 200` reproduces the old standard. The run also takes roughly two and a half times as long.\n\n⚠️ KNOWN WEAKNESS IN ONE MEASURE, found 2026-08-28 and NOT fixed. The ECONOMY block — \"goods at glut floor N of 11\" and \"goods at scarcity\" — is computed by `priceExtremes`, which quotes prices at `counties[0]` only and reports that single arbitrary county as the whole realm's price health. Prices vary sharply across a realm (measured the same day: wool, stone and iron pinned at the 0.20 floor while cows and wood sat at the 3.00 ceiling, in the same realm), so those two numbers should be read as one county's story, not a realm's. Every other measure in the report aggregates properly.\n\nTWO COUNTERS FIXED THE SAME DAY, for contrast with the above: `seenSieges` was keyed by county for the whole game, so a county besieged twice counted one siege laid against several won — it reported 34 won against 16 laid before the fix. And `deserters` staying at zero was true but unreadable, so wage-bill-as-a-share-of-purse was added beside it; upkeep turns out to cost 0-1% of the treasury, which is why army size is limited by something other than money.",
-        "findings": "100-GAME RUN at the 500-turn cap, 2026-08-28 — five times the usual sample, taken to settle a suspected seat bias. It settled it, and the answer was no. Something larger turned up instead.\n\n  reached a decision   15/100 (15%)\n  sieges laid          182 (6-368), won 171\n  leader's hoard       747,831\n  hungry county-seasons 14,968; plagues 1,221; deserters 0; wage bill 0% of purse\n\n⚠️ THE 20-GAME FIGURE OF 25% DECIDED WAS OPTIMISTIC. At n=100 it is 15%. Twenty games is not enough to read decisiveness from, and earlier entries in this record that quote a rate from twenty should be read with that in mind.\n\n⚠️ AND THE SEAT BIAS FLAGGED IN THE PREVIOUS ENTRY DOES NOT SURVIVE. That entry noted \"seat p1 won 4 of the 5 decided games\" and said a larger sample should settle it. At n=100, p1 won 10 of 15 — but the null was wrong. p3 is eliminated in 85 of 100 games, so among decided games the contest is effectively p1 against p2 and the null is one half, not one third. P(>=10 of 15) is 0.009 against a third and 0.151 against a half. NOT SIGNIFICANT. p1 and p2 also finish within one county of each other on average (35.7 against 36.7). The earlier flag was small-sample noise compounded by the wrong null, and is withdrawn.\n\nTHE REAL FINDING, recorded in full at dec:idea-starting-positions-unequal: p3 — Llywelyn, in Wales — is eliminated in 85 of 100 games and averages 5.3 counties against roughly 36 for the other two. P < 1e-12. The default three-noble game is a two-handed game from early on, which silently conditions every other balance figure ever taken here.\n\nPOSITION BEATS PERSONALITY, and the seed rotation separates them: p1 playing the Knight averages 27.6 counties and survives; p3 playing the same Knight averages 5.3 and dies. About 22 counties of the gap is the Welsh position, about 12 is the Knight.\n\nAND THE KNIGHT NEVER WINS. Winner by personality across 100 games: Baron 8, Bishop 6, Countess 1, Knight 0.",
+        "findings": "100 GAMES, 500-TURN CAP, AFTER REMOVING THE FLAT ARMY CEILING (the fix for dec:rca-army-cap-neutralises-scale). Same 100 seeds as the run it is compared against.\n\n  reached a decision   15/100 (15%)  ->  32/100 (32%)\n  two-proportion z = 2.84, two-sided p = 0.0046\n  turns to decide      256 (151-433) -> 281 (119-438)\n  leader's share at cap  59% -> 57%\n  sieges laid          182 -> 159\n\nDECISIVENESS MORE THAN DOUBLED, and the 40-game probe that motivated the fix had predicted 33% against an outcome of 32% — so the probe was signal, not noise. FEWER sieges were laid, not more: this is the same war reaching a conclusion rather than a busier one.\n\nTWO THINGS IMPROVED THAT WERE NOT TARGETED:\n- THE KNIGHT WINS AGAIN. By temperament: Baron 19, Bishop 6, Countess 5, KNIGHT 2. He had won 0 of 100 before. He is still much the weakest, but he is no longer shut out, and the likeliest reason is that a realm's host now scales with its land, which the harshest drafter can actually supply.\n- MORE COMEBACKS. \"Winner took the lead\" widened from 0 (0-21) to 0 (0-38), and the earliest decision moved from turn 151 to 119. Both ends of the distribution opened up.\n\nSTILL FAILING, AND THE REMAINING CAUSE IS THE ONE ALREADY NAMED. 68 of 100 games do not end, with the leader at 57%. dec:rca-army-cap-neutralises-scale said the ceiling was a CONTRIBUTING cause and that dec:total-conquest-victory — which requires every rival eliminated and explicitly refuses to let domination win — was a second, independent one. That prediction held: removing the ceiling took decisiveness from 15% to 32% and no further.\n\nTHE SEAT SPLIT IS STILL NOT SIGNIFICANT, now on a better sample. p1 won 20 of 32 decided games; against the correct null of one half (p3 being largely absent), P(>=20 of 32) = 0.108. The harness's own \"seat p1 wins 63% — the map may favour it\" warning is reading against a null of one third and should not be trusted while a third of the field is not playing.",
         "kind": "validation",
-        "last_run_at": "2026-08-29T00:00:00Z",
+        "last_run_at": "2026-08-29T02:00:00Z",
         "level": "system",
         "method": "measurement",
         "name": "Balance baseline",
@@ -9559,7 +9587,7 @@
       }
     }
   ],
-  "prev_content_hash": "sha256:c1e95d859da9a40d36bf80ce5a128bf1853dc87e2d8ff5ee0ae7d49ebf69c6b4",
+  "prev_content_hash": "sha256:b3599e55042fef7b41f4a7bf051905647de237a7afd7a917f088626be130da29",
   "stamp": {
     "edge_type_names": [
       "ABOUT_ENTITY",
@@ -9660,7 +9688,7 @@
       "Verification"
     ],
     "node_types": 29,
-    "reflow2_version": "0.40.0",
+    "reflow2_version": "0.42.0",
     "schema_version": 1
   }
 }

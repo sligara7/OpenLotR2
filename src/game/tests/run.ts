@@ -40,6 +40,7 @@ import './garrisons.test.ts';
 import './measures.test.ts';
 import './cattle.test.ts';
 import './reserves.test.ts';
+import './scale.test.ts';
 import './army-manage.test.ts';
 import './outcome.test.ts';
 import './diplomacy.test.ts';
