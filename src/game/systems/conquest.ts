@@ -227,7 +227,12 @@ function isBeaten(state: GameState, realmId: string, held: number): boolean {
     if (rival.eliminated || rival.id === realmId) continue;
     const land = countyCount(state, rival.id);
     const men = fieldStrength(state, rival.id);
-    if (land >= held * CAPITULATION.dominanceRatio && men >= mine * CAPITULATION.dominanceRatio) {
+    // `men > 0` matters: without it, two realms with no armies at all satisfy
+    // `0 >= 0 * ratio` and the weaker one surrenders to a rival that cannot
+    // actually threaten it.
+    if (men > 0
+        && land >= held * CAPITULATION.dominanceRatio
+        && men >= mine * CAPITULATION.dominanceRatio) {
       return true;
     }
   }

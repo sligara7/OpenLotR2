@@ -428,11 +428,15 @@ export const CAPITULATION = {
    *  Anglo-Saxon magnates came to William with shires still in hand, and the
    *  princely states read the arithmetic and submitted intact. What ends a war
    *  is a settled question, not an empty map. */
-  dominanceRatio: 3,
+  dominanceRatio: 2,
   /** ...but never while it still holds this share of the map. A realm with an
-   *  eighth of Britain is not beaten, however far ahead the leader is — this is
-   *  what keeps an even contest from being conceded. */
-  hopelessShare: 0.12,
+   *  quarter of Britain is not beaten, however far ahead the leader is — this
+   *  is what keeps an even contest from being conceded, and the median
+   *  stalemate IS an even contest: leader-to-loser land runs 1.47x at the
+   *  median, which no surrender rule should end. Only the lopsided tail should
+   *  fold, and at 2x land, 2x men and under a quarter of the map that is 7 of
+   *  those 34 games. */
+  hopelessShare: 0.25,
   /** A realm down to this many counties with no army worth the name is finished
    *  whatever the ratios say, and is spared being hunted acre by acre. */
   countyFloor: 2,
