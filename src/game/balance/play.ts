@@ -29,8 +29,26 @@ import {
   type GameResult,
 } from './measures.ts';
 
-/** Personalities handed to the seat a human would otherwise hold, cycled by
- *  seed so no single temperament is over-represented in the sample. */
+/**
+ * Personalities handed to the seats, rotated by seed.
+ *
+ * ⚠️ EVERY SEAT IS ROTATED. Until 2026-08-29 only the human's seat was, and the
+ * roster's own personalities stood for the rest — p2 was ALWAYS the Baron and p3
+ * ALWAYS the Knight. That made temperament and starting position the same
+ * variable, so every "by temperament" figure this harness ever produced was
+ * really a statement about a SEAT wearing a personality's name: "the Baron wins
+ * 75%" and "seat p2 wins 62%" were one fact reported twice, as were "the Knight
+ * never wins" and "Wales is unplayable".
+ *
+ * Measured with the rotation in place, the two effects are separately real and
+ * they compound: seat p1 takes 35 of 57 decided games (P < 1e-4) while p3 takes
+ * 1, and the Baron takes 24 (P = 0.0035) while the Knight takes 3. Holding the
+ * seat fixed and rotating only the temperament: Baron 68%, Bishop 36%, Countess
+ * 24%, Knight 12%.
+ *
+ * With three seats and four temperaments one sits out each game; the rotation
+ * gives every seat every personality an equal share of the time.
+ */
 const SEATS: readonly NoblePersonality[] = [
   NoblePersonality.Baron,
   NoblePersonality.Knight,
@@ -56,12 +74,15 @@ export function playGame({ seed, maxTurns, setup }: PlayOptions): GameResult {
   const state: GameState = createBritainWorld(setup);
   const rng = createRng(seed);
 
-  // Hand the human's seat to the AI as well, so every realm is played.
-  const human = Object.values(state.realms).find((r) => r.isHuman);
-  if (human) {
-    human.isHuman = false;
-    human.personality = SEATS[seed % SEATS.length];
-  }
+  // Every realm is played by the AI, and every seat draws its temperament from
+  // the rotation — including the one a human would hold. Sorted by id so the
+  // assignment is deterministic and a seed always replays identically.
+  Object.values(state.realms)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .forEach((realm, seat) => {
+      realm.isHuman = false;
+      realm.personality = SEATS[(seed + seat) % SEATS.length];
+    });
 
   const tally = emptyTally();
   let turns = 0;

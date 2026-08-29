@@ -41,6 +41,7 @@ import './measures.test.ts';
 import './cattle.test.ts';
 import './reserves.test.ts';
 import './scale.test.ts';
+import './harness-rotation.test.ts';
 import './army-manage.test.ts';
 import './outcome.test.ts';
 import './diplomacy.test.ts';

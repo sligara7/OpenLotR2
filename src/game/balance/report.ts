@@ -102,6 +102,35 @@ export function formatReport(results: GameResult[], maxTurns: number): string {
     out.push(`  by temperament       ${personas.map(([k, v]) => `${k} ${v}`).join(', ')}`);
   }
 
+  // SEAT x TEMPERAMENT, because the two lines above are marginals and a
+  // marginal hides exactly the thing that went wrong here. Until 2026-08-29 the
+  // harness gave every seat a fixed personality, so "the Baron wins 75%" and
+  // "seat p2 wins 62%" were one fact printed twice and neither line said so.
+  // The seats are rotated now, which makes the marginals honest — but only the
+  // cell shows whether a temperament is strong everywhere or strong in one
+  // chair. Measured when this was added: Baron won 17 of 25 in the best seat
+  // and 7 of 25 in the next, so the answer was "both, and they compound".
+  const cell = new Map<string, number>();
+  const played = new Map<string, number>();
+  for (const r of results) {
+    for (const realm of r.realms) {
+      const key = `${realm.realmId}/${realm.personality ?? '—'}`;
+      played.set(key, (played.get(key) ?? 0) + 1);
+    }
+    if (r.decided && r.winnerId) {
+      const key = `${r.winnerId}/${r.winnerPersonality ?? '—'}`;
+      cell.set(key, (cell.get(key) ?? 0) + 1);
+    }
+  }
+  if (played.size > 1) {
+    out.push('  seat x temperament   (wins / games played in that pairing)');
+    for (const key of [...played.keys()].sort()) {
+      const w = cell.get(key) ?? 0;
+      const n = played.get(key) ?? 0;
+      out.push(`    ${key.padEnd(20)} ${pad(w, 3)} / ${pad(n, 3)}   ${pct(w / Math.max(1, n))}`);
+    }
+  }
+
   // --- 4. Does the economy have a ceiling? ---------------------------------
   out.push('');
   out.push('ECONOMY');
