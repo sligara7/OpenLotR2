@@ -94,7 +94,7 @@ test('ai: the army target scales with the realm (a big realm raises a big host)'
   const army = createArmy({ id: 'p2-army', ownerId: 'p2', col: 0, row: 0, countyId: 'c0', soldiers: 40 });
   const world = createWorld({ realms: [realm], counties, armies: [army] });
 
-  const draft = planReinforce(world, realm).find((c) => c.type === 'Conscript' && c.armyId === 'p2-army');
+  const draft = planReinforce(world, realm, BARON).find((c) => c.type === 'Conscript' && c.armyId === 'p2-army');
   assert(draft?.type === 'Conscript', 'reinforces the standing army');
   if (draft?.type === 'Conscript') assertGreater(draft.count, 50, 'drafts toward a host far larger than the old 50-man cap');
 });
@@ -104,7 +104,7 @@ test('ai: a realm that has lost its army musters a fresh one', () => {
   const county = createCounty({ id: 'home', name: 'Home', ownerId: 'p2', population: 400, happiness: 90 });
   const world = createWorld({ realms: [realm], counties: [county] }); // no armies at all
 
-  const muster = planReinforce(world, realm).find((c) => c.type === 'Conscript');
+  const muster = planReinforce(world, realm, BARON).find((c) => c.type === 'Conscript');
   assert(muster?.type === 'Conscript' && muster.armyId === undefined, 'raises a brand-new army');
   if (muster?.type === 'Conscript') assertGreater(muster.count, 49, 'a legal army of at least 50');
 });

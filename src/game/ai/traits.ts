@@ -21,6 +21,22 @@ export interface AiTraits {
   /** 0..1 taste for diplomacy — seeking alliances, gifts, appeasing the strong
    *  (Manual Part-7: the Countess is a master of it, the Knight "no statesman"). */
   diplomacy: number;
+  /**
+   * Share of a county's morale the ruler is willing to spend on the draft, 0..1.
+   *
+   * Was a hardcoded 0.5 that every ruler shared, which made conscription the one
+   * thing four different temperaments all did identically. The manual already
+   * distinguishes them here — the Knight works his peasantry "to the point of
+   * cruelty" while the Bishop keeps the happiest counties — so this is flavour
+   * the design already claimed, made mechanical.
+   *
+   * Kept from an experiment on 2026-08-28 that tested whether grounding rulers
+   * in real political doctrine produces opponents anyone can feel. The rest of
+   * that experiment was reverted; this survived because it stands on its own:
+   * it turns a shared constant into a per-ruler weight, which is the work every
+   * doctrine idea in the design is gated on (see dec:idea-doctrine-needs-levers).
+   */
+  draftHarshness: number;
 }
 
 // Target taxes stay at/below TAX_TOLERANCE (30): above it, taxes erode happiness
@@ -30,18 +46,19 @@ export interface AiTraits {
 /** Flavour drawn from Manual Part-7 "The Players". */
 export const TRAITS_BY_PERSONALITY: Record<NoblePersonality, AiTraits> = {
   // Daring, works his peasantry "to the point of cruelty", lives for battle —
-  // "no statesman", so he shuns the negotiating chambers.
-  [NoblePersonality.Knight]:   { targetTax: 30, happinessFloor: 30, aggression: 0.9, buildAmbition: 0.3, diplomacy: 0.1 },
+  // "no statesman", so he shuns the negotiating chambers. Drafts hardest of all.
+  [NoblePersonality.Knight]:   { targetTax: 30, happinessFloor: 30, aggression: 0.9, buildAmbition: 0.3, diplomacy: 0.1, draftHarshness: 0.8 },
   // Ruthless yet a master of diplomacy — allies readily (and betrays when it pays).
-  [NoblePersonality.Countess]: { targetTax: 27, happinessFloor: 40, aggression: 0.6, buildAmbition: 0.5, diplomacy: 0.95 },
+  [NoblePersonality.Countess]: { targetTax: 27, happinessFloor: 40, aggression: 0.6, buildAmbition: 0.5, diplomacy: 0.95, draftHarshness: 0.45 },
   // Hoards wealth behind a clerical fortress; bold on top, craven when cornered —
   // buys off the strong with gifts and pious words.
-  [NoblePersonality.Bishop]:   { targetTax: 28, happinessFloor: 45, aggression: 0.2, buildAmbition: 0.8, diplomacy: 0.6 },
+  [NoblePersonality.Bishop]:   { targetTax: 28, happinessFloor: 45, aggression: 0.2, buildAmbition: 0.8, diplomacy: 0.6, draftHarshness: 0.4 },
   // The cold, calculating elder statesman — allies only when it serves the plan.
-  [NoblePersonality.Baron]:    { targetTax: 24, happinessFloor: 40, aggression: 0.7, buildAmbition: 0.7, diplomacy: 0.5 },
+  [NoblePersonality.Baron]:    { targetTax: 24, happinessFloor: 40, aggression: 0.7, buildAmbition: 0.7, diplomacy: 0.5, draftHarshness: 0.5 },
 };
 
 /** Fallback for a personality-less AI realm (shouldn't arise, but stays safe). */
 export const DEFAULT_TRAITS: AiTraits = {
   targetTax: 25, happinessFloor: 35, aggression: 0.5, buildAmbition: 0.4, diplomacy: 0.4,
+  draftHarshness: 0.5,
 };

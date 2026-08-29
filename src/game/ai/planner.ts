@@ -56,7 +56,7 @@ export function planRealmTurn(state: GameState, realm: Realm, rng?: Rng): Comman
   return [
     ...planDiplomacy(state, realm, traits),
     ...planGovernance(state, realm, traits),
-    ...planReinforce(state, realm),
+    ...planReinforce(state, realm, traits),
     ...planMilitary(state, realm, traits, rng),
   ];
 }

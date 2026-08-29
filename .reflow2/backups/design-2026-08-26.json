@@ -1,5 +1,5 @@
 {
-  "content_hash": "sha256:3255ae46cee45f0ce5a451cd9ff723a1c7ae8b8639b756bbf59cdb6896441310",
+  "content_hash": "sha256:939d79ecf8aeaead009508fbd944a66770af5161e5de8bced05200f9d019312d",
   "edges": [
     {
       "edge_type": "ALLOCATED_TO",
@@ -597,6 +597,14 @@
     },
     {
       "edge_type": "AUTHORED_BY",
+      "from_id": "dec:idea-doctrine-needs-levers",
+      "properties": {
+        "role": "author"
+      },
+      "to_id": "who:ajs"
+    },
+    {
+      "edge_type": "AUTHORED_BY",
       "from_id": "dec:idea-economic-scarcity",
       "properties": {
         "acted_at": "2026-08-26T00:00:00Z",
@@ -624,12 +632,28 @@
     },
     {
       "edge_type": "AUTHORED_BY",
+      "from_id": "dec:idea-harsh-draft-is-self-defeating",
+      "properties": {
+        "role": "author"
+      },
+      "to_id": "who:ajs"
+    },
+    {
+      "edge_type": "AUTHORED_BY",
       "from_id": "dec:idea-just-price",
       "properties": {
         "acted_at": "2026-08-26T00:00:00Z",
         "role": "author"
       },
       "to_id": "who:claude-code"
+    },
+    {
+      "edge_type": "AUTHORED_BY",
+      "from_id": "dec:idea-knight-as-machiavelli",
+      "properties": {
+        "role": "author"
+      },
+      "to_id": "who:ajs"
     },
     {
       "edge_type": "AUTHORED_BY",
@@ -707,6 +731,14 @@
       "from_id": "dec:idea-roads",
       "properties": {
         "acted_at": "2026-08-27T00:00:00Z",
+        "role": "author"
+      },
+      "to_id": "who:ajs"
+    },
+    {
+      "edge_type": "AUTHORED_BY",
+      "from_id": "dec:idea-rulers-from-history",
+      "properties": {
         "role": "author"
       },
       "to_id": "who:ajs"
@@ -1005,6 +1037,16 @@
         "validation_status": "unvalidated"
       },
       "to_id": "dec:idea-offensives-stall"
+    },
+    {
+      "edge_type": "CAUSES",
+      "from_id": "dec:idea-harsh-draft-is-self-defeating",
+      "properties": {
+        "basis": "correlational",
+        "evidence": "Taking that idea's advice produced this: draftHarshness was the first shared constant turned into a per-ruler weight, and the measurement immediately showed the weight cutting the wrong way for the ruler it characterises. Wiring doctrine to real levers forces exactly this kind of question.",
+        "validation_status": "unvalidated"
+      },
+      "to_id": "dec:idea-doctrine-needs-levers"
     },
     {
       "edge_type": "CAUSES",
@@ -2373,6 +2415,16 @@
     },
     {
       "edge_type": "DEPENDS_ON",
+      "from_id": "dec:idea-doctrine-needs-levers",
+      "properties": {
+        "evidence": "That idea already proposes turning aggression from a gate into a real weight over how far an army will march and how outnumbered it will fight. This is the same work reached from the other direction, so it lands on top of that one rather than beside it.",
+        "optional": false,
+        "weight_basis": "estimated"
+      },
+      "to_id": "dec:idea-aggression-is-a-switch"
+    },
+    {
+      "edge_type": "DEPENDS_ON",
       "from_id": "dec:idea-economic-warfare",
       "properties": {
         "evidence": "Foraging is already \"an army does something to the county it occupies\" — it eats the stores and starves the land. Raiding is the same machinery with intent, so the hard part is built.",
@@ -2390,6 +2442,16 @@
         "weight_basis": "estimated"
       },
       "to_id": "dec:idea-manual-vibe-gaps"
+    },
+    {
+      "edge_type": "DEPENDS_ON",
+      "from_id": "dec:idea-knight-as-machiavelli",
+      "properties": {
+        "evidence": "One ruler's doctrine only means something inside a scheme where rulers carry doctrines; the Knight as Machiavelli is the first instance of that idea, not a separate feature.",
+        "optional": false,
+        "weight_basis": "estimated"
+      },
+      "to_id": "dec:idea-rulers-from-history"
     },
     {
       "edge_type": "DEPENDS_ON",
@@ -2440,6 +2502,26 @@
         "weight_basis": "estimated"
       },
       "to_id": "req:optional-advanced-rules"
+    },
+    {
+      "edge_type": "DEPENDS_ON",
+      "from_id": "dec:idea-rulers-from-history",
+      "properties": {
+        "evidence": "Measured, not assumed: aggression is read twice in the whole AI and both times as a threshold, and ten games at aggression 1 matched ten at aggression 3 on identical seeds. A doctrine layer over traits that do nothing would be four philosophies with one behaviour, so making the traits real levers has to land first.",
+        "optional": false,
+        "weight_basis": "estimated"
+      },
+      "to_id": "dec:idea-aggression-is-a-switch"
+    },
+    {
+      "edge_type": "DEPENDS_ON",
+      "from_id": "dec:idea-rulers-from-history",
+      "properties": {
+        "evidence": "Choosing which rulers to model is only worth anything once it is settled which decisions a ruler's beliefs actually reach; otherwise the doctrines are a table nothing reads.",
+        "optional": false,
+        "weight_basis": "estimated"
+      },
+      "to_id": "dec:idea-doctrine-needs-levers"
     },
     {
       "edge_type": "DEPENDS_ON",
@@ -3830,11 +3912,35 @@
     },
     {
       "edge_type": "RISKS",
+      "from_id": "dec:idea-doctrine-needs-levers",
+      "properties": {
+        "evidence": "The harness deliberately plays every realm with the SAME AI so that anything moving between runs came from the design rather than from play. Per-ruler doctrines break that premise: telling Edward I from Robert the Bruce needs rulers assigned per seat and win rates by doctrine, which is a harness mode that does not exist."
+      },
+      "to_id": "cap:balance-harness"
+    },
+    {
+      "edge_type": "RISKS",
       "from_id": "dec:idea-feudal-service",
       "properties": {
         "evidence": "Wages and desertion are currently the only brake on armies growing without limit. Levies that cost no wages remove that brake, so the term of service has to replace it — and if it does not, the game gets easier rather than richer."
       },
       "to_id": "cap:army-upkeep"
+    },
+    {
+      "edge_type": "RISKS",
+      "from_id": "dec:idea-harsh-draft-is-self-defeating",
+      "properties": {
+        "evidence": "If a ruler's documented temperament reliably makes him weaker once it is made mechanical, then grounding rulers in history produces a table where the best-characterised opponents are the worst players. That is a hazard to the whole idea and worth settling before a table of doctrines is built."
+      },
+      "to_id": "dec:idea-rulers-from-history"
+    },
+    {
+      "edge_type": "RISKS",
+      "from_id": "dec:idea-knight-as-machiavelli",
+      "properties": {
+        "evidence": "The Prince is 1513 Florentine and the game is 1268 Britain, so this puts a deliberate anachronism inside a design whose whole appeal is period grounding. Recorded as a risk rather than a fault because the anachronism can be made the characterisation — the Knight playing by rules the mirror-for-princes tradition calls dishonourable — but only if it is chosen on purpose."
+      },
+      "to_id": "req:medieval-conquest-game"
     },
     {
       "edge_type": "RISKS",
@@ -7542,6 +7648,16 @@
       }
     },
     {
+      "node_id": "dec:idea-doctrine-needs-levers",
+      "node_type": "Decision",
+      "properties": {
+        "decision": "RECORDED AS BRAINSTORMING, NOT AS A PROPOSAL. Distinct from the two ideas it serves: those ask whether to ground rulers in history and which ones. This asks what a ruler's beliefs would have to REACH before any of it shows up in a game. It would have to be answered whatever doctrines were chosen, and it is the question that decides whether the work is worth doing.\n\nTHE PROBLEM, measured and already in the graph. `traits.aggression` is read in two places in the whole AI, both as `if (traits.aggression < 0.3) return null`. It is a gate, not a degree. Ten games at aggression 1 against ten at aggression 3 on identical seeds produced identical median hoards, sieges and decision rates. So today a doctrine could say anything and change nothing.\n\nCANDIDATE LEVERS, all of them decisions the AI already makes, so this is about reading a weight where a constant is hardcoded today rather than inventing new behaviour:\n- WILL HE HIRE MERCENARIES? Already a decision (`HireMercenaries` when conscription lags and gold allows). Today it is one rule for everybody. Machiavelli says no; a 13th-century English king with Gascon crossbowmen says yes. One boolean, immediately visible.\n- HOW HARD WILL HE TAX, and does he stop short of what the county would bear?\n- WALLS OR PEOPLE? The castle-building versus happiness-spending choice. This is Edward I's iron ring against \"the best fortress is not to be hated\", and the game already has both spends.\n- DOES HE PURSUE OR ACCEPT A SURRENDER? The capitulation rules built today make this a real fork for the first time.\n- HOW FAR FROM HOME WILL HE MARCH, and how outnumbered will he accept a fight? dec:idea-aggression-is-a-switch already proposes exactly this as the fix for the dial, and the military planner already scores targets, so there is somewhere for a weight to go.\n- WHOM WILL HE ALLY WITH, and will he keep faith? The diplomacy system exists; today personality only decides whether alliances happen at all.\n\nWHY THIS ORDERING MATTERS. Every lever above is a place where the code currently holds ONE opinion for every ruler. Turning each into a per-ruler weight is small, additive and independently testable — and it is the same work dec:idea-aggression-is-a-switch already asks for, arriving from a different direction. The doctrines then become a table of numbers rather than four new planners.\n\n⚠️ THE COUNTER: the balance harness cannot currently tell four AIs apart. It plays every realm with the same AI on purpose, so that anything that moves between runs came from the DESIGN rather than from play. Measuring whether Edward I beats Robert the Bruce needs a different harness mode — rulers assigned per seat, win rates by doctrine over many games — which does not exist and is real work in its own right. Without it, four doctrines would be four untested claims.\n\nA SMALLER, HONEST FIRST STEP if this is ever taken up: pick ONE lever (the mercenary rule is the cheapest and most visible), give it to one ruler, and see whether a human playing against him notices. That is a cheaper test of the whole idea than building the table.",
+        "name": "OPEN — which decisions a doctrine would have to touch to be visible at all",
+        "rationale": "Captured 2026-08-28. Recorded separately because it is the gating question for both other ideas and would survive either of them being dropped — and because the answer, a table of weights over decisions the AI already makes, is much cheaper than the four-planners reading the idea might otherwise invite.\n\nTESTED 2026-08-28, and the answer is yes. The mercenary lever was built and measured over 8 games x 120 turns with personalities rotated across seats so no seat was favoured. Knight refusing hired swords against the same Knight allowed them:\n\n  bands hired    0  vs  13\n  avg counties   18.2  vs  28.3\n  avg soldiers   130   vs  468\n\nONE BOOLEAN, wired to a decision the AI already makes, cost the Knight 36% of his territory and 72% of his army. So a doctrine grounded in a real text does produce a visibly different opponent, and the levers listed above are the right shape. That was the open question and it is now settled.\n\nTWO THINGS THE TEST ALSO FOUND, neither of them expected:\n\n1. THE KNIGHT WANTS MERCENARIES MOST. He hired 13 bands where the Baron hired 7 and the Countess 6, because he is the most aggressive and burns through men fastest. The doctrine bites hardest on exactly the ruler the text was chosen for, which is either perfect characterisation or an accident worth knowing about.\n\n2. HALF A DOCTRINE IS A NERF, NOT A CHARACTER. Refusing hired swords is only half of what The Prince argues — the whole of it is \"use your OWN arms\". A `draftHarshness` trait was added to carry the other half (the Knight works his peasantry \"to the point of cruelty\", so he drafts hardest), replacing a hardcoded 0.5 every ruler shared. It recovered only part of the loss: 20.7 counties and 160 soldiers against the 28.3 and 468 of the control. The compensating lever is throttled by MAX_ARMY_TARGET and by what a county's population can bear, so mercenaries had been letting the Knight exceed what his own lands could raise. A doctrine needs its counterpart to be EFFECTIVE, not merely present.\n\nWHICH CONFIRMS THE BALANCE COUNTER on dec:idea-asymmetric-houses empirically rather than by argument: one boolean turned the strongest AI into a middling one. Four doctrines would be four such effects interacting, with no harness able to tell them apart.\n\nTHE EXPERIMENT WAS REVERTED. The knowledge is the deliverable; shipping the refusal alone would be a balance regression rather than a feature.",
+        "status": "proposed"
+      }
+    },
+    {
       "node_id": "dec:idea-economic-scarcity",
       "node_type": "Decision",
       "properties": {
@@ -7569,11 +7685,31 @@
       }
     },
     {
+      "node_id": "dec:idea-harsh-draft-is-self-defeating",
+      "node_type": "Decision",
+      "properties": {
+        "decision": "RECORDED AS BRAINSTORMING, NOT AS A PROPOSAL. A measurement that raises a design question, found while keeping `draftHarshness` from the doctrine experiment.\n\nWHAT WAS MEASURED, 8 games x 120 turns, personalities rotated across seats. `draftHarshness` replaced a hardcoded 0.5 that every ruler shared. Comparing against that shared-0.5 baseline:\n\n  Knight    0.5 -> 0.8 (harsher):  28.3 -> 20.3 counties, 468 -> 383 soldiers\n  Baron     0.5 -> 0.5 (unchanged): 30.3 -> 30.5 counties\n  Countess  0.5 -> 0.45 (gentler):  40.3 -> 48.0 counties\n\nAll three moved in the direction their trait moved, which is why this reads as signal rather than noise: the gentler drafter gained, the harsher drafter lost, the unchanged one stayed put.\n\nWHY IT HAPPENS, and it is coherent rather than a bug. Conscription costs happiness. Lower happiness means more emigration, more revolts, slower population growth and less production — so a harsher draft buys men now at the cost of the county that produces men later. The extra soldiers do not repay it.\n\nTHE DESIGN QUESTION. The manual gives the Knight his temperament: he works his peasantry \"to the point of cruelty\". Making that mechanical turns his characterisation into a straight penalty, and flavour that only ever costs you is a poor kind of flavour. Options, none decided:\n(a) LEAVE IT. Harsh rule being self-defeating is a real and defensible thing for this game to say, and the Knight is meant to be reckless rather than optimal.\n(b) GIVE HARSHNESS A COMPENSATION so it is a trade rather than a tax — the drafted men are better, or cheaper, or available faster, so a ruler in a hurry has a reason to be cruel.\n(c) MODERATE THE NUMBER, keeping the flavour visible without the drag.\n\n⚠️ THE HONEST LIMIT ON THE EVIDENCE: eight games. The effect is large and directionally consistent across three personalities, which is suggestive, but this is not the twenty-game baseline and should not be treated as settled. The standard baseline did not move at all (3/20 decided, 72 sieges laid, unchanged), so whatever this is, it is a per-ruler effect rather than a systemic one.\n\nNOTE THE BISHOP IS ABSENT from these numbers entirely — he holds 0 counties in every game, eliminated early, because his aggression of 0.2 falls under the 0.3 gate that dec:idea-aggression-is-a-switch describes. He is not playing at all, which makes any comparison involving him meaningless until that is fixed.",
+        "name": "OPEN — drafting harder makes a ruler weaker, so the Knight's own flavour penalises him",
+        "rationale": "Captured 2026-08-28 immediately after measuring it, because the finding contradicts the intuition that drafting harder makes a ruler stronger, and because it turns a piece of the manual's own characterisation into a mechanical penalty — which is a design choice somebody should make on purpose rather than inherit.",
+        "status": "proposed"
+      }
+    },
+    {
       "node_id": "dec:idea-just-price",
       "node_type": "Decision",
       "properties": {
         "decision": "RECORDED AS BRAINSTORMING, NOT AS A PROPOSAL. Raised 2026-08-26 while making medieval economics more accurate.\n\nTHE MEDIEVAL FACT. Scholastic economics held that a good has a *justum pretium* — a just price — and that charging beyond it was sinful, not shrewd. This was not a sentiment but law and enforcement: assizes of bread and ale fixed prices for staples in England from the thirteenth century, forestalling and regrating (buying up supply to resell dear) were prosecutable offences, and a merchant who profiteered during a dearth could expect the pillory as readily as a profit. Adam Smith is five centuries away; the market here is a moral institution before it is a price-discovery mechanism.\n\nWHY IT MATTERS RIGHT NOW. Supply-and-demand pricing has just gone in, and it works: grain fetches 1 crown in a glutted county and 7 in a starving one. Mechanically that is correct and it made trade a real decision. But it also means the most profitable act available to a ruler is to carry grain into a famine and sell it dear — and in the thirteenth century that is precisely the act that got men hanged. The game currently rewards it with no comment.\n\nTHE IDEA. Give the price a moral ceiling as well as an economic one. Selling into a shortage above some multiple of the base price angers the county it happens in and stains the seller's name — a happiness hit where it occurs, and a standing with the other nobles that suffers, since the existing diplomacy system already models reputation. Conversely, selling cheap into a famine, or shipping grain to a starving county of your own, is the medieval definition of good lordship and could earn what conquest cannot.\n\nWHY IT FITS THIS GAME PARTICULARLY. Happiness and opinion already exist, tested and working; this needs no new machinery, only a consequence attached to a number the market already computes. It also closes the loop the playtest opened: the market now has an economic brake (the merchant's purse) but no moral one.\n\n⚠️ COUNTERS.\nIt punishes the player for playing the market the game just taught them to play, so it wants to be legible before it bites — a warning, not a silent penalty.\nThe manual says nothing about any of this; it is medieval accuracy, not Lords of the Realm II accuracy, and those are now demonstrably different targets.\nAnd it cuts against the supply pricing that was just built and verified — deliberately, but the tension is real and should be tuned rather than assumed.\n\nCOST. Small. A threshold on the supply factor, a happiness delta, an opinion delta.",
         "name": "OPEN — the just price: should profiteering in a famine cost you?",
+        "status": "proposed"
+      }
+    },
+    {
+      "node_id": "dec:idea-knight-as-machiavelli",
+      "node_type": "Decision",
+      "properties": {
+        "decision": "RECORDED AS BRAINSTORMING, NOT AS A PROPOSAL. Distinct from dec:idea-rulers-from-history: that asks whether to ground the rulers in history at all and which ones. This is about the specific choice the user named first, what it would mean mechanically, and the date problem it carries.\n\nTHE USER'S IDEA: \"the knight could be based on Machiavelli 'the prince' and uses principles taught in that book.\"\n\nTHE DATE, stated because it should be a deliberate choice rather than an accident: THE PRINCE is 1513, Florentine, and the game sits in 1268 Britain — two and a half centuries and a different world. Machiavelli is not a ruler of this era; he is arguing against the political tradition that IS this era.\n\nAND THAT IS THE BEST ARGUMENT FOR KEEPING HIM. The Prince was written as a deliberate rebuttal of the mirror-for-princes genre — the Aquinas/Giles of Rome tradition that says a king rules for the common good and a tyrant forfeits obedience. So a table where three rulers hold period doctrine and the Knight holds Machiavelli is not a research slip: it is the Knight playing by rules the others consider dishonourable, which is exactly the dramatic shape the user's \"war-loving Knight who refuses alliances\" already has in the code. The anachronism becomes the characterisation. The alternative, if the date should be clean, is Giles of Rome or Vegetius for a period-correct hard-headedness — cheaper to justify, duller to play against.\n\nWHAT THE PRINCE ACTUALLY SAYS THAT THIS GAME CAN EXPRESS — and it is more than usual, because Machiavelli wrote about exactly the problems this simulation models:\n- MERCENARIES ARE \"disunited, ambitious, without discipline, unfaithful\" and a prince should use his own arms. The game HAS mercenaries, with a gold cost and a wage multiplier, and the AI hires them when conscription cannot keep pace. A Machiavellian Knight simply refuses them — cheap to implement, unmistakable in play, and straight from the text.\n- CRUELTIES SHOULD BE DONE ALL AT ONCE, benefits doled out little by little. Maps onto conquest: crush a taken county hard and immediately rather than grind it over seasons.\n- EXTINGUISH THE LINE of the displaced ruler. Maps onto the capitulation rules just built: a Machiavellian ruler pursues elimination where another would accept a surrender.\n- THE BEST FORTRESS IS NOT TO BE HATED. Maps onto the castle-versus-happiness spending choice — and it cuts AGAINST the war-loving reading, which is the interesting part.\n- AVOID BEING HATED: do not touch subjects' property. Maps onto a tax ceiling he will not cross even when he can.\n\n⚠️ THE COUNTER WORTH KEEPING: The Prince is a rhetorical and much-argued text, not a rulebook, and \"Machiavellian\" in popular use means something cruder than what Machiavelli wrote. A version built on the cartoon — betray everyone, tax everything — would be both bad history and a worse opponent than the careful thing the text actually describes. If this is built, the mercenary rule and the tax ceiling are the honest core; treachery-for-its-own-sake is the failure mode.\n\nA SECOND COUNTER: it inherits the gating problem from dec:idea-rulers-from-history. None of these opinions is visible while traits are read as a single threshold.",
+        "name": "OPEN — the Knight plays The Prince, and is deliberately two centuries out of place",
+        "rationale": "Captured 2026-08-28. Recorded separately because the date problem has a real answer that changes the idea rather than killing it, and because the mercenary rule is a concrete, cheap, textually faithful mechanic that could be tried on its own.",
         "status": "proposed"
       }
     },
@@ -7659,6 +7795,16 @@
       "properties": {
         "decision": "RECORDED AS BRAINSTORMING, NOT AS A PROPOSAL. Ajs's idea, 2026-08-27, from looking at how each successive conqueror of Britain solved the same problem.\n\nTHE HISTORICAL FACT. Rome's answer to logistics was not better wagons, it was INFRASTRUCTURE. Something like two thousand miles of engineered road went into Britain — Watling Street, Ermine Street, the Fosse Way — laid straight, drained, metalled, and built by the army for the army. A road is how you double the radius at which a cart still arrives with something in it, and it is why the Roman conquest advanced the way it did: road by road, fort by fort, each one making the next stretch supportable. The roads outlasted the empire by a thousand years and every later invader used them, which is its own argument for what they were worth. The Normans and the medieval English inherited a network they could not have built.\n\nTHE IDEA. Roads as something a ruler BUILDS, between counties, consuming stone and timber and labour. A road makes supply cheaper along it and marching faster, so the wagon's radius stretches where you have invested and stays short where you have not.\n\nWHY IT IS THE STRONGEST IDEA IN THIS SET: IT ANSWERS THREE OPEN PROBLEMS AT ONCE.\nIt gives the wagon radius something a player can DO about it — otherwise supply range is a wall you discover rather than a problem you solve, which is much less interesting.\nIt gives timber and stone a continuous sink, and the balance harness measured a leader ending with 180,000 units of materials that nothing consumes. Castles are a one-per-county sink that saturates; a road network never does.\nAnd it makes conquest cumulative rather than a raid: a realm that has built roads into a frontier can sustain an offensive there, which is exactly what the measured stalemate lacks.\n\nThe manual also shows roads on the main map, so this is source material as well as history — one more of its systems that was never built.\n\n⚠️ COUNTERS.\nIt is the most CONTENT of the logistics ideas: an edge-built thing between counties, with construction, cost, upkeep, a UI to order it and something on the map to show it. Bigger than the wagon by a good margin.\nIt also risks making the early game a road-building simulator, and a realm that turtles and builds roads for twenty years while nobody attacks it would be playing correctly, which may not be the game anyone wants.\nAnd roads help whoever uses them — including the invader. That is historically exact, it is exactly why the Roman network mattered to everyone who came after, and it makes building one a genuine gamble rather than a free improvement.\n\nCOST. Medium to large, and the largest thing here after river supply. But it is the one whose payoff reaches furthest outside logistics.",
         "name": "OPEN — roads: the Roman answer, and the one idea that fixes three problems at once",
+        "status": "proposed"
+      }
+    },
+    {
+      "node_id": "dec:idea-rulers-from-history",
+      "node_type": "Decision",
+      "properties": {
+        "decision": "RECORDED AS BRAINSTORMING, NOT AS A PROPOSAL.\n\nThe user's thought, 2026-08-28: \"I was thinking we could base some of the other characters off politicians and rulers of the time. I was thinking the knight could be based on Machiavelli 'the prince' and uses principles taught in that book. maybe we could base the other PC controlled players off other rulers/monarchs of the era? then their play is based/influenced on how rulers of the time would have ruled/conquered.\"\n\nDISTINCT FROM dec:idea-asymmetric-houses, which asks whether the four HOUSES should give the PLAYER different economies and combat. This asks what the AI BELIEVES — the doctrine behind its choices. The two compose (a house could play differently and be run on a doctrine) and either could be built without the other.\n\nTHE PERIOD IS BETTER STOCKED THAN IT LOOKS, and it answers the \"rulers of the era\" instinct directly. The game sits in 1268 Britain, and that is almost exactly the moment of Aquinas's DE REGNO (c. 1267) — a mirror-for-princes arguing the king rules for the common good and that a tyrant forfeits obedience. Giles of Rome's DE REGIMINE PRINCIPUM (1280) is the same genre and was the most-copied political text of the age; Vegetius's DE RE MILITARI was the campaign manual every commander actually read; John of Salisbury's POLICRATICUS (1159) had already justified tyrannicide. Contemporary rulers give the same spread with faces on: EDWARD I, whose answer to conquest was the iron ring of Welsh castles and who took ground methodically and fortified everything; ROBERT THE BRUCE, who did the opposite a generation later — refused the set-piece battle and SLIGHTED castles rather than garrison them; SIMON DE MONTFORT, dead in 1265, who fought the crown by building a baronial coalition and summoning a parliament; LLYWELYN AP GRUFFUDD, holding out on terrain nobody else wanted to fight on.\n\nWHAT MAKES THIS MORE THAN A RENAME. Each of those is already a strategy this game can express: fortify-everything versus deny-the-enemy-strongpoints is a real fork in a game with castles and sieges; coalition-building is the diplomacy system; terrain-holding is the movement and supply system. The doctrines are not decoration on top of the mechanics, they are opinions ABOUT the mechanics that already exist.\n\nCOST, three tiers and the middle one is the interesting one.\n(a) REFLAVOUR — names, portraits, a line of quoted doctrine per ruler. Pure text, no mechanics. Cheapest by far, and it will read as a rename because it IS one.\n(b) DOCTRINE AS WEIGHTS — each ruler carries opinions the existing planners read: will he hire mercenaries, how high will he tax, does he spend on walls or on winning the people over, does he pursue a beaten rival to extinction or take a surrender. Every one of those maps onto a system already in the code. Medium, and the honest version.\n(c) DISTINCT DECISION PROCEDURES — a separate planner per ruler. Large, and it multiplies the AI surface by four with no balance harness able to tell four AIs apart yet.\n\n⚠️ THE LOAD-BEARING COUNTER, and it is measured rather than theoretical: personality barely drives anything today. dec:idea-aggression-is-a-switch records that `traits.aggression` is read in exactly two places in the whole AI and both read it as `< 0.3` — a single threshold, not a degree. Ten games at aggression 1 against ten at aggression 3 on the same seeds gave identical medians. So a doctrine layer built on top of today's traits would be invisible: four rulers with four philosophies and one behaviour. THIS IDEA IS GATED ON THE TRAITS BECOMING REAL LEVERS FIRST — which is also an argument FOR doing that work, since it gives the dial a reason to exist.\n\nA SECOND COUNTER, from dec:idea-asymmetric-houses and it applies here too: this is small in code and large in balancing. Four doctrines is four things to balance, with a harness that currently cannot tell whether a change helped.\n\nAN UNTESTED HOPE, flagged as such: the baseline shows the eventual winner leading from turn 0 in every one of twenty games — there is no comeback in this design. Genuinely different doctrines might create the counter-play that produces one. That is speculation and should not be used to justify the work.",
+        "name": "OPEN — model each AI ruler on a real ruler of the era, so they conquer the way that person did",
+        "rationale": "Captured 2026-08-28 while thinking out loud. Recorded with the period research beside it because \"rulers of the era\" turns out to have a precise and well-stocked answer — 1268 is almost exactly the year of Aquinas's De Regno — and because the measured fact that traits do nothing today is what decides whether any of this would be visible.",
         "status": "proposed"
       }
     },
@@ -9359,7 +9505,7 @@
       }
     }
   ],
-  "prev_content_hash": "sha256:2538b3ee1ec4db14ef954ce92447f0d8d27815577a5d13d1efd73938d5097b0c",
+  "prev_content_hash": "sha256:89ab136431ed8322fb2ac8effbeb0d44e984b272772045070bfa9b151f50ba5e",
   "stamp": {
     "edge_type_names": [
       "ABOUT_ENTITY",

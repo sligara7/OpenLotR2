@@ -167,10 +167,13 @@ function planArmy(state: GameState, realm: Realm, army: Army, traits: AiTraits, 
 
 }
 
-/** Most peasants a county can draft this turn without driving morale below half
- *  (a margin shy of the hard floor the conscription command enforces). */
-function safeLevy(county: County, want: number): number {
-  const headroom = (county.happiness * 0.5) / HAPPINESS.conscriptionPenaltyPerPct; // allowable % of pop
+/** Most peasants a county can draft this turn without spending more of its
+ *  morale than the ruler is willing to (a margin shy of the hard floor the
+ *  conscription command enforces). How much he will spend is temperament: the
+ *  Knight works his peasantry "to the point of cruelty" and drafts hardest, the
+ *  Bishop keeps the happiest counties and drafts least. Was a hardcoded 0.5. */
+function safeLevy(county: County, want: number, harshness: number): number {
+  const headroom = (county.happiness * harshness) / HAPPINESS.conscriptionPenaltyPerPct; // allowable % of pop
   const byMorale = Math.floor((headroom / 100) * county.population) - county.recentConscription;
   return Math.max(0, Math.min(want, byMorale, county.population - 1));
 }
@@ -180,7 +183,7 @@ function safeLevy(county: County, want: number): number {
  * home army below strength with a peasant levy. Runs before maneuvers so fresh
  * recruits march out the same turn.
  */
-export function planReinforce(state: GameState, realm: Realm): Command[] {
+export function planReinforce(state: GameState, realm: Realm, traits: AiTraits): Command[] {
   const cmds: Command[] = [];
   const owned = countiesOfRealm(state, realm.id);
   if (owned.length === 0) return cmds;
@@ -212,7 +215,7 @@ export function planReinforce(state: GameState, realm: Realm): Command[] {
 
   // A realm that has lost its host raises a fresh one at the capital.
   if (armies.length === 0) {
-    const start = Math.min(target, safeLevy(capital, target));
+    const start = Math.min(target, safeLevy(capital, target, traits.draftHarshness));
     if (start >= MIN_ARMY_SIZE) {
       const { unit, count } = draftUnit(start);
       cmds.push({ type: 'Conscript', countyId: capital.id, unit, count });
@@ -226,7 +229,7 @@ export function planReinforce(state: GameState, realm: Realm): Command[] {
     if (army.soldiers >= target) continue;
     const county = army.countyId ? state.counties[army.countyId] : undefined;
     if (!county || county.ownerId !== realm.id) continue;
-    const levy = safeLevy(county, target - army.soldiers);
+    const levy = safeLevy(county, target - army.soldiers, traits.draftHarshness);
     if (levy <= 0) continue;
     const { unit, count } = draftUnit(levy);
     cmds.push({ type: 'Conscript', countyId: county.id, unit, count, armyId: army.id });
